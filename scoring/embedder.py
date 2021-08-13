@@ -9,7 +9,7 @@ class Embedder(object):
     def __init__(self, device=None):
         self.max_seq_length = 128
         if device:
-            torch.set_device(device)
+            torch.cuda.set_device(device)
             self.device = 'cuda'
         else:
             self.device = 'cpu'
@@ -18,7 +18,7 @@ class Embedder(object):
     def init_model(self):
         """Initializes model and tokenizer from pre-trained model checkpoint."""
         self.tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
-        self.model = AutoModel.from_pretrained("microsoft/codebert-base")
+        self.model = AutoModel.from_pretrained("microsoft/codebert-base").to(self.device)
         self.model.eval()
 
     def get_feature_inputs(self, tokens):
