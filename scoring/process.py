@@ -142,8 +142,12 @@ def process_file_data(embedder, data, file_name):
 def main():
     input_file = sys.argv[1]
     output_file = sys.argv[2]
+    if len(sys.argv) > 3:
+        device = sys.argv[3]
+    else:
+        device = 'cpu'
     data = pd.read_json(input_file, lines=True)
-    embedder = Embedder()
+    embedder = Embedder(device)
     train_data, train_label = process_file_data(embedder, data, output_file)
     np.save(f'{output_file}_data.npy', train_data)
     np.save(f'{output_file}_scores.npy', train_label)

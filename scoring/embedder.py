@@ -6,9 +6,13 @@ from transformers import AutoTokenizer, AutoModel
 from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_features, InputExample
 
 class Embedder(object):
-    def __init__(self, device='cpu'):
+    def __init__(self, device=None):
         self.max_seq_length = 128
-        self.device = device
+        if device:
+            torch.set_device(device)
+            self.device = 'cuda'
+        else:
+            self.device = 'cpu'
         self.init_model()
 
     def init_model(self):
