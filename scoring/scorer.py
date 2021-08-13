@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import spacy
 
-from utils.codebert_utils import InputExample
+from codebert_pipeline.utils import InputExample
 from embedder import Embedder
 from model import ScoringLayer
 from process import pos_tagging

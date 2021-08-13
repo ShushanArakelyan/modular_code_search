@@ -1,26 +1,24 @@
 import torch
 import numpy as np
 
-from transformers import RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer
-from utils.codebert_utils import convert_examples_to_features
+from transformers import AutoTokenizer, AutoModel
 
+from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_features, InputExample
 
 class Embedder(object):
-    def __init__(self, device, model_checkpoint):
+    def __init__(self, device='cpu'):
         self.max_seq_length = 128
-        self.model_checkpoint = model_checkpoint
         self.device = device
         self.init_model()
 
     def init_model(self):
         """Initializes model and tokenizer from pre-trained model checkpoint."""
-        config_class, model_class, tokenizer_class = (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer)
-        tokenizer_name = 'roberta-bself.devicease'
-        self.tokenizer = tokenizer_class.from_pretrained(tokenizer_name, do_lower_case=True, add_prefix_space=True)
-        self.model = model_class.from_pretrained(self.model_checkpoint).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
+        self.model = AutoModel.from_pretrained("microsoft/codebert-base")
         self.model.eval()
 
     def get_feature_inputs(self, tokens):
+        tokens = [InputExample(0, tokens, label="0")]
         """Converts the input tokens into CodeBERT inputs."""
         features = convert_examples_to_features(tokens, ["0", "1"], self.max_seq_length, self.tokenizer,
                                                 "classification", cls_token_at_end=False,

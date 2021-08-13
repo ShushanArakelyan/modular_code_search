@@ -1,10 +1,14 @@
-import torch
 import numpy as np
+import pandas as pd
 import spacy
+import sys
+import torch
+
 from tqdm import tqdm
 
-from utils.codebert_utils import InputExample
 from utils.tokenize_and_label import new_query_matches
+from embedder import Embedder
+
 
 nlp = spacy.load("en_core_web_md")
 
@@ -44,7 +48,7 @@ def filter_embeddings(embedder, code_tokens, code_embeddings, query_token, nlp_c
         return sub_sample(match, code_embeddings.cpu().detach())
 
 
-def pos_tagging(doc):
+def extract_noun_tokens(doc):
     """Having the docstring, the function returns only the word that are nouns."""
     tokens = nlp(doc)
     pos_tags = [token.tag_ for token in tokens]
@@ -58,7 +62,6 @@ def pos_tagging(doc):
 
 
 def get_static_tag(code_tokens, static_tags):
-    """Gets the static tags of the RobertaTokenized code tokens."""
     pairs = []
     static_idx = [i for i, tag in enumerate(static_tags) if len(tag) > 0] + [0]
 
@@ -83,33 +86,28 @@ def get_static_tag(code_tokens, static_tags):
     return static_pairs
 
 
-def save_data(data, name):
-    """Saves the data matrix in a numpy file."""
-    np.save(name, data)
-
-
 def process_file_data(embedder, data, file_name):
     """Given the data, it gets the docstring and code tokens, preprocesses it, combines the corresponding query-code
     embeddings together and saves them into numpy file."""
     embed_data = []
     embed_scores = []
 
-    f = open(f'exception_{file_name}.txt', 'w')
+    f = open(f'{file_name}_exception.txt', 'w')
     for i, row in tqdm(data.iterrows(), total=len(data), desc="Row: "):
         try:
             doc = row['docstring_tokens']
             code = row['alt_code_tokens']
             static_tags = row['static_tags']
 
-            doc_tokens = pos_tagging(' '.join(doc))
+            noun_tokens = extract_noun_tokens(' '.join(doc))
             static_tags = get_static_tag(code, static_tags)
 
-            doc = ' '.join(doc_tokens)
+            doc = ' '.join(noun_tokens)
             code = ' '.join(code).lower()
 
             # converting the docstring and code tokens into CodeBERT inputs
-            code = [InputExample(0, code, label="0")]
-            doc = [InputExample(0, doc, label="0")]
+            # code = [InputExample(0, code, label="0")]
+            # doc = [InputExample(0, doc, label="0")]
             qinputs = embedder.get_feature_inputs(doc)
             cinputs = embedder.get_feature_inputs(code)
 
@@ -122,7 +120,7 @@ def process_file_data(embedder, data, file_name):
 
             code_embeddings = embedder.get_embeddings(cinputs)
 
-            for query_token in doc_tokens:
+            for query_token in noun_tokens:
                 query_embedding = embedder.get_token_embedding(qinputs, embedder.get_embeddings(qinputs),
                                                                query_token)
                 scores, sampled_code_embeddings = filter_embeddings(embedder, code_tokens, code_embeddings, query_token,
@@ -137,7 +135,18 @@ def process_file_data(embedder, data, file_name):
         except Exception as e:
             f.write(f'{e} \n')
             continue
-
-    save_data(np.stack(embed_data), f'train_{file_name}.npy')
-    save_data(np.asarray(embed_scores), f'scores_{file_name}.npy')
     f.close()
+    return np.stack(embed_data), np.asarray(embed_scores)
+
+
+def main():
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    data = pd.read_json(input_file, lines=True)
+    embedder = Embedder()
+    train_data, train_label = process_file_data(embedder, data, output_file)
+    np.save(f'{output_file}_data.npy', train_data)
+    np.save(f'{output_file}_scores.npy', train_label)
+
+if __name__ == '__main__':
+    main()
