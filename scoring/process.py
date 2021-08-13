@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 from utils.tokenize_and_label import new_query_matches
-from embedder import Embedder
+from .embedder import Embedder
 
 
 nlp = spacy.load("en_core_web_md")
