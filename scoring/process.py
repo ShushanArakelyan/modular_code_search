@@ -137,9 +137,10 @@ def get_regex_labels_binary(code_token_id_mapping, query_token, regex_tags):
     return regex_match
 
 
-def generate_finetuning_data(embedder, data):
+def generate_finetuning_data(embedder, data, output_file):
     res_data = []
     res_scores = []
+    part = 0
 
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, the other half the cases will have an incorrect pair
@@ -231,8 +232,22 @@ def generate_finetuning_data(embedder, data):
                 res_scores.extend(np.zeros(len(neg_sample_code_emb)))
                 if not np.all(np.asarray([len(r) for r in res_data[-1000:]]) == 1536):
                     raise Exception
+                if len(res_data) >= 1000000:
+                    res_data = np.asarray(res_data)
+                    res_scores = np.asarray(res_scores)
+                    np.save(f'{output_file}_data_{part}.npy', res_data)
+                    np.save(f'{output_file}_scores_{part}.npy', res_scores)
+                    part += 1
+                    res_data = []
+                    res_scores = []
     res_data = np.asarray(res_data)
     res_scores = np.asarray(res_scores)
+    if part > 0: 
+        np.save(f'{output_file}_data_{part}.npy', res_data)
+        np.save(f'{output_file}_scores_{part}.npy', res_scores)
+    else:
+        np.save(f'{output_file}_data.npy', res_data)
+        np.save(f'{output_file}_scores.npy', res_scores)
     return res_data, res_scores
 
 
@@ -245,9 +260,7 @@ def main():
         device = None
     data = pd.read_json(input_file, lines=True)
     embedder = Embedder(device)
-    train_data, train_labels = generate_finetuning_data(embedder, data)
-    np.save(f'{output_file}_data.npy', train_data)
-    np.save(f'{output_file}_scores.npy', train_labels)
+    train_data, train_labels = generate_finetuning_data(embedder, data, output_file)
 
 if __name__ == '__main__':
     main()
