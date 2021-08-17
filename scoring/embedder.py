@@ -7,7 +7,7 @@ from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_f
 
 class Embedder(object):
     def __init__(self, device=None):
-        self.max_seq_length = 128
+        self.max_seq_length = 512
         if device:
             torch.cuda.set_device(device)
             self.device = 'cuda'
@@ -21,10 +21,10 @@ class Embedder(object):
         self.model = AutoModel.from_pretrained("microsoft/codebert-base").to(self.device)
         self.model.eval()
 
-    def get_feature_inputs(self, tokens):
-        tokens = [InputExample(0, tokens, label="0")]
+    def get_feature_inputs(self, query, code):
+        examples = [InputExample(0, text_a=query, text_b=code, label="0")]
         """Converts the input tokens into CodeBERT inputs."""
-        features = convert_examples_to_features(tokens, ["0", "1"], self.max_seq_length, self.tokenizer,
+        features = convert_examples_to_features(examples, ["0", "1"], self.max_seq_length, self.tokenizer,
                                                 "classification", cls_token_at_end=False,
                                                 cls_token=self.tokenizer.cls_token,
                                                 sep_token=self.tokenizer.sep_token,
@@ -47,8 +47,6 @@ class Embedder(object):
 
     def get_token_embedding(self, inputs, embeddings, token):
         """From all the embeddings filters out the embedding of the desired token."""
-        subtokenized_text = self.tokenizer.tokenize(token)
-        subtoken_ids = self.tokenizer.convert_tokens_to_ids(subtokenized_text)
         embed_id = []
         for idx in subtoken_ids:
             embed_id.extend((inputs['input_ids'][0] == idx).nonzero().cpu().numpy())
