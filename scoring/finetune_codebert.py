@@ -48,7 +48,8 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
             for nti, nte, nt in zip(noun_token_id_mapping, noun_token_embeddings, noun_tokens):
                 nte = nte.unsqueeze(0)
                 # check for regex and static matches
-                pos_sample_idxs = get_ground_truth_matches(nt, code, code_token_id_mapping, static_tags, regex_tags)
+                pos_sample_idxs = np.unique(
+                    get_ground_truth_matches(nt, code, code_token_id_mapping, static_tags, regex_tags))
                 # add positive examples
                 if len(pos_sample_idxs) > 0:
                     tiled_nte = nte.repeat(len(pos_sample_idxs), 1)
@@ -69,17 +70,25 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
                 p = np.asarray([1 / id_freq_dict[i] for i in code[:len(code_token_id_mapping)]])
                 p = p / np.sum(p)
                 num_neg_samples = min(num_neg_samples, len(code_token_id_mapping))
-                neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
-                                                   num_neg_samples,
-                                                   replace=False, p=p)
+                orig_tokens_neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
+                                                               num_neg_samples,
+                                                               replace=False, p=p)
+                neg_sample_idxs = []
+                for idx in orig_tokens_neg_sample_idxs:
+                    neg_sample_idxs.extend(code_token_id_mapping[idx])
+                neg_sample_idxs = np.asarray(neg_sample_idxs)
                 neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
 
                 attempt = 0
                 while neg_sample_idxs.size == 0 and attempt < 5:
                     attempt += 1
-                    neg_sample_idxs = np.random.choice(
+                    orig_tokens_neg_sample_idxs = np.random.choice(
                         np.arange(len(code_token_id_mapping)), num_neg_samples,
                         replace=False, p=p)
+                    neg_sample_idxs = []
+                    for idx in orig_tokens_neg_sample_idxs:
+                        neg_sample_idxs.extend(code_token_id_mapping[idx])
+                    neg_sample_idxs = np.asarray(neg_sample_idxs)
                     neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
                 if attempt == 5:
                     continue
@@ -149,8 +158,8 @@ def main():
         checkpoint_dir = '/'.join(args.checkpoint.split('/')[:-1])
         file_name = args.checkpoint.split('/')[-1]
         epoch_to_start = int(file_name.split('_')[1])
-        datafile_to_start = int(file_name.split('_')[-1].split('.')[0])
-        print(f"Continuing from epoch: {epoch_to_start}, datafile: {datafile_to_start + 1}")
+        datafile_to_start = int(file_name.split('_')[-1].split('.')[0]) + 1
+        print(f"Continuing from epoch: {epoch_to_start}, datafile: {datafile_to_start}")
         scorer.load_state_dict(models['scorer'])
         print("Scorer device: ", next(scorer.parameters()).device)
         scorer = scorer.to(device)
@@ -169,7 +178,7 @@ def main():
         import os
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-            
+
     if args.num_epochs:
         num_epochs = args.num_epochs
     else:
@@ -191,13 +200,13 @@ def main():
             if i < datafile_to_start:
                 continue
             else:
-                data_file_to_start = -1
+                datafile_to_start = -1
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
             total_loss, train_writer_epoch = run_epoch(data, scorer, embedder, op, bceloss, writer, train_writer_epoch,
                                                        device, save_every=5000,
                                                        checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
-        data_file_to_start = -1
+        datafile_to_start = -1
 
 
 if __name__ == '__main__':

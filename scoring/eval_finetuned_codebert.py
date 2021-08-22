@@ -1,8 +1,8 @@
 import argparse
+
 import numpy as np
 import pandas as pd
 import torch
-
 from tqdm import tqdm
 
 from scoring.embedder import Embedder
@@ -15,9 +15,13 @@ def run_eval_epoch(data, scorer, embedder, split_point=0.5):
     recalls = []
     for it in tqdm(range(len(data))):
         result_dict = eval_example(data, it, scorer, embedder, evaluate="F1", split_point=split_point)
-        f1_scores.append(np.mean(result_dict['f1_scores_for_sample']))
-        precisions.append(np.mean(result_dict['pre_for_sample']))
-        recalls.append(np.mean(result_dict['re_for_sample']))
+        f1 = result_dict['f1_scores_for_sample']
+        pre = result_dict['pre_for_sample']
+        re = result_dict['re_for_sample']
+        if len(f1) > 0 and len(pre) > 0 and len(re) > 0:
+            f1_scores.append(np.mean(f1))
+            precisions.append(np.mean(pre))
+            recalls.append(np.mean(re))
     return f1_scores, precisions, recalls
 
 

@@ -1,8 +1,6 @@
-import numpy as np
 import bleach
+import numpy as np
 import torch
-
-from tqdm import tqdm
 
 from scoring.utils import extract_noun_tokens, get_ground_truth_matches
 
@@ -57,8 +55,7 @@ def generate_HTML(title, embedder, tokens, ground_truth_idxs, scores, split_poin
                                        tokensvals_to_html(embedder, true_scores_tvs, 1))
 
 
-def compute_f1(ground_truth_idxs, scores, split_point):
-    predicted_idxs = np.where(scores >= split_point)[0]
+def compute_f1(ground_truth_idxs, predicted_idxs):
     S_g = len(ground_truth_idxs)
     S_a = len(predicted_idxs)
     intersection = len(np.intersect1d(predicted_idxs, ground_truth_idxs))
@@ -106,19 +103,27 @@ def eval_example(data, it, scorer, embedder, evaluate, split_point=0.5):
         nte = nte.unsqueeze(0)
         # check for regex and static matches
         ground_truth_idxs = get_ground_truth_matches(nt, code, code_token_id_mapping, static_tags, regex_tags)
+        ground_truth_idxs = np.unique(ground_truth_idxs)
         # forward pass through scorer
         tiled_nte = nte.repeat(len(truncated_code_tokens), 1)
         forward_input = torch.cat((tiled_nte, code_embedding), dim=1)
-        scorer_out = torch.sigmoid(scorer.forward(forward_input)).squeeze().cpu().detach().numpy()
+        token_count = max(code_token_id_mapping[-1])
+        scorer_out = torch.sigmoid(scorer.forward(forward_input)).squeeze().cpu().detach().numpy()[:token_count]
+
+        predicted_idxs = np.where(scorer_out > split_point)[0]
+
         if evaluate == "F1":
-            out = compute_f1(ground_truth_idxs, scorer_out, split_point)
+            reversed_code_token_id_mapping = {ai: i for i, a in enumerate(code_token_id_mapping) for ai in a}
+            orig_token_predicted_idx = np.unique([reversed_code_token_id_mapping[idx] for idx in predicted_idxs])
+            orig_token_ground_truth_idx = np.unique([reversed_code_token_id_mapping[idx] for idx in ground_truth_idxs])
+            out = compute_f1(orig_token_ground_truth_idx, orig_token_predicted_idx)
             if out is None:
                 continue
             else:
                 f1, p, re = out
-            result_dict['f1_scores_for_sample'].append(f1)
-            result_dict['pre_for_sample'].append(p)
-            result_dict['re_for_sample'].append(re)
+                result_dict['f1_scores_for_sample'].append(f1)
+                result_dict['pre_for_sample'].append(p)
+                result_dict['re_for_sample'].append(re)
         elif evaluate == "HTML":
             result_dict['html'].append(
                 generate_HTML(nt, embedder, truncated_code_tokens, ground_truth_idxs, scorer_out, split_point))
