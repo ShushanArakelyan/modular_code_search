@@ -39,7 +39,7 @@ def main():
                                  torch.nn.ReLU(),
                                  torch.nn.Linear(embedder.get_dim(), 1)).to(device)
     print(f"Evaluating checkpoint {args.checkpoint}")
-    models = torch.load(args.checkpoint)
+    models = torch.load(args.checkpoint, map_location=device)
     scorer.load_state_dict(models['scorer'])
     scorer = scorer.to(device)
     embedder.model.load_state_dict(models['embedder'])

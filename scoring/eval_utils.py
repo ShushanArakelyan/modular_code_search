@@ -2,7 +2,8 @@ import numpy as np
 import bleach
 import torch
 
-from scoring.eval_finetuned_codebert import run_eval_epoch
+from tqdm import tqdm
+
 from scoring.utils import extract_noun_tokens, get_ground_truth_matches
 
 
@@ -52,17 +53,8 @@ def generate_HTML(title, embedder, tokens, ground_truth_idxs, scores, split_poin
 
     true_scores_tvs = get_tokenvals(tokens, np.ones(len(tokens)), ground_truth_idxs)
     predicted_scores_tvs = get_tokenvals(tokens, scores, predicted_idxs)
-    return f'<h2>{title}</h2>{0}{1}'.format(tokensvals_to_html(embedder, predicted_scores_tvs, 0),
-                                            tokensvals_to_html(embedder, true_scores_tvs, 1))
-
-
-def find_split_point(data, scorer, embedder):
-    avg_f1 = []
-    split_points = np.arange(0, 1, 0.05)
-    for i in split_points:
-        f1_scores, precisions, recalls = run_eval_epoch(data, scorer, embedder, split_point=i)
-        avg_f1.append(np.mean(f1_scores))
-    return split_points, avg_f1
+    return '<h2>{0}</h2>{1}{2}'.format(title, tokensvals_to_html(embedder, predicted_scores_tvs, 0),
+                                       tokensvals_to_html(embedder, true_scores_tvs, 1))
 
 
 def compute_f1(ground_truth_idxs, scores, split_point):
@@ -71,12 +63,10 @@ def compute_f1(ground_truth_idxs, scores, split_point):
     S_a = len(predicted_idxs)
     intersection = len(np.intersect1d(predicted_idxs, ground_truth_idxs))
     if S_g == 0:
-        f1_score = 1 if S_a == 0 else 0
-        return f1_score, 1 if S_a == 0 else 0, 1 if S_a == 0 else 0
+        return None
     if S_a == 0:
-        P_t = 0
-    else:
-        P_t = intersection / S_a
+        return 0, 0, 0
+    P_t = intersection / S_a
     R_t = intersection / S_g
     if P_t == 0 and R_t == 0:
         f1_score = 0
@@ -103,6 +93,14 @@ def eval_example(data, it, scorer, embedder, evaluate, split_point=0.5):
     noun_tokens = extract_noun_tokens(' '.join(doc))
 
     out_tuple = embedder.embed_and_filter(doc, code, noun_tokens)
+    if out_tuple is None:
+        if evaluate == "F1":
+            result_dict['f1_scores_for_sample'] = [0]
+            result_dict['pre_for_sample'] = [0]
+            result_dict['re_for_sample'] = [0]
+        elif evaluate == "HTML":
+            result_dict['html'] = []
+        return result_dict
     noun_token_id_mapping, noun_token_embeddings, code_token_id_mapping, code_embedding, _, truncated_code_tokens = out_tuple
     for nti, nte, nt in zip(noun_token_id_mapping, noun_token_embeddings, noun_tokens):
         nte = nte.unsqueeze(0)
@@ -113,7 +111,11 @@ def eval_example(data, it, scorer, embedder, evaluate, split_point=0.5):
         forward_input = torch.cat((tiled_nte, code_embedding), dim=1)
         scorer_out = torch.sigmoid(scorer.forward(forward_input)).squeeze().cpu().detach().numpy()
         if evaluate == "F1":
-            f1, p, re = compute_f1(ground_truth_idxs, scorer_out, split_point)
+            out = compute_f1(ground_truth_idxs, scorer_out, split_point)
+            if out is None:
+                continue
+            else:
+                f1, p, re = out
             result_dict['f1_scores_for_sample'].append(f1)
             result_dict['pre_for_sample'].append(p)
             result_dict['re_for_sample'].append(re)
@@ -121,3 +123,19 @@ def eval_example(data, it, scorer, embedder, evaluate, split_point=0.5):
             result_dict['html'].append(
                 generate_HTML(nt, embedder, truncated_code_tokens, ground_truth_idxs, scorer_out, split_point))
     return result_dict
+
+
+def find_split_point(data, scorer, embedder):
+    avg_f1 = []
+    split_points = np.arange(0, 1, 0.05)
+    for i in split_points:
+        f1_scores = []
+        precisions = []
+        recalls = []
+        for it in range(len(data)):
+            result_dict = eval_example(data, it, scorer, embedder, evaluate="F1", split_point=i)
+            f1_scores.append(np.mean(result_dict['f1_scores_for_sample']))
+            precisions.append(np.mean(result_dict['pre_for_sample']))
+            recalls.append(np.mean(result_dict['re_for_sample']))
+        avg_f1.append(np.mean(f1_scores))
+    return split_points, avg_f1

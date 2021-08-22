@@ -83,18 +83,17 @@ class Embedder(object):
                 nt_i += 1
             rt_i += 1
         return output_tokens
-
-    @staticmethod
-    def filter_embedding_by_id(query_embedding, token_ids):
+    
+    
+    def filter_embedding_by_id(self, query_embedding, token_ids):
         token_embeddings = []
         for ti in token_ids:
-            te = []
-            for i in ti:
-                te.append(query_embedding[i])
-            te = np.mean(te, 0)
-            token_embeddings.append(te)
-        return np.asarray(token_embeddings)
+            te = torch.index_select(query_embedding, index=torch.LongTensor(ti.astype(int)).to(self.device), dim=0)
+            token_embeddings.append(torch.unsqueeze(torch.mean(te, dim=0), 0))  # i am not sure, that the gradients get propagated through here
+        token_embeddings = torch.cat(token_embeddings)
+        return token_embeddings
 
+    
     def embed_and_filter(self, doc, code, tokens_of_interest):
         # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
         # converting the docstring and code tokens into CodeBERT inputs

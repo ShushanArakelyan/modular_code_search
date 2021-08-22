@@ -38,7 +38,11 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
             op.zero_grad()
             noun_tokens = extract_noun_tokens(' '.join(doc))
             out_tuple = embedder.embed_and_filter(doc, code, noun_tokens)
+            if out_tuple is None:
+                continue
             noun_token_id_mapping, noun_token_embeddings, code_token_id_mapping, code_embedding, _, truncated_code_tokens = out_tuple
+            if noun_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
+                continue
             loss = None
             # extract positive pairs and sample negative pairs
             for nti, nte, nt in zip(noun_token_id_mapping, noun_token_embeddings, noun_tokens):
@@ -64,6 +68,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
                 id_freq_dict = {uid: c for uid, c in zip(unique_ids, counts)}
                 p = np.asarray([1 / id_freq_dict[i] for i in code[:len(code_token_id_mapping)]])
                 p = p / np.sum(p)
+                num_neg_samples = min(num_neg_samples, len(code_token_id_mapping))
                 neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
                                                    num_neg_samples,
                                                    replace=False, p=p)
@@ -111,8 +116,10 @@ def main():
                         help='device to run on')
     parser.add_argument('--data_dir', dest='data_dir', type=str,
                         help='training data directory', required=True)
-    parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
-                        help='validation data directory', required=True)
+    parser.add_argument('--scorer_only', default=False, action='store_true')
+    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
+                        help='number of epochs to train')
+
     args = parser.parse_args()
 
     device = args.device
@@ -126,12 +133,19 @@ def main():
     scorer = torch.nn.Sequential(torch.nn.Linear(embedder.get_dim() * 2, embedder.get_dim()),
                                  torch.nn.ReLU(),
                                  torch.nn.Linear(embedder.get_dim(), 1)).to(device)
-    op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=1e-8)
+    if args.scorer_only:
+        op = torch.optim.Adam(list(scorer.parameters()), lr=1e-8)
+    else:
+        op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=1e-8)
     bceloss = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
     if args.checkpoint:
-        models = torch.load(args.checkpoint)
+        models = torch.load(args.checkpoint, map_location=device)
         checkpoint_dir = '/'.join(args.checkpoint.split('/')[:-1])
+        file_name = args.checkpoint.split('/')[-1]
+        epoch_to_start = int(file_name.split('_')[1])
+        datafile_to_start = int(file_name.split('_')[-1].split('.')[0])
+        print(f"Continuing from epoch: {epoch_to_start}, datafile: {datafile_to_start + 1}")
         scorer.load_state_dict(models['scorer'])
         print("Scorer device: ", next(scorer.parameters()).device)
         scorer = scorer.to(device)
@@ -142,12 +156,19 @@ def main():
         print("Embedder device: ", next(embedder.model.parameters()).device)
         op.load_state_dict(models['optimizer'])
     else:
+        epoch_to_start = 0
+        datafile_to_start = -1
         checkpoint_dir = f'/home/shushan/finetuned_scoring_models/{dt_string}'
         print("Checkpoints will be saved in ", checkpoint_dir)
 
         import os
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
+            
+    if args.num_epochs:
+        num_epochs = args.num_epochs
+    else:
+        num_epochs = 10
 
     train_writer_epoch = 0
 
@@ -159,14 +180,19 @@ def main():
             train_files.append(file)
     train_files = natsorted(train_files)
 
-    print('This run will not be performing validation while training')
-    for epoch in range(args.num_epochs if args.num_epochs else 5):
+    print('This run will not be performing validation while training, number of epochs to run: ', num_epochs)
+    for epoch in range(epoch_to_start, num_epochs):
         for i, input_file_name in enumerate(train_files):
+            if i < datafile_to_start:
+                continue
+            else:
+                data_file_to_start = -1
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
             total_loss, train_writer_epoch = run_epoch(data, scorer, embedder, op, bceloss, writer, train_writer_epoch,
                                                        device, save_every=5000,
                                                        checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
+        data_file_to_start = -1
 
 
 if __name__ == '__main__':
