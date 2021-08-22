@@ -34,7 +34,7 @@ def main():
     args = parser.parse_args()
 
     device = args.device
-    embedder = Embedder(device)
+    embedder = Embedder(device, model_eval=True)
     scorer = torch.nn.Sequential(torch.nn.Linear(embedder.get_dim() * 2, embedder.get_dim()),
                                  torch.nn.ReLU(),
                                  torch.nn.Linear(embedder.get_dim(), 1)).to(device)
@@ -47,13 +47,14 @@ def main():
 
     train_data = pd.read_json(args.train_file_name, lines=True)
     print("Searching for best split point on train data....")
-    split_points, f1_scores = find_split_point(train_data[:50], scorer, embedder)
-    split_point = split_points[np.argmax(f1_scores)]
-    print(f"Search complete, will be using split_point={split_point}")
-    valid_data = pd.read_json(args.valid_file_name, lines=True)
-    print("Running evaluation....")
-    f1_scores, precisions, recalls = run_eval_epoch(valid_data, scorer, embedder, split_point=split_point)
-    print(f"Mean precision: {np.mean(precisions)}, mean recall: {np.mean(recalls)}, mean F1: {np.mean(f1_scores)}")
+    with torch.no_grad():
+        split_points, f1_scores = find_split_point(train_data[:50], scorer, embedder)
+        split_point = split_points[np.argmax(f1_scores)]
+        print(f"Search complete, will be using split_point={split_point}")
+        valid_data = pd.read_json(args.valid_file_name, lines=True)
+        print("Running evaluation....")
+        f1_scores, precisions, recalls = run_eval_epoch(valid_data, scorer, embedder, split_point=split_point)
+        print(f"Mean precision: {np.mean(precisions)}, mean recall: {np.mean(recalls)}, mean F1: {np.mean(f1_scores)}")
 
 
 if __name__ == '__main__':
