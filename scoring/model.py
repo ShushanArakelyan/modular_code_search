@@ -4,6 +4,7 @@ import torch.nn as nn
 class ScoringLayer(nn.Module):
     """Classification layer, where the input is the combined vector of code-query embeddings.
     The task is to predict the whether the embedding are related."""
+
     def __init__(self, device, dim=768):
         super().__init__()
         self.device = device

@@ -4,8 +4,11 @@ import csv
 import logging
 import sys
 
+from third_party.CodeBERT.CodeBERT.codesearch.utils import InputFeatures
+
 csv.field_size_limit(sys.maxsize)
 logger = logging.getLogger(__name__)
+
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode,
@@ -100,7 +103,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
         if ex_index < 5:
             logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
+            logger.info("guid: %s" % example.guid)
             logger.info("tokens: %s" % " ".join(
                 [str(x) for x in tokens]))
             logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))

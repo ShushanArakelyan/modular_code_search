@@ -1,25 +1,33 @@
-import torch
 import numpy as np
-
+import torch
 from transformers import AutoTokenizer, AutoModel
 
 from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_features, InputExample
 
+
 class Embedder(object):
-    def __init__(self, device=None):
+    def __init__(self, device=None, model_eval=True):
         self.max_seq_length = 512
+        self.dim = 768  # size of the output embedding
+        self.tokenizer = None
+        self.model = None
+
         if device:
             torch.cuda.set_device(device)
             self.device = device
         else:
             self.device = 'cpu'
-        self.init_model()
+        self.init_model(model_eval)
 
-    def init_model(self):
+    def get_dim(self):
+        return self.dim
+
+    def init_model(self, model_eval):
         """Initializes model and tokenizer from pre-trained model checkpoint."""
         self.tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
         self.model = AutoModel.from_pretrained("microsoft/codebert-base").to(self.device)
-#         self.model.eval()
+        if model_eval:
+            self.model.eval()
 
     def get_feature_inputs(self, query, code):
         examples = [InputExample(0, text_a=query, text_b=code, label="0")]
@@ -45,23 +53,78 @@ class Embedder(object):
         embeddings = inputs['attention_mask'].T * embeddings[-1].squeeze()
         return embeddings
 
-    def get_token_embedding(self, inputs, embeddings, token):
-        """From all the embeddings filters out the embedding of the desired token."""
-        embed_id = []
-        for idx in subtoken_ids:
-            embed_id.extend((inputs['input_ids'][0] == idx).nonzero().cpu().numpy())
-        embed_id = np.asarray(embed_id).ravel()
-        embed = embeddings[embed_id]
+    def get_code_to_roberta_tokens(self, orig_tokens, codebert_tokens):
+        rt_i = 0
+        ct_i = 0
+        last_end = 0
+        output_tokens = []
+        while rt_i < len(codebert_tokens) and ct_i < len(orig_tokens):
+            if self.tokenizer.convert_tokens_to_string(codebert_tokens[:rt_i + 1]) == " ".join(
+                    orig_tokens[:ct_i + 1]):
+                current_token_idxs = np.arange(last_end, rt_i + 1)
+                output_tokens.append(current_token_idxs)
+                last_end = rt_i + 1
+                ct_i += 1
+            rt_i += 1
+        return output_tokens
 
-        # for instances where RobertaTokenizer split words into multiple sub-word token, we take the average of them
-        embed = torch.mean(embed.T, 1, True)
-        return embed.squeeze(1)
+    def get_word_to_roberta_tokens(self, orig_tokens, codebert_tokens, noun_tokens):
+        rt_i = 0
+        nt_i = 0
+        last_end = 0
+        output_tokens = []
+        while rt_i < len(codebert_tokens) and nt_i < len(orig_tokens):
+            if self.tokenizer.convert_tokens_to_string(codebert_tokens[:rt_i + 1]) == " ".join(
+                    orig_tokens[:nt_i + 1]):
+                current_token_idxs = np.arange(last_end, rt_i + 1)
+                if orig_tokens[nt_i] in noun_tokens:
+                    output_tokens.append(current_token_idxs)
+                last_end = rt_i + 1
+                nt_i += 1
+            rt_i += 1
+        return output_tokens
 
-    def get_sample_embedding(self, query, code):
-        """Gets the embeddings of both code and docstring."""
-        qinputs = self.get_feature_inputs(query)
-        cinputs = self.get_feature_inputs(code)
-        with torch.no_grad():
-            query_embeddings = self.embedder.get_embeddings(qinputs)
-            code_embeddings = self.embedder.get_embeddings(cinputs)
-        return query_embeddings, code_embeddings
+    @staticmethod
+    def filter_embedding_by_id(query_embedding, token_ids):
+        token_embeddings = []
+        for ti in token_ids:
+            te = []
+            for i in ti:
+                te.append(query_embedding[i])
+            te = np.mean(te, 0)
+            token_embeddings.append(te)
+        return np.asarray(token_embeddings)
+
+    def embed_and_filter(self, doc, code, tokens_of_interest):
+        # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
+        # converting the docstring and code tokens into CodeBERT inputs
+        # CodeBERT inputs are limited by 512 tokens, so this will truncate the inputs
+        inputs = self.get_feature_inputs(' '.join(doc), ' '.join(code))
+        separator = np.where(
+            inputs['input_ids'][0].cpu().numpy() == self.tokenizer.sep_token_id)[0][0]
+        # ignore CLS tokens at the beginning and at the end
+        query_token_ids = inputs['input_ids'][0][1:separator]
+        code_token_ids = inputs['input_ids'][0][separator + 1:-1]
+
+        # get truncated version of code and query
+        truncated_code_tokens = self.tokenizer.convert_ids_to_tokens(code_token_ids)
+        truncated_query_tokens = self.tokenizer.convert_ids_to_tokens(query_token_ids)
+
+        # mapping from CodeBERT tokenization to our dataset tokenization
+        token_id_mapping = np.asarray(self.get_word_to_roberta_tokens(doc,
+                                                                      truncated_query_tokens,
+                                                                      tokens_of_interest), dtype=object)
+
+        code_token_id_mapping = np.asarray(self.get_code_to_roberta_tokens(code,
+                                                                           truncated_code_tokens), dtype=object)
+        # get CodeBERT embedding for the example
+        if token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
+            return None
+
+        embedding = self.get_embeddings(inputs)
+        query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
+        token_embeddings = self.filter_embedding_by_id(query_embedding, token_id_mapping)
+
+        out_tuple = (token_id_mapping, token_embeddings, code_token_id_mapping, code_embedding, truncated_query_tokens,
+                     truncated_code_tokens)
+        return out_tuple
