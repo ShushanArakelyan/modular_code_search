@@ -44,6 +44,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
             if noun_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
                 continue
             loss = None
+            loss_normalization = 0
             # extract positive pairs and sample negative pairs
             for nti, nte, nt in zip(noun_token_id_mapping, noun_token_embeddings, noun_tokens):
                 nte = nte.unsqueeze(0)
@@ -62,7 +63,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
                         loss = bceloss(scorer_out, ground_truth_scores)
                     else:
                         loss += bceloss(scorer_out, ground_truth_scores)
-
+                    loss_normalization += len(pos_sample_idxs)
                 # sample random number of negative examples
                 num_neg_samples = np.sum(np.random.binomial(n=20, p=P))
                 unique_ids, counts = np.unique(code[:len(code_token_id_mapping)], return_counts=True)
@@ -103,7 +104,8 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
                     loss = bceloss(scorer_out, ground_truth_scores)
                 else:
                     loss += bceloss(scorer_out, ground_truth_scores)
-                loss /= (len(pos_sample_idxs) + len(neg_sample_idxs))
+                loss_normalization += len(neg_sample_idxs)
+            loss /= loss_normalization
             loss.backward()
             op.step()
             cumulative_loss.append(loss.item())
