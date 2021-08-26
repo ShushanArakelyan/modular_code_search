@@ -113,6 +113,7 @@ def eval_example(data, it, scorer, embedder, evaluate, split_point=0.5):
         predicted_idxs = np.where(scorer_out > split_point)[0]
 
         if evaluate == "F1":
+            # this is equivalent to maxpooling
             reversed_code_token_id_mapping = {ai: i for i, a in enumerate(code_token_id_mapping) for ai in a}
             orig_token_predicted_idx = np.unique([reversed_code_token_id_mapping[idx] for idx in predicted_idxs])
             orig_token_ground_truth_idx = np.unique([reversed_code_token_id_mapping[idx] for idx in ground_truth_idxs])
@@ -139,8 +140,15 @@ def find_split_point(data, scorer, embedder):
         recalls = []
         for it in range(len(data)):
             result_dict = eval_example(data, it, scorer, embedder, evaluate="F1", split_point=i)
-            f1_scores.append(np.mean(result_dict['f1_scores_for_sample']))
-            precisions.append(np.mean(result_dict['pre_for_sample']))
-            recalls.append(np.mean(result_dict['re_for_sample']))
-        avg_f1.append(np.mean(f1_scores))
+            f1 = result_dict['f1_scores_for_sample']
+            pre = result_dict['pre_for_sample']
+            re = result_dict['re_for_sample']
+            if len(f1) > 0 and len(pre) > 0 and len(re) > 0:
+                f1_scores.append(np.mean(f1))
+                precisions.append(np.mean(pre))
+                recalls.append(np.mean(re))
+        if len(f1_scores) > 0:
+            avg_f1.append(np.mean(f1_scores))
+        else: 
+            avg_f1.append(0)
     return split_points, avg_f1
