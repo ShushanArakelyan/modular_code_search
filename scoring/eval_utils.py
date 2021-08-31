@@ -20,7 +20,7 @@ def rgb_to_hex(rgb):
 
 def color_tokenvals(s, idx):
     r = 255 - int(s.val * 255)
-    color_tuple = [r, r, r]
+    color_tuple = np.asarray([r, r, r])
     color_tuple[idx] = 255
     color = rgb_to_hex(tuple(color_tuple))
     return 'background-color: %s' % color

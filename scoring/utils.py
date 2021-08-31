@@ -2,6 +2,7 @@ import re
 
 import numpy as np
 import spacy
+from nltk.stem import WordNetLemmatizer
 nlp = spacy.load("en_core_web_md")
 
 
@@ -29,14 +30,18 @@ def get_matched_labels_binary(code_token_id_mapping, query_token, nlp_cache):
 
 
 def get_matched_labels_binary_v2(tokens, code_token_id_mapping, query_token):
+    lemmatizer = WordNetLemmatizer()
     tags = np.zeros(max(code_token_id_mapping[-1]) + 1)
     for i, t in enumerate(tokens):
-        if re.search(query_token, t):
+        if re.search(query_token.lower(), t.lower()):
+            tags[code_token_id_mapping[i]] = 1
+        elif re.search(lemmatizer.lemmatize(query_token.lower()), t.lower()):
             tags[code_token_id_mapping[i]] = 1
     return np.asarray(tags)
 
 
 def get_static_labels_binary(code_token_id_mapping, query_token, static_tags):
+    query_token = query_token.lower()
     static_labels = {
         'list': ['AstList', 'AstListComp'],
         'dict': ['AstDict', 'AstDictComp'],
@@ -63,6 +68,7 @@ def get_static_labels_binary(code_token_id_mapping, query_token, static_tags):
 
 
 def get_regex_labels_binary(code_token_id_mapping, query_token, regex_tags):
+    query_token = query_token.lower()
     datatype_regex_matches = {'dict': ['dict', 'map'],
                               'list': ['list', 'arr'],
                               'tuple': ['tuple'],
