@@ -19,6 +19,43 @@ def extract_noun_tokens(doc):
     return noun_tokens
 
 
+def get_noun_phrases(ccg_parse):
+    ccg_parse = ccg_parse[1:-1] # remove brackets from the beginning and the end
+    # remove '@Concat' operation
+    i = 0
+    parts = ccg_parse.split(' ')
+    modified_parse = ''
+    while i < len(parts):
+        if parts[i] == '':
+            i += 1
+            continue
+        if parts[i] == '@Concat':
+            i += 2
+        modified_parse += ' ' + parts[i]
+        i += 1
+    # extract consecutive noun phrases
+    i = 0
+    parts = modified_parse.split(' ')
+    phrases = []
+    while i < len(parts):
+        phrase = []
+        while i < len(parts) and not (parts[i].startswith('@') or parts[i].startswith(')')):
+            if len(parts[i])  != 0:
+                phrase.append(parts[i])
+            i += 1
+        if len(phrase) != 0:
+            phrases.append(phrase)
+        if i == len(parts):
+            break
+        if parts[i].startswith('@Action'):
+            i += 3
+        elif parts[i].startswith('@'):
+            i += 2
+        else:
+            i += 1
+    return phrases
+
+
 def get_matched_labels_binary(code_token_id_mapping, query_token, nlp_cache):
     from spacy.matcher import Matcher
     matcher = Matcher(nlp.vocab)

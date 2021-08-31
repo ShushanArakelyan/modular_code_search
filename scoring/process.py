@@ -10,7 +10,7 @@
 # from tqdm import tqdm
 #
 # from scoring.utils import P, extract_noun_tokens, filter_embedding_by_id, get_word_to_roberta_tokens, \
-#     get_code_to_roberta_tokens, get_matched_labels_binary_v2, get_static_labels_binary, get_regex_labels_binary
+#     get_orig_tokens_to_roberta_tokens, get_matched_labels_binary_v2, get_static_labels_binary, get_regex_labels_binary
 # from .embedder import Embedder
 #
 #
@@ -55,7 +55,7 @@
 #                                                                           truncated_query_tokens,
 #                                                                           noun_tokens, embedder), dtype=object)
 #
-#             code_token_id_mapping = np.asarray(get_code_to_roberta_tokens(code,
+#             code_token_id_mapping = np.asarray(get_orig_tokens_to_roberta_tokens(code,
 #                                                                           truncated_code_tokens,
 #                                                                           embedder), dtype=object)
 #             if noun_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:

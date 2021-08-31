@@ -53,7 +53,7 @@ class Embedder(object):
         embeddings = inputs['attention_mask'].T * embeddings[-1].squeeze()
         return embeddings
 
-    def get_code_to_roberta_tokens(self, orig_tokens, codebert_tokens):
+    def get_orig_tokens_to_roberta_tokens(self, orig_tokens, codebert_tokens):
         rt_i = 0
         ct_i = 0
         last_end = 0
@@ -68,22 +68,6 @@ class Embedder(object):
             rt_i += 1
         return output_tokens
 
-    def get_word_to_roberta_tokens(self, orig_tokens, codebert_tokens, noun_tokens):
-        rt_i = 0
-        nt_i = 0
-        last_end = 0
-        output_tokens = []
-        while rt_i < len(codebert_tokens) and nt_i < len(orig_tokens):
-            if self.tokenizer.convert_tokens_to_string(codebert_tokens[:rt_i + 1]) == " ".join(
-                    orig_tokens[:nt_i + 1]):
-                current_token_idxs = np.arange(last_end, rt_i + 1)
-                if orig_tokens[nt_i] in noun_tokens:
-                    output_tokens.append(current_token_idxs)
-                last_end = rt_i + 1
-                nt_i += 1
-            rt_i += 1
-        return output_tokens
-    
     
     def filter_embedding_by_id(self, query_embedding, token_ids):
         token_embeddings = []
@@ -94,7 +78,7 @@ class Embedder(object):
         return token_embeddings
 
     
-    def embed_and_filter(self, doc, code, tokens_of_interest):
+    def embed(self, doc, code):
         # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
         # converting the docstring and code tokens into CodeBERT inputs
         # CodeBERT inputs are limited by 512 tokens, so this will truncate the inputs
@@ -110,20 +94,21 @@ class Embedder(object):
         truncated_query_tokens = self.tokenizer.convert_ids_to_tokens(query_token_ids)
 
         # mapping from CodeBERT tokenization to our dataset tokenization
-        token_id_mapping = np.asarray(self.get_word_to_roberta_tokens(doc,
-                                                                      truncated_query_tokens,
-                                                                      tokens_of_interest), dtype=object)
+        token_id_mapping = np.asarray(self.get_orig_tokens_to_roberta_tokens(doc, truncated_query_tokens), dtype=object)
 
-        code_token_id_mapping = np.asarray(self.get_code_to_roberta_tokens(code,
-                                                                           truncated_code_tokens), dtype=object)
+        code_token_id_mapping = np.asarray(self.get_orig_tokens_to_roberta_tokens(code,
+                                                                                  truncated_code_tokens), dtype=object)
         # get CodeBERT embedding for the example
         if token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
             return None
 
         embedding = self.get_embeddings(inputs)
-        query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
+        # query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
+        cls_embedding = embedding.index_select(dim=0, index=0)
+        query_embedding = embedding.index_select(dim=0, index=range(1, separator))
+        code_embedding = embedding.index_select(dim=0, index=range(separator + 1, embedding.shape[0] - 1))
         token_embeddings = self.filter_embedding_by_id(query_embedding, token_id_mapping)
 
         out_tuple = (token_id_mapping, token_embeddings, code_token_id_mapping, code_embedding, truncated_query_tokens,
-                     truncated_code_tokens)
+                     truncated_code_tokens, cls_embedding)
         return out_tuple
