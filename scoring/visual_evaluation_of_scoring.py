@@ -37,7 +37,7 @@
 #     static_tags = data['static_tags'][it]
 #     regex_tags = data['regex_tags'][it]
 # noun_tokens = extract_noun_tokens(' '.join(doc))
-# out_tuple = embedder.embed_and_filter(doc, code, noun_tokens)
+# out_tuple = embedder.embed(doc, code, noun_tokens)
 # noun_token_id_mapping, noun_token_embeddings, code_token_id_mapping, code_embedding, _, truncated_code_tokens = out_tuple
 #
 # # extract ground truth pairs and get scores for all pairs
