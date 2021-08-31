@@ -14,6 +14,7 @@ from .utils import get_ground_truth_matches, get_noun_phrases
 
 P = 0.7
 VERSION="CLS"
+INCLUDE_MISMATCHED_PAIR = False
 
 
 def sample_random_code_tokens(code, code_token_id_mapping):
@@ -69,7 +70,11 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, 
         # the other half the cases will have an incorrect pair
-        for pair in ['correct_pair', 'incorrect_pair']:
+        if INCLUDE_MISMATCHED_PAIR:
+            pairs = ['correct_pair', 'incorrect_pair']
+        else:
+            pairs = ['correct_pair']
+        for pair in pairs:
             if pair == 'correct_pair':
                 doc = data['docstring_tokens'][it]
                 code = data['alt_code_tokens'][it]
@@ -197,6 +202,7 @@ def main():
     parser.add_argument('--data_dir', dest='data_dir', type=str,
                         help='training data directory', required=True)
     parser.add_argument('--scorer_only', default=False, action='store_true')
+    parser.add_argument('--include_mismatched_pair', default=False, action='store_true')
     parser.add_argument('--num_epochs', dest='num_epochs', type=int,
                         help='number of epochs to train')
 
@@ -249,6 +255,10 @@ def main():
         import os
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
+
+    if args.include_mismatched_pair:
+        global INCLUDE_MISMATCHED_PAIR
+        INCLUDE_MISMATCHED_PAIR = True
 
     if args.num_epochs:
         num_epochs = args.num_epochs
