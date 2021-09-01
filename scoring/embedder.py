@@ -104,9 +104,10 @@ class Embedder(object):
 
         embedding = self.get_embeddings(inputs)
         # query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
-        cls_embedding = embedding.index_select(dim=0, index=0)
-        query_embedding = embedding.index_select(dim=0, index=range(1, separator))
-        code_embedding = embedding.index_select(dim=0, index=range(separator + 1, embedding.shape[0] - 1))
+        cls_embedding = embedding.index_select(dim=0, index=torch.LongTensor(np.arange(0, 1)).to(self.device))
+        query_embedding = embedding.index_select(dim=0, index=torch.LongTensor(np.arange(1, separator)).to(self.device))
+        code_embedding = embedding.index_select(dim=0, index=torch.LongTensor(
+            np.arange(separator + 1, embedding.shape[0] - 1)).to(self.device))
         token_embeddings = self.filter_embedding_by_id(query_embedding, token_id_mapping)
 
         out_tuple = (token_id_mapping, token_embeddings, code_token_id_mapping, code_embedding, truncated_query_tokens,
