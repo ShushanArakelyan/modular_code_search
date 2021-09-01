@@ -33,6 +33,98 @@ def sample_random_code_tokens(code, code_token_id_mapping):
     sample_idxs = np.asarray(sample_idxs)
     return sample_idxs
 
+#
+# def max_scoring():
+#
+#
+# # for wti, wte, token in zip(word_token_id_mapping, word_token_embeddings, phrase):
+# #     wte = wte.unsqueeze(0)
+# #     # check for regex and static matches
+# #     if len(pos_idxs_for_phrase) > 0:
+# #         tiled_nte = wte.repeat(len(pos_idxs_for_phrase), 1)
+# #         ground_truth_scores = torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))).to(device)
+# #         pos_samples_selected = torch.index_select(code_embedding,
+# #                                                   index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
+# #         forward_input = torch.cat((tiled_nte, pos_samples_selected), dim=1)
+# #         scorer_out = scorer.forward(forward_input)
+# #         if loss is None:
+# #             loss = bceloss(scorer_out, ground_truth_scores)
+# #         else:
+# #             loss += bceloss(scorer_out, ground_truth_scores)
+# #     loss_normalization += len(pos_idxs_for_phrase)
+# #     # sample random number of negative examples
+# #     num_neg_samples = np.sum(np.random.binomial(n=20, p=P))
+# #     unique_ids, counts = np.unique(code[:len(code_token_id_mapping)], return_counts=True)
+# #     id_freq_dict = {uid: c for uid, c in zip(unique_ids, counts)}
+# #     p = np.asarray([1 / id_freq_dict[i] for i in code[:len(code_token_id_mapping)]])
+# #     p = p / np.sum(p)
+# #     num_neg_samples = min(num_neg_samples, len(code_token_id_mapping))
+# #     orig_tokens_neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
+# #                                                    num_neg_samples,
+# #                                                    replace=False, p=p)
+# #     neg_sample_idxs = []
+# #     for idx in orig_tokens_neg_sample_idxs:
+# #         neg_sample_idxs.extend(code_token_id_mapping[idx])
+# #     neg_sample_idxs = np.asarray(neg_sample_idxs)
+# #     neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
+# #
+# #     attempt = 0
+# #     while neg_sample_idxs.size == 0 and attempt < 5:
+# #         attempt += 1
+# #         orig_tokens_neg_sample_idxs = np.random.choice(
+# #             np.arange(len(code_token_id_mapping)), num_neg_samples,
+# #             replace=False, p=p)
+# #         neg_sample_idxs = []
+# #         for idx in orig_tokens_neg_sample_idxs:
+# #             neg_sample_idxs.extend(code_token_id_mapping[idx])
+# #         neg_sample_idxs = np.asarray(neg_sample_idxs)
+# #         neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
+# #     if attempt == 5:
+# #         continue
+# #
+# #     tiled_nte = wte.repeat(len(neg_sample_idxs), 1)
+# #     ground_truth_scores = torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1))).to(device)
+# #     neg_samples_selected = torch.index_select(code_embedding,
+# #                                               index=torch.LongTensor(neg_sample_idxs).to(device), dim=0)
+# #     forward_input = torch.cat((tiled_nte, neg_samples_selected), dim=1)
+# #     scorer_out = scorer.forward(forward_input)
+# #     if loss is None:
+# #         loss = bceloss(scorer_out, ground_truth_scores)
+# #     else:
+# #         loss += bceloss(scorer_out, ground_truth_scores)
+# #     loss_normalization += len(neg_sample_idxs)
+
+
+def mean_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
+    word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
+    code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
+    if len(pos_idxs_for_phrase) == 0:
+        return None
+
+    # sample random number of negative examples
+    neg_sample_idxs = np.zeros(0)
+    attempt = -1
+    while neg_sample_idxs.size == 0 and attempt < 5:
+        attempt += 1
+        neg_sample_idxs = sample_random_code_tokens(code, code_token_id_mapping)
+        neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_idxs_for_phrase)]
+    if attempt == 5:
+        return None
+    emb = torch.mean(word_token_embeddings, dim=0, keepdim=True)
+
+    tiled_emb = emb.repeat(len(pos_idxs_for_phrase) + len(neg_sample_idxs), 1)
+    ground_truth_scores =torch.cat((torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))),
+                                   torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1)))), dim=0).to(device)
+    pos_samples_selected = torch.index_select(code_embedding,
+                                              index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
+    neg_samples_selected = torch.index_select(code_embedding,
+                                              index=torch.LongTensor(neg_sample_idxs).to(device), dim=0)
+    all_samples = torch.cat((pos_samples_selected, neg_samples_selected), dim=0)
+    forward_input = torch.cat((tiled_emb, all_samples), dim=1)
+    scorer_out = scorer.forward(forward_input)
+    loss = bceloss(scorer_out, ground_truth_scores)
+    return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
+
 
 def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
     word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
@@ -100,63 +192,16 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
             else:
                 loss += loss_i
             loss_normalization += batch_size
-
-        # for wti, wte, token in zip(word_token_id_mapping, word_token_embeddings, phrase):
-        #     wte = wte.unsqueeze(0)
-        #     # check for regex and static matches
-        #     if len(pos_idxs_for_phrase) > 0:
-        #         tiled_nte = wte.repeat(len(pos_idxs_for_phrase), 1)
-        #         ground_truth_scores = torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))).to(device)
-        #         pos_samples_selected = torch.index_select(code_embedding,
-        #                                                   index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
-        #         forward_input = torch.cat((tiled_nte, pos_samples_selected), dim=1)
-        #         scorer_out = scorer.forward(forward_input)
-        #         if loss is None:
-        #             loss = bceloss(scorer_out, ground_truth_scores)
-        #         else:
-        #             loss += bceloss(scorer_out, ground_truth_scores)
-        #     loss_normalization += len(pos_idxs_for_phrase)
-        #     # sample random number of negative examples
-        #     num_neg_samples = np.sum(np.random.binomial(n=20, p=P))
-        #     unique_ids, counts = np.unique(code[:len(code_token_id_mapping)], return_counts=True)
-        #     id_freq_dict = {uid: c for uid, c in zip(unique_ids, counts)}
-        #     p = np.asarray([1 / id_freq_dict[i] for i in code[:len(code_token_id_mapping)]])
-        #     p = p / np.sum(p)
-        #     num_neg_samples = min(num_neg_samples, len(code_token_id_mapping))
-        #     orig_tokens_neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
-        #                                                    num_neg_samples,
-        #                                                    replace=False, p=p)
-        #     neg_sample_idxs = []
-        #     for idx in orig_tokens_neg_sample_idxs:
-        #         neg_sample_idxs.extend(code_token_id_mapping[idx])
-        #     neg_sample_idxs = np.asarray(neg_sample_idxs)
-        #     neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
-        #
-        #     attempt = 0
-        #     while neg_sample_idxs.size == 0 and attempt < 5:
-        #         attempt += 1
-        #         orig_tokens_neg_sample_idxs = np.random.choice(
-        #             np.arange(len(code_token_id_mapping)), num_neg_samples,
-        #             replace=False, p=p)
-        #         neg_sample_idxs = []
-        #         for idx in orig_tokens_neg_sample_idxs:
-        #             neg_sample_idxs.extend(code_token_id_mapping[idx])
-        #         neg_sample_idxs = np.asarray(neg_sample_idxs)
-        #         neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
-        #     if attempt == 5:
-        #         continue
-        #
-        #     tiled_nte = wte.repeat(len(neg_sample_idxs), 1)
-        #     ground_truth_scores = torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1))).to(device)
-        #     neg_samples_selected = torch.index_select(code_embedding,
-        #                                               index=torch.LongTensor(neg_sample_idxs).to(device), dim=0)
-        #     forward_input = torch.cat((tiled_nte, neg_samples_selected), dim=1)
-        #     scorer_out = scorer.forward(forward_input)
-        #     if loss is None:
-        #         loss = bceloss(scorer_out, ground_truth_scores)
-        #     else:
-        #         loss += bceloss(scorer_out, ground_truth_scores)
-        #     loss_normalization += len(neg_sample_idxs)
+        elif VERSION == "MEAN":
+            scoring_out = cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device)
+            if scoring_out is None:
+                continue
+            loss_i, batch_size = scoring_out
+            if loss is None:
+                loss = loss_i
+            else:
+                loss += loss_i
+            loss_normalization += batch_size
         loss /= loss_normalization
         loss.backward()
         op.step()
