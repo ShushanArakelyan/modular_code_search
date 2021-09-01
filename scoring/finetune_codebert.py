@@ -197,7 +197,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
         if it > 0 and it % 100 == 0:
             writer_epoch += 1
             writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), writer_epoch)
-        if it > 0 and it % save_every == 0:
+        if it > 0 and (it + 1) % save_every == 0:
             torch.save({"scorer": scorer.state_dict(),
                         "embedder": embedder.model.state_dict(),
                         "optimizer": op.state_dict()}, checkpoint_prefix + f'{it}.tar')
@@ -296,7 +296,7 @@ def main():
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
             total_loss, train_writer_epoch = run_epoch(data, scorer, embedder, op, bceloss, writer, train_writer_epoch,
-                                                       device, save_every=5000,
+                                                       device, save_every=10000,
                                                        checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
         datafile_to_start = -1
 
