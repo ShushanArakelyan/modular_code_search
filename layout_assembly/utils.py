@@ -38,7 +38,7 @@ class TestActionModuleWrapper(object):
         out = "action(" + self.param
         i = 0
         while i < len(self.inputs):
-            out += '({1}, {2}), '.format(self.inputs[i][0], self.inputs[i][1])
+            out += '({0}, {1}), '.format(self.inputs[i][0], self.inputs[i][1])
             i += 1
         out += ')'
         return out
@@ -53,13 +53,10 @@ class TestActionModuleWrapper(object):
         self.inputs.append([prep])
 
 
-class TestScoringModuleWrapper(object):
+class TestScoringModuleWrapper:
 
-    def __init__(self, action_module):
-        self.param = None
-        self.inputs = []
-        self.input_count = 0
-        self.module = action_module
+    def __init__(self,):
+        pass
 
     def forward(self, value, _):
         return value
