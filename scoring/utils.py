@@ -2,7 +2,6 @@ import re
 
 import numpy as np
 import spacy
-from nltk.stem import WordNetLemmatizer
 nlp = spacy.load("en_core_web_md")
 
 
