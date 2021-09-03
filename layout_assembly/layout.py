@@ -39,7 +39,8 @@ class LayoutNet(object):
                 self.process_node(child, code, parent_module)
             return parent_module
 
-    def remove_concats(self, tree):
+    @staticmethod
+    def remove_concats(tree):
         stack = [tree]
         while stack:
             node = stack.pop()
@@ -65,7 +66,8 @@ class LayoutNet(object):
             stack.extend(new_children)
         return tree
 
-    def construct_layout(self, ccg_parse):
+    @staticmethod
+    def construct_layout(ccg_parse):
         parts = ccg_parse.split(' ')[::-1]
         tree = LayoutNode()
         node = tree
