@@ -1,19 +1,13 @@
 class ActionModuleWrapper(object):
 
-    def __init__(self, action_module):
+    def __init__(self, action_module_facade):
         self.param = None
         self.inputs = []
         self.input_count = 0
-        self.module = action_module
+        self.module = action_module_facade
 
     def forward(self, code):
-        # use self.module to perform forward
-        out = "action: " + self.param
-        i = 0
-        while i < len(self.inputs):
-            out += ' ' + self.inputs[i]
-            i += 1
-        return out
+        return self.module.forward(self.param, self.inputs, code)
 
     def add_input(self, input):
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:

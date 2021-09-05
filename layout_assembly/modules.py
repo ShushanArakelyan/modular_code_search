@@ -3,8 +3,116 @@ import torch
 from scoring.embedder import Embedder
 
 
-class ActionModule:
-    pass
+class ActionModule_v1_one_input:
+    def __init__(self, device):
+        self.device = device
+        self.embedder = Embedder(device, model_eval=True)
+        self.model1 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3 + 1, self.embedder.get_dim()),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(self.embedder.get_dim(), 1)).to(self.device) # outputs a sequence of scores
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 2, self.embedder.get_dim()),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(self.device) # outputs an embedding
+        self.scores_out = None
+        self.emb_out = None
+        self.loss_func = torch.nn.BCEWithLogitsLoss()
+        self.op = torch.optim.Adam(list(self.model1.parameters()) + list(self.model1.model.parameters()), lr=1e-5)
+
+    def forward(self, verb, arg1, code_tokens):
+        prep, scores = arg1
+
+        verb_embedding_out = self.embedder.embed([verb], [' '])
+        prep_embedding_out = self.embedder.embed([prep], [' '])
+        code_embeddings_out = self.embedder.embed([' '], code_tokens)
+        if verb_embedding_out is None or prep_embedding_out is None or code_embeddings_out is None:
+            print('verb embedding out: ', verb_embedding_out)
+            print('prep_embedding_out: ', prep_embedding_out)
+            print('code_embeddings_out: ', code_embeddings_out)
+            return None
+        verb_embedding = verb_embedding_out[1]
+        prep_embedding = prep_embedding_out[1]
+        code_embeddings, truncated_code = code_embeddings_out[3],  code_embeddings_out[5]
+        tiled_verb_emb = verb_embedding.repeat(len(truncated_code), 1)
+        tiled_prep_emb = prep_embedding.repeat(len(truncated_code), 1)
+        model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
+        print('model1 input.shape: ', model1_input.shape)
+        self.scores_out = self.model1.forward(model1_input)
+        model2_input = torch.cat((verb_embedding, prep_embedding), dim=1)
+        print('model2 input.shape: ', model2_input.shape)
+        self.emb_out = self.model2.forward(model2_input)
+        return self.emb_out, self.scores_out
+
+    def backward(self, y):
+        loss = self.loss_func(y, self.emb_out)
+        loss.backward()
+        self.op.step()
+        return loss.data
+
+
+class ActionModule_v1_two_inputs:
+    def __init__(self, device):
+        self.device = device
+        self.model1 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 4 + 2, self.embedder.get_dim()),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(self.embedder.get_dim(), 1)).to(
+            self.device)  # outputs a sequence of scores
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3, self.embedder.get_dim()),
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
+            self.device)  # outputs an embedding
+        self.scores_out = None
+        self.emb_out = None
+        self.loss_func = torch.nn.BCEWithLogitsLoss()
+        self.op = torch.optim.Adam(list(self.model1.parameters()) + list(self.model1.model.parameters()), lr=1e-5)
+
+    def forward(self, verb, args, code_tokens):
+        arg1, arg2 = args
+        prep1, scores1 = arg1
+        prep2, scores2 = arg2
+
+        verb_embedding_out = self.embedder.embed([verb], [' '])
+        prep1_embedding_out = self.embedder.embed([prep1], [' '])
+        prep2_embedding_out = self.embedder.embed([prep2], [' '])
+        code_embeddings_out = self.embedder.embed([' '], code_tokens)
+        if verb_embedding_out is None or prep1_embedding_out is None or prep2_embedding_out is None or code_embeddings_out is None:
+            print('verb embedding out: ', verb_embedding_out)
+            print('prep1_embedding_out: ', prep1_embedding_out)
+            print('prep2_embedding_out: ', prep2_embedding_out)
+            print('code_embeddings_out: ', code_embeddings_out)
+            return None
+        verb_embedding = verb_embedding_out[1]
+        prep1_embedding = prep1_embedding_out[1]
+        prep2_embedding = prep2_embedding_out[1]
+        code_embeddings, truncated_code = code_embeddings_out[3], code_embeddings_out[5]
+        tiled_verb_emb = verb_embedding.repeat(len(truncated_code), 1)
+        tiled_prep1_emb = prep1_embedding.repeat(len(truncated_code), 1)
+        tiled_prep2_emb = prep2_embedding.repeat(len(truncated_code), 1)
+        model1_input = torch.cat((tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
+        print('model1 input.shape: ', model1_input.shape)
+        self.scores_out = self.model1.forward(model1_input)
+        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding), dim=1)
+        print('model2 input.shape: ', model2_input.shape)
+        self.emb_out = self.model2.forward(model2_input)
+        return self.emb_out, self.scores_out
+
+    def backward(self, y):
+        loss = self.loss_func(y, self.emb_out)
+        loss.backward()
+        self.op.step()
+        return loss.data
+
+
+class ActionModuleFacade_v1:
+    def __init__(self):
+        self.one_input_module = ActionModule_v1_one_input()
+        self.two_inputs_module = ActionModule_v1_two_inputs()
+        self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
+
+    def forward(self, verb, inputs, code):
+        num_inputs = len(inputs)
+        assert num_inputs <= 2, f'Too many inputs, handling {num_inputs} inputs is not implemented for ActionModule_v1'
+        module = self.modules[num_inputs]
+        return module.forward(verb, inputs, code)
 
 
 class ScoringModule:

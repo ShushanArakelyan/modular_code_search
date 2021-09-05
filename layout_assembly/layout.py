@@ -1,4 +1,4 @@
-from layout_assembly.utils import TestActionModuleWrapper
+from layout_assembly.utils import ActionModuleWrapper
 
 
 class LayoutNode:
@@ -10,9 +10,9 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module):
+    def __init__(self, scoring_module, action_module_facade):
         self.scoring_module = scoring_module
-        self.action_module = action_module
+        self.action_module_refactor = action_module_facade
 
     def forward(self, ccg_parse, code):
         tree = self.construct_layout(ccg_parse)
@@ -22,7 +22,7 @@ class LayoutNet:
 
     def process_node(self, node, code, parent_module=None):
         if node.node_type == 'action':
-            action_module = ActionModuleWrapper(self.action_module)
+            action_module = ActionModuleWrapper(self.action_module_refactor)
             action_module.param = node.node_value
             for child in node.children:
                 action_module, _ = self.process_node(child, code, action_module)
