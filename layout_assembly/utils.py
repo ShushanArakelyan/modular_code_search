@@ -13,10 +13,12 @@ class ActionModuleWrapper(object):
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
             self.inputs[-1].append(input)
         else:
-            self.inputs.append([None, input])
+            empty_emb = self.module.modules[1].embedder.embed([' '], [' '])[1]
+            self.inputs.append([empty_emb, input])
 
     def add_preposition(self, prep):
-        self.inputs.append([prep])
+        prep_emb = self.module.modules[1].embedder.embed([prep], [' '])[1]
+        self.inputs.append([prep_emb])
 
 
 class TestActionModuleWrapper(object):
