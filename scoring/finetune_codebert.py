@@ -15,6 +15,7 @@ from .utils import get_ground_truth_matches, get_noun_phrases
 P = 0.7
 VERSION="CLS"
 INCLUDE_MISMATCHED_PAIR = False
+EMBED_SEPARATELY = False
 
 
 def sample_random_code_tokens(code, code_token_id_mapping):
@@ -32,67 +33,6 @@ def sample_random_code_tokens(code, code_token_id_mapping):
         sample_idxs.extend(code_token_id_mapping[idx])
     sample_idxs = np.asarray(sample_idxs)
     return sample_idxs
-
-#
-# def max_scoring():
-#
-#
-# # for wti, wte, token in zip(word_token_id_mapping, word_token_embeddings, phrase):
-# #     wte = wte.unsqueeze(0)
-# #     # check for regex and static matches
-# #     if len(pos_idxs_for_phrase) > 0:
-# #         tiled_nte = wte.repeat(len(pos_idxs_for_phrase), 1)
-# #         ground_truth_scores = torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))).to(device)
-# #         pos_samples_selected = torch.index_select(code_embedding,
-# #                                                   index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
-# #         forward_input = torch.cat((tiled_nte, pos_samples_selected), dim=1)
-# #         scorer_out = scorer.forward(forward_input)
-# #         if loss is None:
-# #             loss = bceloss(scorer_out, ground_truth_scores)
-# #         else:
-# #             loss += bceloss(scorer_out, ground_truth_scores)
-# #     loss_normalization += len(pos_idxs_for_phrase)
-# #     # sample random number of negative examples
-# #     num_neg_samples = np.sum(np.random.binomial(n=20, p=P))
-# #     unique_ids, counts = np.unique(code[:len(code_token_id_mapping)], return_counts=True)
-# #     id_freq_dict = {uid: c for uid, c in zip(unique_ids, counts)}
-# #     p = np.asarray([1 / id_freq_dict[i] for i in code[:len(code_token_id_mapping)]])
-# #     p = p / np.sum(p)
-# #     num_neg_samples = min(num_neg_samples, len(code_token_id_mapping))
-# #     orig_tokens_neg_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
-# #                                                    num_neg_samples,
-# #                                                    replace=False, p=p)
-# #     neg_sample_idxs = []
-# #     for idx in orig_tokens_neg_sample_idxs:
-# #         neg_sample_idxs.extend(code_token_id_mapping[idx])
-# #     neg_sample_idxs = np.asarray(neg_sample_idxs)
-# #     neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
-# #
-# #     attempt = 0
-# #     while neg_sample_idxs.size == 0 and attempt < 5:
-# #         attempt += 1
-# #         orig_tokens_neg_sample_idxs = np.random.choice(
-# #             np.arange(len(code_token_id_mapping)), num_neg_samples,
-# #             replace=False, p=p)
-# #         neg_sample_idxs = []
-# #         for idx in orig_tokens_neg_sample_idxs:
-# #             neg_sample_idxs.extend(code_token_id_mapping[idx])
-# #         neg_sample_idxs = np.asarray(neg_sample_idxs)
-# #         neg_sample_idxs = neg_sample_idxs[~np.in1d(neg_sample_idxs, pos_sample_idxs)]
-# #     if attempt == 5:
-# #         continue
-# #
-# #     tiled_nte = wte.repeat(len(neg_sample_idxs), 1)
-# #     ground_truth_scores = torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1))).to(device)
-# #     neg_samples_selected = torch.index_select(code_embedding,
-# #                                               index=torch.LongTensor(neg_sample_idxs).to(device), dim=0)
-# #     forward_input = torch.cat((tiled_nte, neg_samples_selected), dim=1)
-# #     scorer_out = scorer.forward(forward_input)
-# #     if loss is None:
-# #         loss = bceloss(scorer_out, ground_truth_scores)
-# #     else:
-# #         loss += bceloss(scorer_out, ground_truth_scores)
-# #     loss_normalization += len(neg_sample_idxs)
 
 
 def mean_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
@@ -155,22 +95,40 @@ def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device
     return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
 
 
+def embed_pair(embedder, phrase, code, embed_separately):
+    if not embed_separately:
+        embedder_out = embedder.embed(phrase, code)
+        if embedder_out is None:
+            return None
+        if embedder_out[0].size == 0 or embedder_out[2].size == 0:
+            return None
+    else:
+        phrase_embedder_out = embedder.embed(phrase, [' '])
+        code_embedder_out = embedder.embed([' '], code)
+        if phrase_embedder_out is None or code_embedder_out is None:
+            return None
+        word_token_id_mapping, word_token_embeddings, _, __, ___, ____, cls_token_embedding = phrase_embedder_out
+        _, __, code_token_id_mapping, code_embedding, _, truncated_code_tokens, ___ = code_embedder_out
+        embedder_out = (word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, 'None', truncated_code_tokens, cls_token_embedding)
+        if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
+            return None
+    return embedder_out
+
+
 def train_one_example(sample, scorer, embedder, op, bceloss, device):
     doc, code, static_tags, regex_tags, ccg_parse = sample
     if '\\' in ccg_parse:
-        # this example is not parsed properly, skip
+        # TODO: this example is not parsed properly, skip for now, but handle somehow in the future
         return None
     phrases = get_noun_phrases(ccg_parse)
     cumulative_loss = 0
     for phrase in phrases:
         op.zero_grad()
-        embedder_out = embedder.embed(phrase, code)
+        embedder_out = embed_pair(embedder, phrase, code, EMBED_SEPARATELY)
         if embedder_out is None:
             continue
         word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
         code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
-        if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
-            continue
         loss = None
         loss_normalization = 0
         # extract positive pairs and sample negative pairs
@@ -261,6 +219,8 @@ def main():
     parser.add_argument('--include_mismatched_pair', default=False, action='store_true')
     parser.add_argument('--num_epochs', dest='num_epochs', type=int,
                         help='number of epochs to train')
+    parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
+                        help='Whether to embed the query and code in a single instance or separate instances')
 
     args = parser.parse_args()
 
@@ -315,6 +275,10 @@ def main():
     if args.include_mismatched_pair:
         global INCLUDE_MISMATCHED_PAIR
         INCLUDE_MISMATCHED_PAIR = True
+
+    if args.embed_separately:
+        global EMBED_SEPARATELY
+        EMBED_SEPARATELY = True
 
     if args.num_epochs:
         num_epochs = args.num_epochs
