@@ -1,5 +1,7 @@
 import torch
+
 from layout_assembly.utils import ActionModuleWrapper
+from layout_assembly.utils import ProcessingException
 
 
 class LayoutNode:
@@ -15,17 +17,18 @@ class LayoutNet:
         self.scoring_module = scoring_module
         self.action_module_refactor = action_module_facade
         dim = self.scoring_module.embedder.get_dim()
-        half_dim = int(self.scoring_module.embedder.get_dim()/2)
+        half_dim = int(self.scoring_module.embedder.get_dim() / 2)
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(half_dim, 1)).to(device)
+                                              torch.nn.ReLU(),
+                                              torch.nn.Linear(half_dim, 1)).to(device)
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
-        _, output = self.process_node(tree, sample)
-        if output is None:
-            return None
+        try:
+            _, output = self.process_node(tree, sample)
+        except ProcessingException:
+            return None # todo: or return all zeros or something?
         pred = self.classifier.forward(output[0])
         return pred
 
@@ -37,15 +40,11 @@ class LayoutNet:
             for child in node.children:
                 action_module, _ = self.process_node(child, sample, action_module)
             output = action_module.forward(code)
-            if output is None:
-                return None, None
             if parent_module:
                 parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'scoring':
             output = self.scoring_module.forward(node.node_value, sample)
-            if output is None:
-                return None, None
             parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'preposition':
@@ -53,7 +52,7 @@ class LayoutNet:
             for child in node.children:
                 self.process_node(child, sample, parent_module)
             return parent_module, None
-    
+
     def backward(self, y):
         self.action_module_refactor.backward(y)
 

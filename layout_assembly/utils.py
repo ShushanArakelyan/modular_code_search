@@ -1,3 +1,9 @@
+
+class ProcessingException(Exception):
+    def __init__(self, *args, **kwargs):
+        super(Exception, self).__init__(*args, **kwargs)
+
+
 class ActionModuleWrapper(object):
 
     def __init__(self, action_module_facade):
@@ -51,7 +57,7 @@ class TestActionModuleWrapper(object):
 
 class TestScoringModuleWrapper:
 
-    def __init__(self,):
+    def __init__(self, ):
         pass
 
     def forward(self, value, _):

@@ -12,7 +12,7 @@ class Embedder(object):
         self.tokenizer = None
         self.model = None
 
-        if device:
+        if 'cuda' in device:
             torch.cuda.set_device(device)
             self.device = device
         else:
