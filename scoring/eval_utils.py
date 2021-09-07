@@ -149,6 +149,6 @@ def find_split_point(data, scorer, embedder):
                 recalls.append(np.mean(re))
         if len(f1_scores) > 0:
             avg_f1.append(np.mean(f1_scores))
-        else: 
+        else:
             avg_f1.append(0)
     return split_points, avg_f1

@@ -13,9 +13,10 @@ from scoring.embedder import Embedder
 from .utils import get_ground_truth_matches, get_noun_phrases
 
 P = 0.7
-VERSION="CLS"
+VERSION = "CLS"
 INCLUDE_MISMATCHED_PAIR = False
 EMBED_SEPARATELY = False
+DOWNSAMPLE_GT = False
 
 
 def sample_random_code_tokens(code, code_token_id_mapping):
@@ -26,13 +27,30 @@ def sample_random_code_tokens(code, code_token_id_mapping):
     p = p / np.sum(p)
     num_samples = min(num_samples, len(code_token_id_mapping))
     orig_tokens_sample_idxs = np.random.choice(np.arange(len(code_token_id_mapping)),
-                                                   num_samples,
-                                                   replace=False, p=p)
+                                               num_samples,
+                                               replace=False, p=p)
     sample_idxs = []
     for idx in orig_tokens_sample_idxs:
         sample_idxs.extend(code_token_id_mapping[idx])
     sample_idxs = np.asarray(sample_idxs)
     return sample_idxs
+
+
+def downsample_ground_truth(sampled_idxs, code, code_token_id_mapping, ds_prob=0.5):
+    rev_code_token_id_mapping = {vi: k for k, v in enumerate(code_token_id_mapping) for vi in v}
+    new_sampled_idxs = []
+    n = len(rev_code_token_id_mapping)
+    for idx in sampled_idxs:
+        orig_token_neighborhood = [rev_code_token_id_mapping[i] for i in range(max(0, idx - 3), min(idx + 3, n))]
+        neighborhood = [code[j] for j in np.unique(orig_token_neighborhood)]
+        if 'def' in neighborhood or 'return' in neighborhood:
+            if np.random.rand(1) > ds_prob:
+                new_sampled_idxs.append(idx)
+            else:
+                continue
+        else:
+            new_sampled_idxs.append(idx)
+    return new_sampled_idxs
 
 
 def mean_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
@@ -53,8 +71,8 @@ def mean_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, devic
     emb = torch.mean(word_token_embeddings, dim=0, keepdim=True)
 
     tiled_emb = emb.repeat(len(pos_idxs_for_phrase) + len(neg_sample_idxs), 1)
-    ground_truth_scores =torch.cat((torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))),
-                                   torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1)))), dim=0).to(device)
+    ground_truth_scores = torch.cat((torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))),
+                                     torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1)))), dim=0).to(device)
     pos_samples_selected = torch.index_select(code_embedding,
                                               index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
     neg_samples_selected = torch.index_select(code_embedding,
@@ -82,8 +100,8 @@ def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device
     if attempt == 5:
         return None
     tiled_emb = cls_token_embedding.repeat(len(pos_idxs_for_phrase) + len(neg_sample_idxs), 1)
-    ground_truth_scores =torch.cat((torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))),
-                                   torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1)))), dim=0).to(device)
+    ground_truth_scores = torch.cat((torch.FloatTensor(np.ones((len(pos_idxs_for_phrase), 1))),
+                                     torch.FloatTensor(np.zeros((len(neg_sample_idxs), 1)))), dim=0).to(device)
     pos_samples_selected = torch.index_select(code_embedding,
                                               index=torch.LongTensor(pos_idxs_for_phrase).to(device), dim=0)
     neg_samples_selected = torch.index_select(code_embedding,
@@ -109,7 +127,8 @@ def embed_pair(embedder, phrase, code, embed_separately):
             return None
         word_token_id_mapping, word_token_embeddings, _, __, ___, ____, cls_token_embedding = phrase_embedder_out
         _, __, code_token_id_mapping, code_embedding, _, truncated_code_tokens, ___ = code_embedder_out
-        embedder_out = (word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, 'None', truncated_code_tokens, cls_token_embedding)
+        embedder_out = (word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, 'None',
+                        truncated_code_tokens, cls_token_embedding)
         if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
             return None
     return embedder_out
@@ -137,6 +156,8 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
             pos_sample_idxs = get_ground_truth_matches(token, code, code_token_id_mapping, static_tags, regex_tags)
             pos_idxs_for_phrase.extend(pos_sample_idxs)
         pos_idxs_for_phrase = np.unique(pos_idxs_for_phrase)
+        if DOWNSAMPLE_GT:
+            downsample_ground_truth(pos_idxs_for_phrase, code, code_token_id_mapping)
         # version 1 - use CLS token embedding as phrase embedding
         # version 2 - average word_token_embeddings to get a phrase embedding
         # version 3 - tile word_token_embeddings and make pair-wise predictions
@@ -221,6 +242,8 @@ def main():
                         help='number of epochs to train')
     parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
                         help='Whether to embed the query and code in a single instance or separate instances')
+    parser.add_argument('--downsample_gt', dest='downsample_gt', default=False, action='store_true',
+                        help='Whether to downsample ground truth example neighboring `def` and `return` tokens')
 
     args = parser.parse_args()
 
@@ -279,6 +302,10 @@ def main():
     if args.embed_separately:
         global EMBED_SEPARATELY
         EMBED_SEPARATELY = True
+
+    if args.embed_separately:
+        global DOWNSAMPLE_GT
+        DOWNSAMPLE_GT = True
 
     if args.num_epochs:
         num_epochs = args.num_epochs
