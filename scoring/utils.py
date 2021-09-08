@@ -56,6 +56,27 @@ def get_noun_phrases(ccg_parse):
     return phrases
 
 
+def embed_pair(embedder, phrase, code, embed_separately):
+    if not embed_separately:
+        embedder_out = embedder.embed(phrase, code)
+        if embedder_out is None:
+            return None
+        if embedder_out[0].size == 0 or embedder_out[2].size == 0:
+            return None
+    else:
+        phrase_embedder_out = embedder.embed(phrase, [' '])
+        code_embedder_out = embedder.embed([' '], code)
+        if phrase_embedder_out is None or code_embedder_out is None:
+            return None
+        word_token_id_mapping, word_token_embeddings, _, __, ___, ____, cls_token_embedding = phrase_embedder_out
+        _, __, code_token_id_mapping, code_embedding, _, truncated_code_tokens, ___ = code_embedder_out
+        embedder_out = (word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, 'None',
+                        truncated_code_tokens, cls_token_embedding)
+        if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
+            return None
+    return embedder_out
+
+
 def get_matched_labels_binary(code_token_id_mapping, query_token, nlp_cache):
     from spacy.matcher import Matcher
     matcher = Matcher(nlp.vocab)

@@ -10,10 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from scoring.embedder import Embedder
-from .utils import get_ground_truth_matches, get_noun_phrases
+from .utils import get_ground_truth_matches, get_noun_phrases, embed_pair
 
 P = 0.7
 VERSION = "CLS"
+# VERSION = "MEAN"
 INCLUDE_MISMATCHED_PAIR = False
 EMBED_SEPARATELY = False
 DOWNSAMPLE_GT = False
@@ -113,26 +114,6 @@ def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device
     return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
 
 
-def embed_pair(embedder, phrase, code, embed_separately):
-    if not embed_separately:
-        embedder_out = embedder.embed(phrase, code)
-        if embedder_out is None:
-            return None
-        if embedder_out[0].size == 0 or embedder_out[2].size == 0:
-            return None
-    else:
-        phrase_embedder_out = embedder.embed(phrase, [' '])
-        code_embedder_out = embedder.embed([' '], code)
-        if phrase_embedder_out is None or code_embedder_out is None:
-            return None
-        word_token_id_mapping, word_token_embeddings, _, __, ___, ____, cls_token_embedding = phrase_embedder_out
-        _, __, code_token_id_mapping, code_embedding, _, truncated_code_tokens, ___ = code_embedder_out
-        embedder_out = (word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, 'None',
-                        truncated_code_tokens, cls_token_embedding)
-        if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
-            return None
-    return embedder_out
-
 
 def train_one_example(sample, scorer, embedder, op, bceloss, device):
     doc, code, static_tags, regex_tags, ccg_parse = sample
@@ -188,7 +169,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
     return cumulative_loss
 
 
-def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device, save_every, checkpoint_prefix):
+def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device, checkpoint_prefix, save_every=None):
     cumulative_loss = []
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, 
@@ -221,10 +202,14 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
         if it > 0 and it % 100 == 0:
             writer_epoch += 1
             writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), writer_epoch)
-        if it > 0 and (it + 1) % save_every == 0:
-            torch.save({"scorer": scorer.state_dict(),
-                        "embedder": embedder.model.state_dict(),
-                        "optimizer": op.state_dict()}, checkpoint_prefix + f'{it}.tar')
+        if save_every:
+            if it > 0 and (it + 1) % save_every == 0:
+                torch.save({"scorer": scorer.state_dict(),
+                            "embedder": embedder.model.state_dict(),
+                            "optimizer": op.state_dict()}, checkpoint_prefix + f'{it + 1}.tar')
+    torch.save({"scorer": scorer.state_dict(),
+                "embedder": embedder.model.state_dict(),
+                "optimizer": op.state_dict()}, checkpoint_prefix + '.tar')
     return cumulative_loss, writer_epoch
 
 
@@ -332,7 +317,7 @@ def main():
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
             total_loss, train_writer_epoch = run_epoch(data, scorer, embedder, op, bceloss, writer, train_writer_epoch,
-                                                       device, save_every=10000,
+                                                       device, save_every=None,
                                                        checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
         datafile_to_start = -1
 
