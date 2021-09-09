@@ -9,13 +9,14 @@ from scoring.embedder import Embedder
 from scoring.eval_utils import find_split_point, eval_example
 
 
-def run_eval_epoch(data, scorer, embedder, embed_separately, version, split_point=0.5):
+def run_eval_epoch(data, scorer, embedder, embed_separately, version, normalize, split_point=0.5):
     f1_scores = []
     precisions = []
     recalls = []
     for it in tqdm(range(len(data))):
         result_dict = eval_example(data, it, scorer, embedder, evaluate="F1",
-                                   split_point=split_point, embed_separately=embed_separately, version=version)
+                                   split_point=split_point, embed_separately=embed_separately, version=version,
+                                   normalize=normalize)
         f1 = result_dict['f1_scores_for_sample']
         pre = result_dict['pre_for_sample']
         re = result_dict['re_for_sample']
@@ -38,6 +39,8 @@ def main():
     #                         help='validation data directory', required=True)
     parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
                         help='whether to embed the query and code separately or concatenated together')
+    parser.add_argument('--normalize', dest='normalize', default=False, action='store_true',
+                        help='whether to normalize the predictions of the model using random tokens')
     parser.add_argument('--version', dest='version', type=str,
                         help='how to compute query embedding, can be CLS or MEAN', required=True)
 
@@ -59,6 +62,7 @@ def main():
 
     device = args.device
     version = args.version
+    normalize = args.normalize
     embed_separately = args.embed_separately
     valid_data = pd.read_json(args.valid_file_name, lines=True)
 
@@ -77,11 +81,13 @@ def main():
             embedder.model = embedder.model.to(device)
 
             print("Searching for best split point on valid data....")
-            split_points, f1_scores = find_split_point(valid_data[:50], scorer, embedder, embed_separately, version)
+            split_points, f1_scores = find_split_point(valid_data[:50], scorer, embedder, embed_separately, version,
+                                                       normalize)
             split_point = split_points[np.argmax(f1_scores)]
             print(f"Search complete, will be using split_point={split_point}")
             print("Running evaluation....")
             f1_scores, precisions, recalls = run_eval_epoch(valid_data, scorer, embedder, embed_separately, version,
+                                                            normalize=normalize,
                                                             split_point=split_point)
             print(f"Mean precision: {np.mean(precisions)}, ", f"mean recall: {np.mean(recalls)}, ",
                   f"mean F1: {np.mean(f1_scores)}")

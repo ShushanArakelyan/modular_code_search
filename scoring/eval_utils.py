@@ -99,7 +99,7 @@ def compute_f1(ground_truth_idxs, predicted_idxs):
 
 
 def eval_example(data, it, scorer, embedder, evaluate, embed_separately=False, split_point=0.5, version="CLS",
-                 color=[0]):
+                 normalize=False, color=[0]):
     result_dict = {}
     if evaluate == "F1":
         result_dict['f1_scores_for_sample'] = []
@@ -137,6 +137,8 @@ def eval_example(data, it, scorer, embedder, evaluate, embed_separately=False, s
             ground_truth_idxs_for_phrase.extend(ground_truth_idxs)
         ground_truth_idxs_for_phrase = np.unique(ground_truth_idxs_for_phrase)
         scorer_out = scorer_forward(scorer, out_tuple, version)
+        if normalize:
+            scorer_out = normalize_predictions(scorer_out, scorer, embedder, code, embed_separately, version)
         predicted_idxs = np.where(scorer_out > split_point)[0]
         if evaluate == "F1":
             # this is equivalent to maxpooling
@@ -160,7 +162,7 @@ def eval_example(data, it, scorer, embedder, evaluate, embed_separately=False, s
     return result_dict
 
 
-def find_split_point(data, scorer, embedder, embed_separately, version):
+def find_split_point(data, scorer, embedder, embed_separately, version, normalize):
     avg_f1 = []
     split_points = np.arange(0, 1, 0.05)
     for i in split_points:
@@ -169,7 +171,7 @@ def find_split_point(data, scorer, embedder, embed_separately, version):
         recalls = []
         for it in range(len(data)):
             result_dict = eval_example(data, it, scorer, embedder, evaluate="F1", split_point=i,
-                                       embed_separately=embed_separately, version=version)
+                                       embed_separately=embed_separately, version=version, normalize=normalize)
             f1 = result_dict['f1_scores_for_sample']
             pre = result_dict['pre_for_sample']
             re = result_dict['re_for_sample']
