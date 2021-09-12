@@ -60,9 +60,14 @@ def normalize_predictions(scorer_out, scorer, embedder, code, embed_separately, 
     scores_for_random_words = []
     for word in random_words:
         out_tuple = embed_pair(embedder, word, code, embed_separately)
-        scores_for_random_words.append(scorer_forward(scorer, out_tuple, version))
-    scores_for_random_words = np.asarray(scores_for_random_words)
-    new_scores = (scorer_out - scores_for_random_words)
+        scores = scorer_forward(scorer, out_tuple, version)
+        scores_for_random_words.append(scores)
+    scores_for_random_words = np.hstack([np.expand_dims(scores, 1) for scores in scores_for_random_words])
+    new_scores = (scorer_out - np.mean(scores_for_random_words, axis=1))
+    max_scores = np.max(np.hstack([scores_for_random_words, np.expand_dims(scorer_out, 1)]), axis=1)
+    min_scores = np.min(np.hstack([scores_for_random_words, np.expand_dims(scorer_out, 1)]), axis=1)
+    new_scores /= (max_scores - min_scores)
+    new_scores = np.clip(new_scores, 0, 1)
     return new_scores
 
 

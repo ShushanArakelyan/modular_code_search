@@ -35,14 +35,14 @@ def main():
                         help='evaluate model on all checkpoints in the directory')
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on', required=True)
-    #     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
-    #                         help='validation data directory', required=True)
+    parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
+                            help='validation file name', required=True)
     parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
                         help='whether to embed the query and code separately or concatenated together')
     parser.add_argument('--normalize', dest='normalize', default=False, action='store_true',
                         help='whether to normalize the predictions of the model using random tokens')
     parser.add_argument('--version', dest='version', type=str,
-                        help='how to compute query embedding, can be CLS or MEAN', required=True)
+                        help='how to compute query embedding, can be CLS or MEAN', default="CLS")
 
     args = parser.parse_args()
     checkpoints = []
