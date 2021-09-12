@@ -23,30 +23,21 @@ class ActionModule_v1:
         self.model2 = self.model2.to(self.device)
         
     def state_dict(self):
-        return {'model1': self.model1.state_dict(), 'model2': self.model2.state_dict()}
-    
-    def eval(self):
-        self.model1.eval()
-        self.model2.eval()
-    
-    def train(self):
-        self.model1.train()
-        self.model2.train()
+        return {'model1': self.model1.state_dict(), 'model2': self.model2.state_dict}
         
 
 class ActionModule_v1_one_input(ActionModule_v1):
-    def __init__(self, device, eval=False):
+    def __init__(self, device):
         ActionModule_v1.__init__(self, device)
         self.model1 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3 + 1, self.embedder.get_dim()),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), 1)).to(
             self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 2 + self.embedder.max_seq_length, self.embedder.get_dim()),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 2, self.embedder.get_dim()),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
             self.device)  # outputs an embedding
-        if eval:
-            self.eval()
+
     def forward(self, verb, arg1, code_tokens):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
@@ -63,32 +54,30 @@ class ActionModule_v1_one_input(ActionModule_v1):
             raise ProcessingException()
         verb_embedding = verb_embedding_out[1]
         _, __, code_token_id_mapping, code_embeddings, _, truncated_code, ___ = code_embeddings_out
-        
         token_count = max(code_token_id_mapping[-1])
         tiled_verb_emb = verb_embedding.repeat(token_count, 1)
         tiled_prep_emb = prep_embedding.repeat(token_count, 1)
         model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings[:token_count], scores), dim=1)
         self.scores_out = self.model1.forward(model1_input)
-        padding_size = self.embedder.max_seq_length - len(self.scores_out)
-        padded_scores = torch.nn.functional.pad(self.scores_out.squeeze(), (0, padding_size), 'constant', 0)
-        model2_input = torch.cat((verb_embedding, prep_embedding, padded_scores.unsqueeze(dim=0)), dim=1)
+        model2_input = torch.cat((verb_embedding, prep_embedding), dim=1)
         self.emb_out = self.model2.forward(model2_input)
         return self.emb_out, self.scores_out
 
+    def parameters(self):
+        return list(self.model1.parameters()) + list(self.model2.parameters())
+
 
 class ActionModule_v1_two_inputs(ActionModule_v1):
-    def __init__(self, device, eval=False):
+    def __init__(self, device):
         ActionModule_v1.__init__(self, device)
         self.model1 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 4 + 2, self.embedder.get_dim()),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), 1)).to(
             self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3 + self.embedder.max_seq_length, self.embedder.get_dim()),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3, self.embedder.get_dim()),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
             self.device)  # outputs an embedding
-        if eval:
-            self.eval()
 
     def forward(self, verb, args, code_tokens):
         arg1, arg2 = args
@@ -121,8 +110,6 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         model1_input = torch.cat(
             (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings[:token_count], scores1, scores2), dim=1)
         self.scores_out = self.model1.forward(model1_input)
-        padding_size = self.embedder.max_seq_length - len(self.scores_out)
-        padded_scores = torch.nn.functional.pad(self.scores_out.squeeze(), (0, padding_size), 'constant', 0)
-        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding, padded_scores.unsqueeze(dim=0)), dim=1)
+        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding), dim=1)
         self.emb_out = self.model2.forward(model2_input)
         return self.emb_out, self.scores_out

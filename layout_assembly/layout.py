@@ -13,7 +13,7 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device):
+    def __init__(self, scoring_module, action_module_facade, device, eval=False):
         self.scoring_module = scoring_module
         self.action_module_refactor = action_module_facade
         dim = self.scoring_module.embedder.get_dim()
@@ -21,6 +21,9 @@ class LayoutNet:
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
                                               torch.nn.ReLU(),
                                               torch.nn.Linear(half_dim, 1)).to(device)
+        self.eval = eval
+        if self.eval:
+            self.classifier.eval()
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
