@@ -1,6 +1,6 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 class myLinear(nn.Linear):
@@ -14,16 +14,15 @@ class myLinear(nn.Linear):
         self.bias = new_bias
 
 
-class FC_Hypernetwork:
+class FC_Hypernetwork(nn.Module):
     def __init__(self, dest_net, device):
         self.param_shapes = []
         self.param_sizes = []
         self.dest_net = dest_net
         self.device = device
         self.model = None
+        self.weights = None
         self.init_model()
-        self.op = torch.optim.Adam(self.model.parameters(), lr=1e-4)
-        self.loss_func = nn.BCEWithLogitsLoss()
 
     def init_model(self):
         for param in self.dest_net.parameters():
@@ -36,8 +35,8 @@ class FC_Hypernetwork:
                                          torch.nn.ReLU(),
                                          torch.nn.Linear(input_dims[1], output_dims[1])).to(self.device)
 
-    def forward(self, x):
-        self.weights = self.model.forward(x)
+    def set_hyper_param(self, hyper_param):
+        self.weights = self.model.forward(hyper_param)
         start = 0
         end = start
         param_id = 0
@@ -53,10 +52,5 @@ class FC_Hypernetwork:
                                  self.weights[bias_ids].view(self.param_shapes.pop()))
             param_id += 2
 
-    def predict(self, z):
-        self.pred = self.dest_net.forward(z)
-        return self.pred
-
-    def backward(self, y):
-        self.loss_func(y, self.pred).backward()
-        self.op.step()
+    def forward(self, x):
+        return self.dest_net.forward(x)

@@ -1,7 +1,7 @@
 import torch
 
-from scoring.embedder import Embedder
 from layout_assembly.utils import ProcessingException
+from scoring.embedder import Embedder
 
 
 class ActionModule_v1:
@@ -12,27 +12,42 @@ class ActionModule_v1:
         self.model2 = None
         self.scores_out = None
         self.emb_out = None
-   
+
     def parameters(self):
         return list(self.model1.parameters()) + list(self.model2.parameters())
-    
+
     def load_state_dict(self, d):
         self.model1.load_state_dict(d['model1'])
         self.model1 = self.model1.to(self.device)
         self.model2.load_state_dict(d['model2'])
         self.model2 = self.model2.to(self.device)
-        
+
     def state_dict(self):
         return {'model1': self.model1.state_dict(), 'model2': self.model2.state_dict()}
-    
+
     def eval(self):
         self.model1.eval()
         self.model2.eval()
-    
+
     def train(self):
         self.model1.train()
         self.model2.train()
-        
+
+    def embed_verb(self, verb):
+        verb_embedding_out = self.embedder.embed([verb], [' '])
+        if verb_embedding_out is None:
+            raise ProcessingException()
+        verb_embedding = verb_embedding_out[1]
+        return verb_embedding
+
+    def embed_code(self, code):
+        code_embeddings_out = self.embedder.embed([' '], code)
+        if code_embeddings_out is None:
+            raise ProcessingException()
+        _, _, code_token_id_mapping, code_embeddings, _, _, _ = code_embeddings_out
+        token_count = max(code_token_id_mapping[-1])
+        return code_embeddings, code_token_id_mapping, token_count
+
 
 class ActionModule_v1_one_input(ActionModule_v1):
     def __init__(self, device, eval=False):
@@ -41,12 +56,14 @@ class ActionModule_v1_one_input(ActionModule_v1):
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), 1)).to(
             self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 2 + self.embedder.max_seq_length, self.embedder.get_dim()),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
+        self.model2 = torch.nn.Sequential(
+            torch.nn.Linear(self.embedder.get_dim() * 2 + self.embedder.max_seq_length, self.embedder.get_dim()),
+            torch.nn.ReLU(),
+            torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()
+
     def forward(self, verb, arg1, code_tokens):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
@@ -55,17 +72,8 @@ class ActionModule_v1_one_input(ActionModule_v1):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        verb_embedding_out = self.embedder.embed([verb], [' '])
-        code_embeddings_out = self.embedder.embed([' '], code_tokens)
-        if verb_embedding_out is None or code_embeddings_out is None:
-#             print('verb embedding out: ', verb_embedding_out)
-#             print('code_embeddings_out: ', code_embeddings_out)
-            raise ProcessingException()
-        verb_embedding = verb_embedding_out[1]
-        _, __, code_token_id_mapping, code_embeddings, _, truncated_code, ___ = code_embeddings_out
-        
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, padding_size, 0, 0), 'constant', 0)
-        token_count = max(code_token_id_mapping[-1])
+        verb_embedding = self.embed_verb(verb)
+        code_embeddings, code_token_id_mapping, token_count = self.embed_code(code_tokens)
         tiled_verb_emb = verb_embedding.repeat(token_count, 1)
         tiled_prep_emb = prep_embedding.repeat(token_count, 1)
         print(code_embeddings.shape)
@@ -85,9 +93,10 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(self.embedder.get_dim(), 1)).to(
             self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3 + self.embedder.max_seq_length, self.embedder.get_dim()),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
+        self.model2 = torch.nn.Sequential(
+            torch.nn.Linear(self.embedder.get_dim() * 3 + self.embedder.max_seq_length, self.embedder.get_dim()),
+            torch.nn.ReLU(),
+            torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()
@@ -107,16 +116,8 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
 
-        verb_embedding_out = self.embedder.embed([verb], [' '])
-        code_embeddings_out = self.embedder.embed([' '], code_tokens)
-        if verb_embedding_out is None or code_embeddings_out is None:
-#             print('verb embedding out: ', verb_embedding_out)
-#             print('code_embeddings_out: ', code_embeddings_out)
-            raise ProcessingException()
-        verb_embedding = verb_embedding_out[1]
-        _, __, code_token_id_mapping, code_embeddings, _, truncated_code, ___ = code_embeddings_out
-
-        token_count = max(code_token_id_mapping[-1])
+        verb_embedding = self.embed_verb(verb)
+        code_embeddings, code_token_id_mapping, token_count = self.embed_code(code_tokens)
         tiled_verb_emb = verb_embedding.repeat(token_count, 1)
         tiled_prep1_emb = prep1_embedding.repeat(token_count, 1)
         tiled_prep2_emb = prep2_embedding.repeat(token_count, 1)
@@ -125,6 +126,7 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         self.scores_out = self.model1.forward(model1_input)
         padding_size = self.embedder.max_seq_length - len(self.scores_out)
         padded_scores = torch.nn.functional.pad(self.scores_out.squeeze(), (0, padding_size), 'constant', 0)
-        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding, padded_scores.unsqueeze(dim=0)), dim=1)
+        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding, padded_scores.unsqueeze(dim=0)),
+                                 dim=1)
         self.emb_out = self.model2.forward(model2_input)
         return self.emb_out, self.scores_out
