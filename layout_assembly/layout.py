@@ -24,11 +24,12 @@ class LayoutNet:
         self.eval = eval
         if self.eval:
             self.classifier.eval()
-
+            
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         try:
+#             self.process_all_scoring_nodes(tree, sample)
             _, output = self.process_node(tree, sample)
         except ProcessingException:
             return None # todo: or return all zeros or something?
@@ -47,6 +48,9 @@ class LayoutNet:
                 parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'scoring':
+#             output = self.precomputed_scores[id(node)]
+#             if output is None:
+#                 raise ProcessingException() 
             output = self.scoring_module.forward(node.node_value, sample)
             parent_module.add_input(output)
             return parent_module, output
@@ -55,9 +59,23 @@ class LayoutNet:
             for child in node.children:
                 self.process_node(child, sample, parent_module)
             return parent_module, None
-
-    def backward(self, y):
-        self.action_module_refactor.backward(y)
+        
+#     def process_all_scoring_nodes(self, tree, sample):
+#         scoring_values = {}
+#         stack = [tree]
+#         while stack:
+#             n = stack.pop()
+#             if n.node_type == 'scoring':
+#                 scoring_values[id(n)] = n.node_value
+#             else:
+#                 stack.extend(n.children)
+#         queries = list(scoring_values.values())
+#         score_outs = self.scoring_module.forward_batch(queries, sample)
+#         self.precomputed_scores = {}
+#         for scores, node_id in zip(score_outs, list(scoring_values.keys())):
+#             self.precomputed_scores[node_id] = scores
+            
+            
 
     @staticmethod
     def remove_concats(tree):

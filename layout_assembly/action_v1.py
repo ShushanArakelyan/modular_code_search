@@ -64,10 +64,12 @@ class ActionModule_v1_one_input(ActionModule_v1):
         verb_embedding = verb_embedding_out[1]
         _, __, code_token_id_mapping, code_embeddings, _, truncated_code, ___ = code_embeddings_out
         
+        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, padding_size, 0, 0), 'constant', 0)
         token_count = max(code_token_id_mapping[-1])
         tiled_verb_emb = verb_embedding.repeat(token_count, 1)
         tiled_prep_emb = prep_embedding.repeat(token_count, 1)
-        model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings[:token_count], scores), dim=1)
+        print(code_embeddings.shape)
+        model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
         self.scores_out = self.model1.forward(model1_input)
         padding_size = self.embedder.max_seq_length - len(self.scores_out)
         padded_scores = torch.nn.functional.pad(self.scores_out.squeeze(), (0, padding_size), 'constant', 0)
