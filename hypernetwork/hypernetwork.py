@@ -4,20 +4,22 @@ import torch.nn as nn
 
 
 class myLinear(nn.Linear):
-    def __init__(self, *args, **kwargs):
-        super(nn.Linear, self).__init__(*args, **kwargs)
+    def __init__(self, *args):
+        super(myLinear, self).__init__(*args)
 
-    def set_parameters(self, new_weight, new_bias):
-        del self.weight
-        self.weight = new_weight
-        del self.bias
-        self.bias = new_bias
+#     def set_parameters(self, new_weight, new_bias):
+#         del self.weight
+#         self.weight = new_weight
+#         del self.bias
+#         self.bias = new_bias
 
 
 class FC_Hypernetwork(nn.Module):
-    def __init__(self, dest_net, device):
+    def __init__(self, dim, dest_net, device):
+        super(FC_Hypernetwork, self).__init__()
         self.param_shapes = []
         self.param_sizes = []
+        self.dim = dim
         self.dest_net = dest_net
         self.device = device
         self.model = None
@@ -43,14 +45,26 @@ class FC_Hypernetwork(nn.Module):
         for layer in self.dest_net:
             if not isinstance(layer, torch.nn.Linear):
                 continue
+            start = end
             end += self.param_sizes[param_id]
-            weight_ids = torch.LongTensor(np.arange(start, end)).to(self.device)
+            del layer.weight
+            w_id = torch.torch.LongTensor(range(start, end)).to(self.device)
+            layer.weight = self.weights.index_select(dim=1, index=w_id).view(self.param_shapes[param_id])
+
             start = end
             end += self.param_sizes[param_id + 1]
-            bias_ids = torch.LongTensor(np.arange(start, end)).to(self.device)
-            layer.set_parameters(self.weights[weight_ids].view(self.param_shapes.pop()),
-                                 self.weights[bias_ids].view(self.param_shapes.pop()))
+            del layer.bias
+            w_id = torch.torch.LongTensor(range(start, end)).to(self.device)
+            layer.bias = self.weights.index_select(dim=1, index=w_id).view(self.param_shapes[param_id + 1])
             param_id += 2
 
     def forward(self, x):
         return self.dest_net.forward(x)
+
+    def eval(self):
+        self.model.eval()
+        self.dest_net.eval()
+    
+    def train(self):
+        self.model.train()
+        self.dest_net.train()
