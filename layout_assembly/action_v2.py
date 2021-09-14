@@ -36,10 +36,11 @@ class ActionModule_v2_one_input(ActionModule_v2):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        embedding_out = embedder.embed([verb], code_tokens, fast=True)
-        if embedding_out is None:
-            raise ProcessingException()
-        _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
+        with torch.no_grad():
+            embedding_out = embedder.embed([verb], code_tokens, fast=True)
+            if embedding_out is None:
+                raise ProcessingException()
+            _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
 
         padding_size = embedder.max_seq_length - len(code_embeddings)
         code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
@@ -87,10 +88,11 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
 
-        embedding_out = embedder.embed([verb], code_tokens, fast=True)
-        if embedding_out is None:
-            raise ProcessingException()
-        _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
+        with torch.no_grad():
+            embedding_out = embedder.embed([verb], code_tokens, fast=True)
+            if embedding_out is None:
+                raise ProcessingException()
+            _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
 
         padding_size = embedder.max_seq_length - len(code_embeddings)
         code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
