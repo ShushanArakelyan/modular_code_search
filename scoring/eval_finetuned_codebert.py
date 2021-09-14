@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from scoring.embedder import Embedder
+import codebert_embedder as embedder
 from scoring.eval_utils import find_split_point, eval_example
 
 
@@ -68,10 +68,11 @@ def main():
 
     with torch.no_grad():
         for checkpoint in checkpoints:
-            embedder = Embedder(device, model_eval=True)
-            scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
+            if not embedder.initialized:
+                embedder.init_embedder(device)
+            scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 2, embedder.dim),
                                          torch.nn.ReLU(),
-                                         torch.nn.Linear(embedder.dim(), 1)).to(device)
+                                         torch.nn.Linear(embedder.dim, 1)).to(device)
 
             print(f"Evaluating checkpoint {checkpoint}")
             models = torch.load(checkpoint, map_location=device)

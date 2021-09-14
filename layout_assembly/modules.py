@@ -2,6 +2,7 @@ import torch
 
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
+from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.utils import ProcessingException
 import codebert_embedder as embedder
 
@@ -42,6 +43,15 @@ class ActionModuleFacade_v2(ActionModuleFacade_v1):
         ActionModuleFacade_v1.__init__(self, device)
         self.one_input_module = ActionModule_v2_one_input(device, eval)
         self.two_inputs_module = ActionModule_v2_two_inputs(device, eval)
+        self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
+        if checkpoint:
+            self.load_from_checkpoint(checkpoint)
+
+class ActionModuleFacade_v3(ActionModuleFacade_v1):
+    def __init__(self, device, checkpoint=None, eval=False):
+        ActionModuleFacade_v1.__init__(self, device)
+        self.one_input_module = ActionModule_v3_one_input(device, eval)
+        self.two_inputs_module = ActionModule_v3_two_inputs(device, eval)
         self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
         if checkpoint:
             self.load_from_checkpoint(checkpoint)

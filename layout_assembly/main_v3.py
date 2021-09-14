@@ -7,8 +7,8 @@ import torch
 import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-from layout_assembly.layout import LayoutNet
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
+from layout_assembly.layouyt_v2 import LayoutNet_v2 as LayoutNet
+from layout_assembly.modules import ScoringModule, ActionModuleFacade_v3
 
 
 def main():
@@ -24,19 +24,20 @@ def main():
     parser.add_argument('--print_every', dest='print_every', type=int,
                         help='print to tensorboard after this many iterations', default=100)
     parser.add_argument('--save_every', dest='save_every', type=int,
-                        help='save to checkpoint after this many iterations', default=2000)
-    parser.add_argument('--version', dest='version', type=int,
-                        help='Whether to run ActionV1 or ActionV2', required=True)
+                        help='save to checkpoint after this many iterations', default=5000)
+    # parser.add_argument('--version', dest='version', type=int,
+    #                     help='Whether to run ActionV1 or ActionV2', required=True)
 
     args = parser.parse_args()
     device = args.device
     data = pd.read_json(args.data_file, lines=True)
     scoring_module = ScoringModule(device, args.scoring_checkpoint)
-    version = args.version
-    if version == 1:
-        action_module = ActionModuleFacade_v1(device)
-    elif version == 2:
-        action_module = ActionModuleFacade_v2(device)
+    # version = args.version
+    action_module = ActionModuleFacade_v3(device)
+    # if version == 1:
+    #     action_module = ActionModuleFacade_v1(device)
+    # elif version == 2:
+    #     action_module = ActionModuleFacade_v2(device)
     layout_net = LayoutNet(scoring_module, action_module, device)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=1e-4)
@@ -87,7 +88,7 @@ def main():
 
             if i % save_every == 0:
                 print("saving to checkpoint: ")
-                layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_{version}_it_{i}")
+                layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_3_it_{i}")
                 print("saved successfully")
 
 

@@ -9,7 +9,7 @@ from natsort import natsorted
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from scoring.embedder import Embedder
+import codebert_embedder as embedder
 from .utils import get_ground_truth_matches, get_noun_phrases, embed_pair
 
 P = 0.7
@@ -112,7 +112,6 @@ def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device
     scorer_out = scorer.forward(forward_input)
     loss = bceloss(scorer_out, ground_truth_scores)
     return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
-
 
 
 def train_one_example(sample, scorer, embedder, op, bceloss, device):
@@ -239,18 +238,14 @@ def main():
     writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
 
+    if not embedder.initialized:
+        embedder.init_embedder(device)
+    scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
+                                 torch.nn.ReLU(),
+                                 torch.nn.Linear(embedder.dim(), 1)).to(device)
     if args.scorer_only:
-        embedder = Embedder(device, model_eval=True)
-        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
-                                     torch.nn.ReLU(),
-                                     torch.nn.Linear(embedder.dim(), 1)).to(device)
-
         op = torch.optim.Adam(list(scorer.parameters()), lr=1e-8)
     else:
-        embedder = Embedder(device, model_eval=False)
-        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
-                                     torch.nn.ReLU(),
-                                     torch.nn.Linear(embedder.dim(), 1)).to(device)
         op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=1e-8)
     bceloss = torch.nn.BCEWithLogitsLoss(reduction='sum')
 

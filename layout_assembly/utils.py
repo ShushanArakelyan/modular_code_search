@@ -1,10 +1,11 @@
+import codebert_embedder as embedder
+
 class ProcessingException(Exception):
     def __init__(self, *args, **kwargs):
         super(Exception, self).__init__(*args, **kwargs)
 
 
 class ActionModuleWrapper(object):
-
     def __init__(self, action_module_facade):
         self.param = None
         self.inputs = []
@@ -18,11 +19,11 @@ class ActionModuleWrapper(object):
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
             self.inputs[-1].append(input)
         else:
-            empty_emb = self.module.modules[1].embedder.embed([' '], [' '])[1]
+            empty_emb = embedder.embed([' '], [' '])[1]
             self.inputs.append([empty_emb, input])
 
     def add_preposition(self, prep):
-        prep_emb = self.module.modules[1].embedder.embed([prep], [' '])[1]
+        prep_emb = embedder.embed([prep], [' '])[1]
         self.inputs.append([prep_emb])
 
 
