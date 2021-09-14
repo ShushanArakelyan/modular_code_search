@@ -78,13 +78,14 @@ class Embedder(object):
         return token_embeddings
 
     
-    def embed(self, doc, code):
+    def embed(self, doc, code, fast=False):
         # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
         # converting the docstring and code tokens into CodeBERT inputs
         # CodeBERT inputs are limited by 512 tokens, so this will truncate the inputs
         inputs = self.get_feature_inputs(' '.join(doc), ' '.join(code))
         separator = np.where(
             inputs['input_ids'][0].cpu().numpy() == self.tokenizer.sep_token_id)[0][0]
+
         # ignore CLS tokens at the beginning and at the end
         query_token_ids = inputs['input_ids'][0][1:separator]
         code_token_ids = inputs['input_ids'][0][separator + 1:-1]
@@ -95,13 +96,17 @@ class Embedder(object):
 
         # mapping from CodeBERT tokenization to our dataset tokenization
         token_id_mapping = np.asarray(self.get_orig_tokens_to_roberta_tokens(doc, truncated_query_tokens), dtype=object)
-
-        code_token_id_mapping = np.asarray(self.get_orig_tokens_to_roberta_tokens(code,
-                                                                                  truncated_code_tokens), dtype=object)
-        # get CodeBERT embedding for the example
-        if token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
+        if token_id_mapping.size == 0:
             return None
-
+        if not fast:
+            code_token_id_mapping = np.asarray(self.get_orig_tokens_to_roberta_tokens(code,
+                                                                                      truncated_code_tokens), dtype=object)
+            if code_token_id_mapping.size == 0:
+                return None
+        else:
+            code_token_id_mapping = None
+        # get CodeBERT embedding for the example
+        
         embedding = self.get_embeddings(inputs)
         # query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
         cls_embedding = embedding.index_select(dim=0, index=torch.LongTensor(np.arange(0, 1)).to(self.device))
@@ -109,7 +114,7 @@ class Embedder(object):
         code_embedding = embedding.index_select(dim=0, index=torch.LongTensor(
             np.arange(separator + 1, embedding.shape[0] - 1)).to(self.device))
         token_embeddings = self.filter_embedding_by_id(query_embedding, token_id_mapping)
-
+        
         out_tuple = (token_id_mapping, token_embeddings, code_token_id_mapping, code_embedding, truncated_query_tokens,
                      truncated_code_tokens, cls_embedding)
         return out_tuple

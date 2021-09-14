@@ -15,7 +15,7 @@ class LayoutNode:
 class LayoutNet:
     def __init__(self, scoring_module, action_module_facade, device, eval=False):
         self.scoring_module = scoring_module
-        self.action_module_refactor = action_module_facade
+        self.action_module_facade = action_module_facade
         dim = self.scoring_module.embedder.get_dim()
         half_dim = int(self.scoring_module.embedder.get_dim() / 2)
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
@@ -24,6 +24,23 @@ class LayoutNet:
         self.eval = eval
         if self.eval:
             self.classifier.eval()
+            
+    def parameters(self):
+        return list(self.classifier.parameters()) + self.action_module_facade.parameters()
+    
+    def load_from_checkpoint(self, checkpoint):
+        self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
+        
+        models = torch.load(checkpoint, map_location=self.device)
+        self.classifier.load_state_dict(models['classifier'])
+        self.classifier = self.classifier.to(self.device)
+        
+    def save_to_checkpoint(self, checkpoint):
+        self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
+        torch.save({'classifier': self.classifier.state_dict()}, checkpoint)
+
+    def state_dict(self):
+        return {'action_module': self.action_module_facade.state_dict(), 'classifier': self.classifier.state_dict()}
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
@@ -38,7 +55,7 @@ class LayoutNet:
     def process_node(self, node, sample, parent_module=None):
         query, code, static_tags, regex_tags, ccg_parse = sample
         if node.node_type == 'action':
-            action_module = ActionModuleWrapper(self.action_module_refactor)
+            action_module = ActionModuleWrapper(self.action_module_facade)
             action_module.param = node.node_value
             for child in node.children:
                 action_module, _ = self.process_node(child, sample, action_module)

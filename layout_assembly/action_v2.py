@@ -2,29 +2,31 @@ import torch
 
 from hypernetwork.hypernetwork import myLinear, FC_Hypernetwork
 from layout_assembly.action_v1 import ActionModule_v1
+from layout_assembly.utils import ProcessingException
 
 
 # Hypernetwork, where the MLPs are parametrized by the verb
 class ActionModule_v2(ActionModule_v1):
-    def embed_verb(self, verb):
-        verb_embedding = ActionModule_v1.embed_verb(self, verb)
+    def set_hyper_param(self, verb_embedding):
         self.model1.set_hyper_param(verb_embedding)
         return verb_embedding
 
 
 class ActionModule_v2_one_input(ActionModule_v2):
-    def __init__(self, device):
+    def __init__(self, device, eval=False):
         ActionModule_v2.__init__(self, device)
-        model1 = torch.nn.Sequential(myLinear(self.embedder.get_dim() * 3 + 1, self.embedder.get_dim()),
-                                     torch.nn.ReLU(),
-                                     myLinear(self.embedder.get_dim(), 1)).to(
-            self.device)  # outputs a sequence of scores
-        self.model1 = FC_Hypernetwork(model1, device)
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 2, self.embedder.get_dim()),
+        dim = self.embedder.get_dim()
+        model1 = torch.nn.Sequential(myLinear(dim * 3 + 1, dim), 
+                                     torch.nn.ReLU(), 
+                                     myLinear(dim, 1)).to(device)
+        self.model1 = FC_Hypernetwork(dim, model1, device)
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2, dim),
                                           torch.nn.ReLU(),
-                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
-            self.device)  # outputs an embedding
+                                          torch.nn.Linear(dim, dim)).to(self.device)  # outputs an embedding
 
+        if eval:
+            self.eval()
+            
     def forward(self, verb, arg1, code_tokens):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
@@ -33,12 +35,19 @@ class ActionModule_v2_one_input(ActionModule_v2):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        verb_embedding = self.embed_verb(verb)
-        code_embeddings, code_token_id_mapping, token_count = self.embed_code(code_tokens)
+        embedding_out = self.embedder.embed([verb], code_tokens, fast=True)
+        if embedding_out is None:
+            raise ProcessingException()
+        _, _, _, code_embeddings, _, _, cls_token_embedding  = embedding_out
+        
+        padding_size = self.embedder.max_seq_length - len(code_embeddings)
+        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
+        verb_embedding = cls_token_embedding
+        self.set_hyper_param(verb_embedding)
 
-        tiled_verb_emb = verb_embedding.repeat(token_count, 1)
-        tiled_prep_emb = prep_embedding.repeat(token_count, 1)
-        model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings[:token_count], scores), dim=1)
+        tiled_verb_emb = verb_embedding.repeat(self.embedder.max_seq_length, 1)
+        tiled_prep_emb = prep_embedding.repeat(self.embedder.max_seq_length, 1)
+        model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
         self.scores_out = self.model1.forward(model1_input)
         model2_input = torch.cat((verb_embedding, prep_embedding), dim=1)
         self.emb_out = self.model2.forward(model2_input)
@@ -49,17 +58,19 @@ class ActionModule_v2_one_input(ActionModule_v2):
 
 
 class ActionModule_v2_two_inputs(ActionModule_v2):
-    def __init__(self, device):
+    def __init__(self, device, eval=False):
         ActionModule_v2.__init__(self, device)
-        model1 = torch.nn.Sequential(myLinear(self.embedder.get_dim() * 4 + 2, self.embedder.get_dim()),
-                                     torch.nn.ReLU(),
-                                     myLinear(self.embedder.get_dim(), 1)).to(
-            self.device)  # outputs a sequence of scores
-        self.model1 = FC_Hypernetwork(model1, device)
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(self.embedder.get_dim() * 3, self.embedder.get_dim()),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(self.embedder.get_dim(), self.embedder.get_dim())).to(
-            self.device)  # outputs an embedding
+        dim = self.embedder.get_dim()
+        # outputs a sequence of scores
+        model1 = torch.nn.Sequential(myLinear(dim * 4 + 2, dim), 
+                                     torch.nn.ReLU(), 
+                                     myLinear(dim, 1)).to(self.device)
+        self.model1 = FC_Hypernetwork(dim, model1, device)
+        # outputs an embedding
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3, dim), torch.nn.ReLU(),
+                                          torch.nn.Linear(dim, dim)).to(self.device)
+        if eval:
+            self.eval()
 
     def forward(self, verb, args, code_tokens):
         arg1, arg2 = args
@@ -76,14 +87,21 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
 
-        verb_embedding = self.embed_verb(verb)
-        code_embeddings, code_token_id_mapping, token_count = self.embed_code(code_tokens)
+        embedding_out = self.embedder.embed([verb], code_tokens, fast=True)
+        if embedding_out is None:
+            raise ProcessingException()
+        _, _, _, code_embeddings, _, _, cls_token_embedding  = embedding_out
+        
+        padding_size = self.embedder.max_seq_length - len(code_embeddings)
+        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
+        verb_embedding = cls_token_embedding
+        self.set_hyper_param(verb_embedding)
 
-        tiled_verb_emb = verb_embedding.repeat(token_count, 1)
-        tiled_prep1_emb = prep1_embedding.repeat(token_count, 1)
-        tiled_prep2_emb = prep2_embedding.repeat(token_count, 1)
+        tiled_verb_emb = verb_embedding.repeat(self.embedder.max_seq_length, 1)
+        tiled_prep1_emb = prep1_embedding.repeat(self.embedder.max_seq_length, 1)
+        tiled_prep2_emb = prep2_embedding.repeat(self.embedder.max_seq_length, 1)
         model1_input = torch.cat(
-            (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings[:token_count], scores1, scores2), dim=1)
+            (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
         self.scores_out = self.model1.forward(model1_input)
         model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding), dim=1)
         self.emb_out = self.model2.forward(model2_input)
@@ -96,10 +114,9 @@ class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
         self.model1 = FC_Hypernetwork(self.model1, device)
         self.model2 = FC_Hypernetwork(self.model2, device)
 
-    def embed_verb(self, verb):
-        verb_embedding = ActionModule_v2_one_input.embed_verb(self, verb)
+    def set_hyper_param(self, verb_embedding):
+        ActionModule_v2_one_input.set_hyper_param(self, verb_embedding)
         self.model2.set_hyper_param(verb_embedding)
-        return verb_embedding
 
 
 class ActionModule_v2_1_two_inputs(ActionModule_v2_two_inputs):
@@ -109,6 +126,5 @@ class ActionModule_v2_1_two_inputs(ActionModule_v2_two_inputs):
         self.model2 = FC_Hypernetwork(self.model2, device)
 
     def embed_verb(self, verb):
-        verb_embedding = ActionModule_v2_two_inputs.embed_verb(self, verb)
+        ActionModule_v2_two_inputs.set_hyper_param(self, verb_embedding)
         self.model2.set_hyper_param(verb_embedding)
-        return verb_embedding
