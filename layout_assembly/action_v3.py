@@ -16,7 +16,7 @@ class ActionModule_v3_one_input(ActionModule_v1):
         self.model1 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + 1, dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(dim, 1)).to(device)
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, dim),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + embedder.max_seq_length, dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)  # outputs an embedding
 
@@ -54,7 +54,7 @@ class ActionModule_v3_two_inputs(ActionModule_v1):
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(dim, 1)).to(self.device)
         # outputs an embedding
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + 1, dim), torch.nn.ReLU(),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, dim), torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)
         if eval:
             self.eval()

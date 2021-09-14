@@ -21,7 +21,7 @@ class ActionModule_v2_one_input(ActionModule_v2):
                                      torch.nn.ReLU(),
                                      myLinear(dim, 1)).to(device)
         self.model1 = FC_Hypernetwork(dim, model1, device)
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, dim),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)  # outputs an embedding
 
@@ -67,7 +67,7 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
                                      myLinear(dim, 1)).to(self.device)
         self.model1 = FC_Hypernetwork(dim, model1, device)
         # outputs an embedding
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + 1, dim), torch.nn.ReLU(),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, dim), torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)
         if eval:
             self.eval()
