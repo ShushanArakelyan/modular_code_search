@@ -5,7 +5,7 @@ from layout_assembly.action_v1 import ActionModule_v1
 
 
 def get_verb_embedding(verb):
-    with torch.no_grad:
+    with torch.no_grad():
         return embedder.forward(verb)
 
 

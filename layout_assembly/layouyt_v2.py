@@ -11,7 +11,7 @@ class LayoutNet_v2(LayoutNet):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         try:
-            with torch.no_grad:
+            with torch.no_grad():
                 code_embeddings = embedder.embed(' ', sample[1])
                 padding_size = embedder.max_seq_length - len(code_embeddings)
                 code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)

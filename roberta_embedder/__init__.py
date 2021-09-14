@@ -23,7 +23,7 @@ def init_embedder(_device):
 
 
 def forward(doc):
-    with torch.no_grad:
+    with torch.no_grad():
         inputs = tokenizer(doc, return_tensors="pt")
         outputs = model(**inputs)
         return outputs.last_hidden_state
