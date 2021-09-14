@@ -1,9 +1,9 @@
 import torch
 
+import codebert_embedder as embedder
 from layout_assembly.utils import ActionModuleWrapper
 from layout_assembly.utils import ProcessingException
 
-import codebert_embedder as embedder
 
 class LayoutNode:
     def __init__(self):
@@ -17,6 +17,7 @@ class LayoutNet:
     def __init__(self, scoring_module, action_module_facade, device, eval=False):
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
+        self.device = device
         dim = embedder.dim
         half_dim = int(dim / 2)
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),

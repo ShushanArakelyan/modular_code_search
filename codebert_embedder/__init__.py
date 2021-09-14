@@ -99,7 +99,7 @@ def embed(doc, code, fast=False):
         return None
     if not fast:
         code_token_id_mapping = np.asarray(get_orig_tokens_to_roberta_tokens(code,
-                                                                                  truncated_code_tokens),
+                                                                             truncated_code_tokens),
                                            dtype=object)
         if code_token_id_mapping.size == 0:
             return None

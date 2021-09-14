@@ -2,6 +2,7 @@ import re
 
 import numpy as np
 import spacy
+
 nlp = spacy.load("en_core_web_md")
 
 
@@ -19,7 +20,7 @@ def extract_noun_tokens(doc):
 
 
 def get_noun_phrases(ccg_parse):
-    ccg_parse = ccg_parse[1:-1] # remove brackets from the beginning and the end
+    ccg_parse = ccg_parse[1:-1]  # remove brackets from the beginning and the end
     ccg_parse = ccg_parse.replace('(', '( ')
     # remove '@Concat' operation
     i = 0
@@ -40,7 +41,7 @@ def get_noun_phrases(ccg_parse):
     while i < len(parts):
         phrase = []
         while i < len(parts) and not (parts[i].startswith('@') or parts[i].startswith(')')):
-            if len(parts[i])  != 0:
+            if len(parts[i]) != 0:
                 phrase.append(parts[i])
             i += 1
         if len(phrase) != 0:
@@ -88,13 +89,13 @@ def get_matched_labels_binary(code_token_id_mapping, query_token, nlp_cache):
 
 
 def get_matched_labels_binary_v2(tokens, code_token_id_mapping, query_token):
-#     lemmatizer = WordNetLemmatizer()
+    #     lemmatizer = WordNetLemmatizer()
     tags = np.zeros(max(code_token_id_mapping[-1]) + 1)
     for i, t in enumerate(tokens):
         if re.search(query_token.lower(), t.lower()):
             tags[code_token_id_mapping[i]] = 1
-#         elif re.search(lemmatizer.lemmatize(query_token.lower()), t.lower()):
-#             tags[code_token_id_mapping[i]] = 1
+    #         elif re.search(lemmatizer.lemmatize(query_token.lower()), t.lower()):
+    #             tags[code_token_id_mapping[i]] = 1
     return np.asarray(tags)
 
 

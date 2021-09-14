@@ -1,5 +1,5 @@
-from transformers import RobertaTokenizer, RobertaModel
 import torch
+from transformers import RobertaTokenizer, RobertaModel
 
 max_seq_length = 512
 dim = 768

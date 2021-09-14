@@ -36,7 +36,7 @@ def main():
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
-                            help='validation file name', required=True)
+                        help='validation file name', required=True)
     parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
                         help='whether to embed the query and code separately or concatenated together')
     parser.add_argument('--normalize', dest='normalize', default=False, action='store_true',

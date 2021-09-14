@@ -1,7 +1,7 @@
 import torch
 
-from layout_assembly.utils import ProcessingException
 import codebert_embedder as embedder
+from layout_assembly.utils import ProcessingException
 
 
 class ActionModule_v1:
@@ -33,22 +33,6 @@ class ActionModule_v1:
     def train(self):
         self.model1.train()
         self.model2.train()
-
-    def embed_verb(self, verb):
-        verb_embedding_out = embedder.embed([verb], [' '])
-        if verb_embedding_out is None:
-            raise ProcessingException()
-        verb_embedding = verb_embedding_out[1]
-        return verb_embedding
-
-    def embed_code(self, code):
-        code_embeddings_out = embedder.embed([' '], code, fast=True)
-        if code_embeddings_out is None:
-            raise ProcessingException()
-        _, _, _, code_embeddings, _, _, _ = code_embeddings_out
-        padding_size = embedder.max_seq_length - len(code_embeddings)
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
-        return code_embeddings
 
 
 class ActionModule_v1_one_input(ActionModule_v1):

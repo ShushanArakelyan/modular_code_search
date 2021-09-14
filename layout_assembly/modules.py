@@ -1,10 +1,10 @@
 import torch
 
+import codebert_embedder as embedder
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.utils import ProcessingException
-import codebert_embedder as embedder
 
 
 class ActionModuleFacade_v1:
@@ -47,6 +47,7 @@ class ActionModuleFacade_v2(ActionModuleFacade_v1):
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
+
 class ActionModuleFacade_v3(ActionModuleFacade_v1):
     def __init__(self, device, checkpoint=None, eval=False):
         ActionModuleFacade_v1.__init__(self, device)
@@ -60,7 +61,7 @@ class ActionModuleFacade_v3(ActionModuleFacade_v1):
 class ScoringModule:
     def __init__(self, device, checkpoint=None, eval=True):
         if not embedder.initialized:
-            embedder.init_model(device)
+            embedder.init_embedder(device)
         self.scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 2, embedder.dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(embedder.dim, 1)).to(device)
@@ -98,7 +99,8 @@ class ScoringModule:
             embedder_out = embedder.embed(query, code)
             if embedder_out is None:
                 raise ProcessingException()
-            word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
+            word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, _, \
+            truncated_code_tokens, cls_token_embedding = embedder_out
 
             if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
                 raise ProcessingException()

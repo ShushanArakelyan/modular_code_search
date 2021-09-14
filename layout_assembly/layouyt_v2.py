@@ -1,9 +1,9 @@
-from layout_assembly.utils import ActionModuleWrapper
-from layout_assembly.utils import ProcessingException
+import torch
 
 import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
-import torch
+from layout_assembly.utils import ActionModuleWrapper
+from layout_assembly.utils import ProcessingException
 
 
 class LayoutNet_v2(LayoutNet):

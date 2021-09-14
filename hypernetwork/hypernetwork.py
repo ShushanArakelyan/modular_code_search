@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -58,7 +57,7 @@ class FC_Hypernetwork(nn.Module):
     def eval(self):
         self.model.eval()
         self.dest_net.eval()
-    
+
     def train(self):
         self.model.train()
         self.dest_net.train()

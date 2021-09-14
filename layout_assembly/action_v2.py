@@ -1,9 +1,9 @@
 import torch
 
+import codebert_embedder as embedder
 from hypernetwork.hypernetwork import myLinear, FC_Hypernetwork
 from layout_assembly.action_v1 import ActionModule_v1
 from layout_assembly.utils import ProcessingException
-import codebert_embedder as embedder
 
 
 # Hypernetwork, where the MLPs are parametrized by the verb
@@ -103,7 +103,8 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
             (tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
         self.scores_out = self.model1.forward(model1_input)
 
-        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding, self.scores_out.squeeze().unsqueeze(dim=0)), dim=1)
+        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding,
+                                  self.scores_out.squeeze().unsqueeze(dim=0)), dim=1)
         self.emb_out = self.model2.forward(model2_input)
         return self.emb_out, self.scores_out
 
@@ -111,8 +112,8 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
 class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
     def __init__(self, device):
         ActionModule_v2_one_input.__init__(self, device)
-        self.model1 = FC_Hypernetwork(self.model1, device)
-        self.model2 = FC_Hypernetwork(self.model2, device)
+        self.model1 = FC_Hypernetwork(embedder.dim, self.model1, device)
+        self.model2 = FC_Hypernetwork(embedder.dim, self.model2, device)
 
     def set_hyper_param(self, verb_embedding):
         ActionModule_v2_one_input.set_hyper_param(self, verb_embedding)
@@ -122,9 +123,9 @@ class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
 class ActionModule_v2_1_two_inputs(ActionModule_v2_two_inputs):
     def __init__(self, device):
         ActionModule_v2_two_inputs.__init__(self, device)
-        self.model1 = FC_Hypernetwork(self.model1, device)
-        self.model2 = FC_Hypernetwork(self.model2, device)
+        self.model1 = FC_Hypernetwork(embedder.dim, self.model1, device)
+        self.model2 = FC_Hypernetwork(embedder.dim, self.model2, device)
 
-    def embed_verb(self, verb_embedding):
-        ActionModule_v2_two_inputs.set_hyper_param(self, verb_embedding)
+    def set_hyper_param(self, verb_embedding):
+        ActionModule_v2_1_two_inputs.set_hyper_param(self, verb_embedding)
         self.model2.set_hyper_param(verb_embedding)

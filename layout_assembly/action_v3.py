@@ -1,12 +1,11 @@
 import torch
 
-from layout_assembly.action_v1 import ActionModule_v1
-from layout_assembly.utils import ProcessingException
 import roberta_embedder as embedder
+from layout_assembly.action_v1 import ActionModule_v1
 
 
 def get_verb_embedding(verb):
-    with torch.inference_mode:
+    with torch.no_grad:
         return embedder.forward(verb)
 
 
@@ -15,8 +14,8 @@ class ActionModule_v3_one_input(ActionModule_v1):
         ActionModule_v1.__init__(self, device)
         dim = embedder.dim
         self.model1 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + 1, dim),
-                                     torch.nn.ReLU(),
-                                     torch.nn.Linear(dim, 1)).to(device)
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(dim, 1)).to(device)
         self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)  # outputs an embedding
@@ -52,8 +51,8 @@ class ActionModule_v3_two_inputs(ActionModule_v1):
         dim = embedder.dim
         # outputs a sequence of scores
         self.model1 = torch.nn.Sequential(torch.nn.Linear(dim * 4 + 2, dim),
-                                     torch.nn.ReLU(),
-                                     torch.nn.Linear(dim, 1)).to(self.device)
+                                          torch.nn.ReLU(),
+                                          torch.nn.Linear(dim, 1)).to(self.device)
         # outputs an embedding
         self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + 1, dim), torch.nn.ReLU(),
                                           torch.nn.Linear(dim, dim)).to(self.device)
@@ -83,10 +82,10 @@ class ActionModule_v3_two_inputs(ActionModule_v1):
         model1_input = torch.cat(
             (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
         self.scores_out = self.model1.forward(model1_input)
-        model2_input = torch.cat((verb_embedding, prep1_embedding, prep2_embedding, self.scores_out.squeeze().unsqueeze(dim=0)), dim=1)
+        model2_input = torch.cat(
+            (verb_embedding, prep1_embedding, prep2_embedding, self.scores_out.squeeze().unsqueeze(dim=0)), dim=1)
         self.emb_out = self.model2.forward(model2_input)
         return self.emb_out, self.scores_out
-
 
 # class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
 #     def __init__(self, device):

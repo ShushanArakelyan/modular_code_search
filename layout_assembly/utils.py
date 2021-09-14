@@ -1,8 +1,9 @@
 import codebert_embedder as embedder
 
+
 class ProcessingException(Exception):
-    def __init__(self, *args, **kwargs):
-        super(Exception, self).__init__(*args, **kwargs)
+    def __init__(self, *args):
+        super(Exception, self).__init__(*args)
 
 
 class ActionModuleWrapper(object):
