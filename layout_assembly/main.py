@@ -45,7 +45,7 @@ def main():
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
     writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
-    
+
     print_every = args.print_every
     save_every = args.save_every
     writer_it = 0
@@ -58,20 +58,20 @@ def main():
             for li, label in enumerate([positive, negative]):
                 op.zero_grad()
                 ccg_parse = data['ccg_parse'][i][1:-1]
-                if li == 0 :                
-                    sample = (data['docstring_tokens'][i], 
-                             data['code_tokens'][i], 
-                             data['static_tags'][i], 
-                             data['regex_tags'][i], 
-                             data['ccg_parse'][i])
+                if li == 0:
+                    sample = (data['docstring_tokens'][i],
+                              data['code_tokens'][i],
+                              data['static_tags'][i],
+                              data['regex_tags'][i],
+                              data['ccg_parse'][i])
                 else:
                     np.random.seed(i)
                     random_idx = np.random.randint(0, len(data), 1)[0]
-                    sample = (data['docstring_tokens'][i], 
-                             data['code_tokens'][random_idx], 
-                             data['static_tags'][random_idx], 
-                             data['regex_tags'][random_idx], 
-                             data['ccg_parse'][i])
+                    sample = (data['docstring_tokens'][i],
+                              data['code_tokens'][random_idx],
+                              data['static_tags'][random_idx],
+                              data['regex_tags'][random_idx],
+                              data['ccg_parse'][i])
                 pred = layout_net.forward(ccg_parse, sample)
                 if pred is None:
                     continue
@@ -84,7 +84,7 @@ def main():
                 writer.add_scalar("Loss/train", np.mean(cumulative_loss[-print_every:]), writer_it)
                 writer.add_scalar("Acc/train", np.mean(accuracy[-print_every:]), writer_it)
                 writer_it += 1
-                
+
             if i % save_every == 0:
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_{version}_it_{i}")

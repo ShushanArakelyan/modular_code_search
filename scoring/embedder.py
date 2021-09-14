@@ -19,7 +19,7 @@ class Embedder(object):
             self.device = 'cpu'
         self.init_model(model_eval)
 
-    def get_dim(self):
+    def dim(self):
         return self.dim
 
     def init_model(self, model_eval):

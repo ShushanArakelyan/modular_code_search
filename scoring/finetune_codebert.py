@@ -241,16 +241,16 @@ def main():
 
     if args.scorer_only:
         embedder = Embedder(device, model_eval=True)
-        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.get_dim() * 2, embedder.get_dim()),
+        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
                                      torch.nn.ReLU(),
-                                     torch.nn.Linear(embedder.get_dim(), 1)).to(device)
+                                     torch.nn.Linear(embedder.dim(), 1)).to(device)
 
         op = torch.optim.Adam(list(scorer.parameters()), lr=1e-8)
     else:
         embedder = Embedder(device, model_eval=False)
-        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.get_dim() * 2, embedder.get_dim()),
+        scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
                                      torch.nn.ReLU(),
-                                     torch.nn.Linear(embedder.get_dim(), 1)).to(device)
+                                     torch.nn.Linear(embedder.dim(), 1)).to(device)
         op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=1e-8)
     bceloss = torch.nn.BCEWithLogitsLoss(reduction='sum')
 

@@ -69,9 +69,9 @@ def main():
     with torch.no_grad():
         for checkpoint in checkpoints:
             embedder = Embedder(device, model_eval=True)
-            scorer = torch.nn.Sequential(torch.nn.Linear(embedder.get_dim() * 2, embedder.get_dim()),
+            scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
                                          torch.nn.ReLU(),
-                                         torch.nn.Linear(embedder.get_dim(), 1)).to(device)
+                                         torch.nn.Linear(embedder.dim(), 1)).to(device)
 
             print(f"Evaluating checkpoint {checkpoint}")
             models = torch.load(checkpoint, map_location=device)

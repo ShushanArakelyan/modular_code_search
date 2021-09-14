@@ -16,25 +16,25 @@ class LayoutNet:
     def __init__(self, scoring_module, action_module_facade, device, eval=False):
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
-        dim = self.scoring_module.embedder.get_dim()
-        half_dim = int(self.scoring_module.embedder.get_dim() / 2)
+        dim = self.scoring_module.embedder.dim()
+        half_dim = int(self.scoring_module.embedder.dim() / 2)
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
                                               torch.nn.ReLU(),
                                               torch.nn.Linear(half_dim, 1)).to(device)
         self.eval = eval
         if self.eval:
             self.classifier.eval()
-            
+
     def parameters(self):
         return list(self.classifier.parameters()) + self.action_module_facade.parameters()
-    
+
     def load_from_checkpoint(self, checkpoint):
         self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
-        
+
         models = torch.load(checkpoint, map_location=self.device)
         self.classifier.load_state_dict(models['classifier'])
         self.classifier = self.classifier.to(self.device)
-        
+
     def save_to_checkpoint(self, checkpoint):
         self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
         torch.save({'classifier': self.classifier.state_dict()}, checkpoint)
