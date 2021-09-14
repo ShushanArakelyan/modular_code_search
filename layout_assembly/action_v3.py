@@ -3,7 +3,7 @@ import torch
 from hypernetwork.hypernetwork import myLinear, FC_Hypernetwork
 from layout_assembly.action_v1 import ActionModule_v1
 from layout_assembly.utils import ProcessingException
-import codebert_embedder as embedder
+import roberta_embedder as embedder
 
 
 # Hypernetwork, where the MLPs are parametrized by the verb

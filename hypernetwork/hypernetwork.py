@@ -7,12 +7,6 @@ class myLinear(nn.Linear):
     def __init__(self, *args):
         super(myLinear, self).__init__(*args)
 
-#     def set_parameters(self, new_weight, new_bias):
-#         del self.weight
-#         self.weight = new_weight
-#         del self.bias
-#         self.bias = new_bias
-
 
 class FC_Hypernetwork(nn.Module):
     def __init__(self, dim, dest_net, device):

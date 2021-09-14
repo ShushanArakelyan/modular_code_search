@@ -3,7 +3,7 @@ import torch
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.utils import ProcessingException
-import embedder
+import codebert_embedder as embedder
 
 
 class ActionModuleFacade_v1:

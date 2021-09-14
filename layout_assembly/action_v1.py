@@ -1,7 +1,7 @@
 import torch
 
 from layout_assembly.utils import ProcessingException
-import embedder
+import codebert_embedder as embedder
 
 
 class ActionModule_v1:
