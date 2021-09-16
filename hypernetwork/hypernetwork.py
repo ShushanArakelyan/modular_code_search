@@ -2,11 +2,6 @@ import torch
 import torch.nn as nn
 
 
-class myLinear(nn.Linear):
-    def __init__(self, *args):
-        super(myLinear, self).__init__(*args)
-
-
 class FC_Hypernetwork(nn.Module):
     def __init__(self, dim, dest_net, device):
         super(FC_Hypernetwork, self).__init__()
@@ -24,14 +19,14 @@ class FC_Hypernetwork(nn.Module):
             self.param_shapes.append(param.shape)
             self.param_sizes.append(param.numel())
         output_size = sum(self.param_sizes)
-        input_dims = [self.dim, 1000]
-        output_dims = [1000, output_size]
+        input_dims = [self.dim, 512]
+        output_dims = [512, output_size]
         self.model = torch.nn.Sequential(torch.nn.Linear(input_dims[0], output_dims[0]),
                                          torch.nn.ReLU(),
                                          torch.nn.Linear(input_dims[1], output_dims[1])).to(self.device)
 
     def set_hyper_param(self, hyper_param):
-        self.weights = self.model.forward(hyper_param)
+        weights = self.model.forward(hyper_param)
         start = 0
         end = start
         param_id = 0
@@ -41,14 +36,16 @@ class FC_Hypernetwork(nn.Module):
             start = end
             end += self.param_sizes[param_id]
             del layer.weight
-            w_id = torch.torch.LongTensor(range(start, end)).to(self.device)
-            layer.weight = self.weights.index_select(dim=1, index=w_id).view(self.param_shapes[param_id])
+            layer.weight = weights.index_select(
+                dim=1, 
+                index=torch.torch.LongTensor(range(start, end)).to(self.device)).view(self.param_shapes[param_id])
 
             start = end
             end += self.param_sizes[param_id + 1]
             del layer.bias
-            w_id = torch.torch.LongTensor(range(start, end)).to(self.device)
-            layer.bias = self.weights.index_select(dim=1, index=w_id).view(self.param_shapes[param_id + 1])
+            layer.bias = weights.index_select(
+                dim=1, 
+                index=torch.torch.LongTensor(range(start, end)).to(self.device)).view(self.param_shapes[param_id + 1])
             param_id += 2
 
     def forward(self, x):
@@ -61,3 +58,6 @@ class FC_Hypernetwork(nn.Module):
     def train(self):
         self.model.train()
         self.dest_net.train()
+        
+    def parameters(self):
+        return self.model.parameters()

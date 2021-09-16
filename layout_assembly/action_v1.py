@@ -2,6 +2,7 @@ import torch
 
 import codebert_embedder as embedder
 from layout_assembly.utils import ProcessingException
+from itertools import chain
 
 
 class ActionModule_v1:
@@ -11,11 +12,9 @@ class ActionModule_v1:
             embedder.init_embedder(device)
         self.model1 = None
         self.model2 = None
-        self.scores_out = None
-        self.emb_out = None
 
     def parameters(self):
-        return list(self.model1.parameters()) + list(self.model2.parameters())
+        return chain(self.model1.parameters(), self.model2.parameters())
 
     def load_state_dict(self, d):
         self.model1.load_state_dict(d['model1'])
@@ -38,14 +37,14 @@ class ActionModule_v1:
 class ActionModule_v1_one_input(ActionModule_v1):
     def __init__(self, device, eval=False):
         ActionModule_v1.__init__(self, device)
-        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 3 + 1, embedder.dim),
+        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 3 + 1, 128),
                                           torch.nn.ReLU(),
-                                          torch.nn.Linear(embedder.dim, 1)).to(
+                                          torch.nn.Linear(128, 1)).to(
             self.device)  # outputs a sequence of scores
         self.model2 = torch.nn.Sequential(
-            torch.nn.Linear(embedder.dim * 2 + embedder.max_seq_length, embedder.dim),
+            torch.nn.Linear(embedder.dim * 2 + embedder.max_seq_length, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(embedder.dim, embedder.dim)).to(
+            torch.nn.Linear(128, embedder.dim)).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()
@@ -71,23 +70,23 @@ class ActionModule_v1_one_input(ActionModule_v1):
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
         model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
-        self.scores_out = self.model1.forward(model1_input)
-        model2_input = torch.cat((verb_embedding, prep_embedding, self.scores_out.squeeze().unsqueeze(dim=0)), dim=1)
-        self.emb_out = self.model2.forward(model2_input)
-        return self.emb_out, self.scores_out
+        scores_out = self.model1.forward(model1_input)
+        model2_input = torch.cat((verb_embedding, prep_embedding, scores_out.squeeze().unsqueeze(dim=0)), dim=1)
+        emb_out = self.model2.forward(model2_input)
+        return emb_out, scores_out
 
 
 class ActionModule_v1_two_inputs(ActionModule_v1):
     def __init__(self, device, eval=False):
         ActionModule_v1.__init__(self, device)
-        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 4 + 2, embedder.dim),
+        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 4 + 2, 128),
                                           torch.nn.ReLU(),
-                                          torch.nn.Linear(embedder.dim, 1)).to(
+                                          torch.nn.Linear(128, 1)).to(
             self.device)  # outputs a sequence of scores
         self.model2 = torch.nn.Sequential(
-            torch.nn.Linear(embedder.dim * 3 + embedder.max_seq_length, embedder.dim),
+            torch.nn.Linear(embedder.dim * 3 + embedder.max_seq_length, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(embedder.dim, embedder.dim)).to(
+            torch.nn.Linear(128, embedder.dim)).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()
@@ -121,9 +120,9 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         tiled_prep2_emb = prep2_embedding.repeat(embedder.max_seq_length, 1)
         model1_input = torch.cat(
             (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
-        self.scores_out = self.model1.forward(model1_input)
+        scores_out = self.model1.forward(model1_input)
         model2_input = torch.cat(
-            (verb_embedding, prep1_embedding, prep2_embedding, self.scores_out.squeeze().unsqueeze(dim=0)),
+            (verb_embedding, prep1_embedding, prep2_embedding, scores_out.squeeze().unsqueeze(dim=0)),
             dim=1)
-        self.emb_out = self.model2.forward(model2_input)
-        return self.emb_out, self.scores_out
+        emb_out = self.model2.forward(model2_input)
+        return emb_out, scores_out

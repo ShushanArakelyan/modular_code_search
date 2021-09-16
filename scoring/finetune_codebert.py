@@ -228,6 +228,8 @@ def main():
                         help='Whether to embed the query and code in a single instance or separate instances')
     parser.add_argument('--downsample_gt', dest='downsample_gt', default=False, action='store_true',
                         help='Whether to downsample ground truth example neighboring `def` and `return` tokens')
+    parser.add_argument('--use_mean', dest='use_mean', default=False, action='store_true',
+                        help='Whether to average embeddings or use CLS token')
 
     args = parser.parse_args()
 
@@ -240,9 +242,9 @@ def main():
 
     if not embedder.initialized:
         embedder.init_embedder(device)
-    scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim() * 2, embedder.dim()),
+    scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 2, embedder.dim),
                                  torch.nn.ReLU(),
-                                 torch.nn.Linear(embedder.dim(), 1)).to(device)
+                                 torch.nn.Linear(embedder.dim, 1)).to(device)
     if args.scorer_only:
         op = torch.optim.Adam(list(scorer.parameters()), lr=1e-8)
     else:
@@ -275,6 +277,10 @@ def main():
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
+    if args.use_mean:
+        global VERSION
+        VERSION = "MEAN"
+        
     if args.include_mismatched_pair:
         global INCLUDE_MISMATCHED_PAIR
         INCLUDE_MISMATCHED_PAIR = True

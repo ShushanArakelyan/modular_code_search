@@ -5,6 +5,7 @@ from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.utils import ProcessingException
+from itertools import chain
 
 
 class ActionModuleFacade_v1:
@@ -25,7 +26,7 @@ class ActionModuleFacade_v1:
         return emb, pred
 
     def parameters(self):
-        return self.one_input_module.parameters() + self.two_inputs_module.parameters()
+        return chain(self.one_input_module.parameters(), self.two_inputs_module.parameters())
 
     def save_to_checkpoint(self, checkpoint):
         state_dict = {'one_input': self.one_input_module.state_dict(),
@@ -88,10 +89,10 @@ class ScoringModule:
             _, _, _, code_embeddings, _, _, _ = code_embedder_out
             padding_size = embedder.max_seq_length - len(code_embeddings)
             code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
-            tiled_emb = cls_token_embedding.repeat(embedder.max_seq_length, 1)
-            forward_input = torch.cat((tiled_emb, code_embeddings), dim=1)
+            cls_token_embedding = cls_token_embedding.repeat(embedder.max_seq_length, 1)
+            forward_input = torch.cat((cls_token_embedding, code_embeddings), dim=1)
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
-            return scorer_out
+        return scorer_out
 
     def forward_v2(self, query, sample):
         with torch.no_grad():
@@ -99,17 +100,16 @@ class ScoringModule:
             embedder_out = embedder.embed(query, code)
             if embedder_out is None:
                 raise ProcessingException()
-            word_token_id_mapping, word_token_embeddings, code_token_id_mapping, code_embedding, _, \
-            truncated_code_tokens, cls_token_embedding = embedder_out
+            word_token_id_mapping, _, code_token_id_mapping, code_embedding, _, _, cls_token_embedding = embedder_out
 
             if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
                 raise ProcessingException()
 
-            tiled_emb = cls_token_embedding.repeat(len(truncated_code_tokens), 1)
-            forward_input = torch.cat((tiled_emb, code_embedding), dim=1)
-            token_count = max(code_token_id_mapping[-1])
-            scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()[:token_count]
-            # padding_size = embedder.max_seq_length - len(scorer_out)
+            padding_size = embedder.max_seq_length - len(code_embedding)
+            code_embedding = torch.nn.functional.pad(code_embedding, (0, 0, 0, padding_size), 'constant', 0)
+            cls_token_embedding = cls_token_embedding.repeat(embedder.max_seq_length, 1)
+            forward_input = torch.cat((cls_token_embedding, code_embedding), dim=1)
+            scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
 
             print(scorer_out.shape, token_count)
             return scorer_out

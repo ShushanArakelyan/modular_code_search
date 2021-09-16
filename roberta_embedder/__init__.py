@@ -1,5 +1,6 @@
 import torch
 from transformers import RobertaTokenizer, RobertaModel
+from layout_assembly.utils import ProcessingException
 
 max_seq_length = 512
 dim = 768
@@ -25,5 +26,8 @@ def init_embedder(_device):
 def forward(doc):
     with torch.no_grad():
         inputs = tokenizer(doc, return_tensors="pt")
-        outputs = model(**inputs)
+        if inputs['input_ids'].shape[1] <= 2:
+            print(doc)
+            raise ProcessingException()
+        outputs = model(input_ids=inputs['input_ids'][:, 1:-1].to(device), attention_mask=inputs['attention_mask'][:, 1:-1].to(device))
         return outputs.last_hidden_state

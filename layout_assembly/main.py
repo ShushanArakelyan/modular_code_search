@@ -11,28 +11,10 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
 
 
-def main():
-    parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
-    parser.add_argument('--device', dest='device', type=str,
-                        help='device to run on')
-    parser.add_argument('--data_file', dest='data_file', type=str,
-                        help='training data directory', required=True)
-    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
-                        help='Scoring module checkpoint', required=True)
-    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
-                        help='number of epochs to train', default=10)
-    parser.add_argument('--print_every', dest='print_every', type=int,
-                        help='print to tensorboard after this many iterations', default=100)
-    parser.add_argument('--save_every', dest='save_every', type=int,
-                        help='save to checkpoint after this many iterations', default=2000)
-    parser.add_argument('--version', dest='version', type=int,
-                        help='Whether to run ActionV1 or ActionV2', required=True)
-
-    args = parser.parse_args()
-    device = args.device
-    data = pd.read_json(args.data_file, lines=True)
-    scoring_module = ScoringModule(device, args.scoring_checkpoint)
-    version = args.version
+def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_every, version):
+    
+    data = pd.read_json(data_file, lines=True)
+    scoring_module = ScoringModule(device, scoring_checkpoint)
     if version == 1:
         action_module = ActionModuleFacade_v1(device)
     elif version == 2:
@@ -46,17 +28,16 @@ def main():
     writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
 
-    print_every = args.print_every
-    save_every = args.save_every
     writer_it = 0
     positive = torch.FloatTensor([[1]]).to(device)
     negative = torch.FloatTensor([[0]]).to(device)
-    for _ in range(args.num_epochs):
+    for _ in range(num_epochs):
         cumulative_loss = []
         accuracy = []
         for i in tqdm.tqdm(range(len(data))):
             for li, label in enumerate([positive, negative]):
-                op.zero_grad()
+                for param in layout_net.parameters():
+                    param.grad = None
                 ccg_parse = data['ccg_parse'][i][1:-1]
                 if li == 0:
                     sample = (data['docstring_tokens'][i],
@@ -80,16 +61,34 @@ def main():
                 op.step()
                 cumulative_loss.append(loss.data.cpu().numpy())
                 accuracy.append(int(torch.sigmoid(pred).round() == label))
-            if i % print_every == 0:
+                del pred, loss
+            if (i + 1) % print_every == 0:
                 writer.add_scalar("Loss/train", np.mean(cumulative_loss[-print_every:]), writer_it)
                 writer.add_scalar("Acc/train", np.mean(accuracy[-print_every:]), writer_it)
                 writer_it += 1
 
-            if i % save_every == 0:
+            if (i + 1) % save_every == 0:
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_{version}_it_{i}")
                 print("saved successfully")
-
+            
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
+    parser.add_argument('--device', dest='device', type=str,
+                        help='device to run on')
+    parser.add_argument('--data_file', dest='data_file', type=str,
+                        help='training data directory', required=True)
+    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
+                        help='Scoring module checkpoint', required=True)
+    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
+                        help='number of epochs to train', default=10)
+    parser.add_argument('--print_every', dest='print_every', type=int,
+                        help='print to tensorboard after this many iterations', default=100)
+    parser.add_argument('--save_every', dest='save_every', type=int,
+                        help='save to checkpoint after this many iterations', default=2000)
+    parser.add_argument('--version', dest='version', type=int,
+                        help='Whether to run ActionV1 or ActionV2', required=True)
+
+    args = parser.parse_args()
+    main(args.device, args.data_file, args.scoring_checkpoint, args.num_epochs, args.print_every, args.save_every, args.version)

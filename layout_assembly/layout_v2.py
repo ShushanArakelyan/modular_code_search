@@ -13,7 +13,7 @@ class LayoutNet_v2(LayoutNet):
         try:
             with torch.no_grad():
                 embeddings_out = embedder.embed(' ', sample[1])
-                _, _, _, code_embedding, _, _, _ = embeddings_out
+                _, _, _, code_embeddings, _, _, _ = embeddings_out
                 padding_size = embedder.max_seq_length - len(code_embeddings)
                 code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
             _, output = self.process_node(tree, sample, code_embeddings)
@@ -33,7 +33,8 @@ class LayoutNet_v2(LayoutNet):
                 parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'scoring':
-            output = self.scoring_module.forward(node.node_value, sample)
+            with torch.no_grad():
+                output = self.scoring_module.forward(node.node_value, sample)
             parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'preposition':

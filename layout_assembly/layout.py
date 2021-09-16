@@ -3,6 +3,7 @@ import torch
 import codebert_embedder as embedder
 from layout_assembly.utils import ActionModuleWrapper
 from layout_assembly.utils import ProcessingException
+from itertools import chain
 
 
 class LayoutNode:
@@ -28,7 +29,7 @@ class LayoutNet:
             self.classifier.eval()
 
     def parameters(self):
-        return list(self.classifier.parameters()) + self.action_module_facade.parameters()
+        return chain(self.classifier.parameters(), self.action_module_facade.parameters())
 
     def load_from_checkpoint(self, checkpoint):
         self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
