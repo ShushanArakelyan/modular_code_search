@@ -25,6 +25,7 @@ class LayoutNet:
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
                                               torch.nn.ReLU(),
                                               torch.nn.Linear(half_dim, 1)).to(device)
+        self.scoring_outputs = None
         self.eval = eval
         if self.eval:
             self.classifier.eval()
@@ -49,33 +50,51 @@ class LayoutNet:
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
+        scoring_inputs = self.precompute_scores(tree, sample[1], '', [[], [], []])
+        self.scoring_outputs = self.scoring_module(scoring_inputs[0], scoring_inputs[1])
         try:
-            _, output = self.process_node(tree, sample)
+            _, output, _ = self.process_node(tree, sample)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         pred = self.classifier.forward(output[0])
         return pred
 
-    def process_node(self, node, sample, parent_module=None):
+    def process_node(self, node, sample, it=0, parent_module=None):
         query, code, static_tags, regex_tags, ccg_parse = sample
         if node.node_type == 'action':
             action_module = ActionModuleWrapper(self.action_module_facade)
             action_module.param = node.node_value
             for child in node.children:
-                action_module, _ = self.process_node(child, sample, action_module)
+                action_module, _, it = self.process_node(child, sample, it, action_module)
             output = action_module.forward(code)
             if parent_module:
                 parent_module.add_input(output)
             return parent_module, output
         elif node.node_type == 'scoring':
-            output = self.scoring_module.forward(node.node_value, sample)
+            # output = self.scoring_module.forward(node.node_value, sample)
+            output = self.scoring_outputs[it]
+            it += 1
             parent_module.add_input(output)
-            return parent_module, output
+            return parent_module, output, it
         elif node.node_type == 'preposition':
             parent_module.add_preposition(node.node_value)
             for child in node.children:
-                self.process_node(child, sample, parent_module)
-            return parent_module, None
+                self.process_node(child, sample, it, parent_module)
+            return parent_module, None, it
+
+    def precompute_scores (self, node, code, scoring_inputs, param=None):
+        if node.node_type == 'action':
+            for child in node.children:
+                scoring_inputs = self.precompute_scores(child, code, scoring_inputs, node.node_value)
+        elif node.node_type == 'scoring':
+            scoring_inputs[0].append(node.node_value)
+            scoring_inputs[1].append(code)
+            scoring_inputs[2].append(param)
+        elif node.node_type == 'preposition':
+            for child in node.children:
+                scoring_inputs = self.precompute_scores(child, code, scoring_inputs, param)
+        return scoring_inputs
+
 
     @staticmethod
     def remove_concats(tree):

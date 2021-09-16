@@ -77,6 +77,16 @@ class ScoringModule:
             embedder.model.load_state_dict(models['embedder'])
             embedder.model = embedder.model.to(device)
 
+    def forward_batch(self, queries, codes, separate_embedding=False):
+        if separate_embedding:
+            raise Exception("Separate embedding not supported for processing in batch")
+        with torch.no_grad():
+            query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
+            query_embeddings = query_embeddings.unsqueeze(dim=1).repeat(embedder.max_seq_length, 1)
+            forward_input = torch.cat((query_embeddings, code_embeddings), dim=2)
+            scorer_out = torch.sigmoid(self.scorer.forward(forward_input))
+        return scorer_out
+
     def forward(self, query, sample, separate_embedding=False):
         if separate_embedding:
             return self.forward_separate_emb(query, sample)
@@ -101,9 +111,8 @@ class ScoringModule:
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
         return scorer_out
 
-    def forward_combined_emb(self, query, sample):
+    def forward_combined_emb(self, query, code):
         with torch.no_grad():
-            _, code, static_tags, regex_tags, ccg_parse = sample
             embedder_out = embedder.embed(query, code)
             if embedder_out is None:
                 raise ProcessingException()
