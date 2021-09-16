@@ -2,6 +2,7 @@ import torch
 
 import roberta_embedder as embedder
 from layout_assembly.action_v1 import ActionModule_v1
+from layout_assembly.utils import ProcessingException
 
 
 def get_verb_embedding(verb):

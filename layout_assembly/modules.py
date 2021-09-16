@@ -1,3 +1,5 @@
+from itertools import chain
+
 import torch
 
 import codebert_embedder as embedder
@@ -5,7 +7,6 @@ from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.utils import ProcessingException
-from itertools import chain
 
 
 class ActionModuleFacade_v1:
@@ -76,7 +77,13 @@ class ScoringModule:
             embedder.model.load_state_dict(models['embedder'])
             embedder.model = embedder.model.to(device)
 
-    def forward(self, query, sample):
+    def forward(self, query, sample, separate_embedding=False):
+        if separate_embedding:
+            return self.forward_separate_emb(query, sample)
+        else:
+            return self.forward_combined_emb(query, sample)
+
+    def forward_separate_emb(self, query, sample):
         with torch.no_grad():
             _, code, static_tags, regex_tags, ccg_parse = sample
             query_embedder_out = embedder.embed(query, [' '])
@@ -94,7 +101,7 @@ class ScoringModule:
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
         return scorer_out
 
-    def forward_v2(self, query, sample):
+    def forward_combined_emb(self, query, sample):
         with torch.no_grad():
             _, code, static_tags, regex_tags, ccg_parse = sample
             embedder_out = embedder.embed(query, code)
@@ -110,6 +117,4 @@ class ScoringModule:
             cls_token_embedding = cls_token_embedding.repeat(embedder.max_seq_length, 1)
             forward_input = torch.cat((cls_token_embedding, code_embedding), dim=1)
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
-
-            print(scorer_out.shape, token_count)
             return scorer_out

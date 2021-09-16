@@ -37,14 +37,14 @@ class FC_Hypernetwork(nn.Module):
             end += self.param_sizes[param_id]
             del layer.weight
             layer.weight = weights.index_select(
-                dim=1, 
+                dim=1,
                 index=torch.torch.LongTensor(range(start, end)).to(self.device)).view(self.param_shapes[param_id])
 
             start = end
             end += self.param_sizes[param_id + 1]
             del layer.bias
             layer.bias = weights.index_select(
-                dim=1, 
+                dim=1,
                 index=torch.torch.LongTensor(range(start, end)).to(self.device)).view(self.param_shapes[param_id + 1])
             param_id += 2
 
@@ -58,6 +58,6 @@ class FC_Hypernetwork(nn.Module):
     def train(self):
         self.model.train()
         self.dest_net.train()
-        
-    def parameters(self):
-        return self.model.parameters()
+
+    def parameters(self, **kwargs):
+        return self.model.parameters(**kwargs)

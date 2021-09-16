@@ -1,5 +1,6 @@
 import torch
 from transformers import RobertaTokenizer, RobertaModel
+
 from layout_assembly.utils import ProcessingException
 
 max_seq_length = 512
@@ -29,5 +30,6 @@ def forward(doc):
         if inputs['input_ids'].shape[1] <= 2:
             print(doc)
             raise ProcessingException()
-        outputs = model(input_ids=inputs['input_ids'][:, 1:-1].to(device), attention_mask=inputs['attention_mask'][:, 1:-1].to(device))
+        outputs = model(input_ids=inputs['input_ids'][:, 1:-1].to(device),
+                        attention_mask=inputs['attention_mask'][:, 1:-1].to(device))
         return outputs.last_hidden_state

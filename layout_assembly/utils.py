@@ -2,6 +2,7 @@ import torch
 
 import codebert_embedder as embedder
 
+
 class ProcessingException(Exception):
     def __init__(self, *args):
         super(Exception, self).__init__(*args)

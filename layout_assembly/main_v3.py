@@ -12,15 +12,9 @@ from layout_assembly.modules import ScoringModule, ActionModuleFacade_v3
 
 
 def main(device, data_file, scoring_checkpoint, print_every, save_every, num_epochs):
-    
     data = pd.read_json(data_file, lines=True)
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    # version = args.version
     action_module = ActionModuleFacade_v3(device)
-    # if version == 1:
-    #     action_module = ActionModuleFacade_v1(device)
-    # elif version == 2:
-    #     action_module = ActionModuleFacade_v2(device)
     layout_net = LayoutNet(scoring_module, action_module, device)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=1e-4)
@@ -87,8 +81,6 @@ if __name__ == '__main__':
                         help='print to tensorboard after this many iterations', default=100)
     parser.add_argument('--save_every', dest='save_every', type=int,
                         help='save to checkpoint after this many iterations', default=5000)
-    # parser.add_argument('--version', dest='version', type=int,
-    #                     help='Whether to run ActionV1 or ActionV2', required=True)
 
     args = parser.parse_args()
     device = args.device

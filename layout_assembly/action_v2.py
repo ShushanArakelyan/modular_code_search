@@ -17,10 +17,10 @@ class ActionModule_v2_one_input(ActionModule_v2):
     def __init__(self, device, eval=False):
         ActionModule_v2.__init__(self, device)
         dim = embedder.dim
-        self.model1 = FC_Hypernetwork(dim, 
+        self.model1 = FC_Hypernetwork(dim,
                                       torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, 128),
                                                           torch.nn.ReLU(),
-                                                          torch.nn.Linear(128, 1)).to(device), 
+                                                          torch.nn.Linear(128, 1)).to(device),
                                       device)
         self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + embedder.max_seq_length, 128),
                                           torch.nn.ReLU(),
@@ -47,26 +47,26 @@ class ActionModule_v2_one_input(ActionModule_v2):
         code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
         self.set_hyper_param(verb_embedding)
         scores_out = self.model1.forward(torch.cat(
-            (prep_embedding.repeat(embedder.max_seq_length, 1), 
-             code_embeddings, 
+            (prep_embedding.repeat(embedder.max_seq_length, 1),
+             code_embeddings,
              scores), dim=1))
         emb_out = self.model2.forward(
             torch.cat((verb_embedding, prep_embedding, scores_out.squeeze().unsqueeze(dim=0)), dim=1))
         return emb_out, scores_out
 
-    
+
 class ActionModule_v2_two_inputs(ActionModule_v2):
     def __init__(self, device, eval=False):
         ActionModule_v2.__init__(self, device)
         dim = embedder.dim
         # outputs a sequence of scores
-        self.model1 = FC_Hypernetwork(dim, 
+        self.model1 = FC_Hypernetwork(dim,
                                       torch.nn.Sequential(torch.nn.Linear(dim * 3 + 2, 128),
                                                           torch.nn.ReLU(),
-                                                          torch.nn.Linear(128, 1)).to(self.device), 
+                                                          torch.nn.Linear(128, 1)).to(self.device),
                                       device)
         # outputs an embedding
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, 128), 
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, 128),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)
         if eval:
@@ -95,15 +95,15 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
         self.set_hyper_param(verb_embedding)
         scores_out = self.model1.forward(torch.cat(
-            (prep1_embedding.repeat(embedder.max_seq_length, 1), 
-             prep2_embedding.repeat(embedder.max_seq_length, 1), 
-             code_embeddings, 
-             scores1, 
+            (prep1_embedding.repeat(embedder.max_seq_length, 1),
+             prep2_embedding.repeat(embedder.max_seq_length, 1),
+             code_embeddings,
+             scores1,
              scores2), dim=1))
-        emb_out = self.model2.forward(torch.cat((verb_embedding, 
-                                                      prep1_embedding, 
-                                                      prep2_embedding,
-                                                      scores_out.squeeze().unsqueeze(dim=0)), dim=1))
+        emb_out = self.model2.forward(torch.cat((verb_embedding,
+                                                 prep1_embedding,
+                                                 prep2_embedding,
+                                                 scores_out.squeeze().unsqueeze(dim=0)), dim=1))
         return emb_out, scores_out
 
 

@@ -1,9 +1,10 @@
+from itertools import chain
+
 import torch
 
 import codebert_embedder as embedder
 from layout_assembly.utils import ActionModuleWrapper
 from layout_assembly.utils import ProcessingException
-from itertools import chain
 
 
 class LayoutNode:
