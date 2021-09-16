@@ -43,11 +43,30 @@ def get_feature_inputs(query, code):
             'token_type_ids': None}
 
 
+def get_feature_inputs_batch(queries, codes):
+    examples = [InputExample(0, text_a=q, text_b=c, label="0") for q, c in zip(queries, codes)]
+    """Converts the input tokens into CodeBERT inputs."""
+    features = convert_examples_to_features(examples, ["0", "1"], max_seq_length, tokenizer,
+                                            "classification", cls_token_at_end=False,
+                                            cls_token=tokenizer.cls_token,
+                                            sep_token=tokenizer.sep_token,
+                                            cls_token_segment_id=1,
+                                            pad_on_left=False,
+                                            pad_token_segment_id=0)
+
+    input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
+    input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
+    return {'input_ids': input_ids,
+            'attention_mask': input_mask,
+            'token_type_ids': None}
+
+
 def get_embeddings(inputs):
     """Gets the embeddings of all the tokens of the input sentence."""
     output = model(**inputs, output_hidden_states=True)
     embeddings = output['hidden_states']
-    embeddings = inputs['attention_mask'].T * embeddings[-1].squeeze()
+    embeddings = inputs['attention_mask'].unsqueeze(dim=2) * embeddings[-1]
+    embeddings = embeddings.squeeze()
     return embeddings
 
 
@@ -75,6 +94,18 @@ def filter_embedding_by_id(query_embedding, token_ids):
                                                 0))  # i am not sure, that the gradients get propagated through here
     token_embeddings = torch.cat(token_embeddings)
     return token_embeddings
+
+
+def embed_batch(docs, codes):
+    inputs = get_feature_inputs_batch([' '.join(d) for d in docs], [' '.join(c) for c in codes])
+    embedding = get_embeddings(inputs)
+    cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor(0).to(device))
+    sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
+    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(range(0, sep_tokens.shape[0], 2)))[:, 1]
+    code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
+                                                         (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
+                                 for i in range(separator.shape[0])], dim=0)
+    return cls_embeddings, code_embeddings
 
 
 def embed(doc, code, fast=False):
