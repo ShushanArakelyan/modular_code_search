@@ -9,27 +9,32 @@ class ProcessingException(Exception):
 
 
 class ActionModuleWrapper(object):
+    empty_emb = None
+    prep_emb_cache = {}
+
     def __init__(self, action_module_facade):
         self.param = None
         self.inputs = []
         self.input_count = 0
         self.module = action_module_facade
 
-    def forward(self, code):
-        return self.module.forward(self.param, self.inputs, code)
+    def forward(self, code, verb_embedding):
+        return self.module.forward(self.param, self.inputs, code, verb_embedding)
 
     def add_input(self, input):
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
             self.inputs[-1].append(input)
         else:
-            with torch.no_grad():
-                empty_emb = embedder.embed([' '], [' '])[1]
-                self.inputs.append([empty_emb, input])
+            if ActionModuleWrapper.empty_emb is None:
+                with torch.no_grad():
+                    ActionModuleWrapper.empty_emb = embedder.embed([' '], [' '])[1]
+            self.inputs.append([ActionModuleWrapper.empty_emb, input])
 
     def add_preposition(self, prep):
-        with torch.no_grad():
-            prep_emb = embedder.embed([prep], [' '])[1]
-            self.inputs.append([prep_emb])
+        if prep not in ActionModuleWrapper.prep_emb_cache:
+            with torch.no_grad():
+                ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
+        self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
 
 
 class TestActionModuleWrapper(object):

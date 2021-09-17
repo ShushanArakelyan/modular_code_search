@@ -5,10 +5,35 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
-from torch.utils.tensorboard import SummaryWriter
 
 from layout_assembly.layout_v2 import LayoutNet_v2 as LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v3
+
+# from torch.utils.tensorboard import SummaryWriter
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
+    parser.add_argument('--device', dest='device', type=str,
+                        help='device to run on')
+    parser.add_argument('--data_file', dest='data_file', type=str,
+                        help='training data directory', required=True)
+    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
+                        help='Scoring module checkpoint', required=True)
+    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
+                        help='number of epochs to train', default=10)
+    parser.add_argument('--print_every', dest='print_every', type=int,
+                        help='print to tensorboard after this many iterations', default=100)
+    parser.add_argument('--save_every', dest='save_every', type=int,
+                        help='save to checkpoint after this many iterations', default=5000)
+
+    args = parser.parse_args()
+    device = args.device
+    data_file = args.data_file
+    scoring_checkpoint = args.scoring_checkpoint
+    print_every = args.print_every
+    save_every = args.save_every
+    num_epochs = args.num_epochs
+    main(device, data_file, scoring_checkpoint, print_every, save_every, num_epochs)
 
 
 def main(device, data_file, scoring_checkpoint, print_every, save_every, num_epochs):
@@ -21,7 +46,7 @@ def main(device, data_file, scoring_checkpoint, print_every, save_every, num_epo
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
-    writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
+    # writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
 
     writer_it = 0
@@ -65,28 +90,3 @@ def main(device, data_file, scoring_checkpoint, print_every, save_every, num_epo
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_3_it_{i + 1}")
                 print("saved successfully")
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
-    parser.add_argument('--device', dest='device', type=str,
-                        help='device to run on')
-    parser.add_argument('--data_file', dest='data_file', type=str,
-                        help='training data directory', required=True)
-    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
-                        help='Scoring module checkpoint', required=True)
-    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
-                        help='number of epochs to train', default=10)
-    parser.add_argument('--print_every', dest='print_every', type=int,
-                        help='print to tensorboard after this many iterations', default=100)
-    parser.add_argument('--save_every', dest='save_every', type=int,
-                        help='save to checkpoint after this many iterations', default=5000)
-
-    args = parser.parse_args()
-    device = args.device
-    data_file = args.data_file
-    scoring_checkpoint = args.scoring_checkpoint
-    print_every = args.print_every
-    save_every = args.save_every
-    num_epochs = args.num_epochs
-    main(device, data_file, scoring_checkpoint, print_every, save_every, num_epochs)

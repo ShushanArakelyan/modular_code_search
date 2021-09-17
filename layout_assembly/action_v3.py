@@ -27,7 +27,7 @@ class ActionModule_v3_one_input(ActionModule_v1):
         if eval:
             self.eval()
 
-    def forward(self, verb, arg1, code_embeddings):
+    def forward(self, verb, arg1, _, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
             emb, scores = scores
@@ -35,8 +35,9 @@ class ActionModule_v3_one_input(ActionModule_v1):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        verb_embedding = get_verb_embedding(verb)
-        verb_embedding = torch.mean(verb_embedding, dim=1)
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embeddings = precomputed_embeddings
 
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
@@ -63,7 +64,7 @@ class ActionModule_v3_two_inputs(ActionModule_v1):
         if eval:
             self.eval()
 
-    def forward(self, verb, args, code_embeddings):
+    def forward(self, verb, args, _, precomputed_embeddings):
         arg1, arg2 = args
         prep1_embedding, scores1 = arg1
         if isinstance(scores1, tuple):
@@ -77,11 +78,9 @@ class ActionModule_v3_two_inputs(ActionModule_v1):
             prep2_embedding = (emb + prep2_embedding) / 2
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
-        if verb is None:
+        if precomputed_embeddings is None:
             raise ProcessingException()
-        verb_embedding = get_verb_embedding(verb)
-        verb_embedding = torch.mean(verb_embedding, dim=1)
-
+        verb_embedding, code_embeddings = precomputed_embeddings
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep1_emb = prep1_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep2_emb = prep2_embedding.repeat(embedder.max_seq_length, 1)

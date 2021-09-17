@@ -29,7 +29,7 @@ class ActionModule_v2_one_input(ActionModule_v2):
         if eval:
             self.eval()
 
-    def forward(self, verb, arg1, code_tokens):
+    def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
             prep_embedding = (scores[0] + prep_embedding) / 2
@@ -37,14 +37,9 @@ class ActionModule_v2_one_input(ActionModule_v2):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        with torch.no_grad():
-            embedding_out = embedder.embed([verb], code_tokens, fast=True)
-            if embedding_out is None:
-                raise ProcessingException()
-            _, _, _, code_embeddings, _, _, verb_embedding = embedding_out
-
-        padding_size = embedder.max_seq_length - len(code_embeddings)
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embeddings = precomputed_embeddings
         self.set_hyper_param(verb_embedding)
         scores_out = self.model1.forward(torch.cat(
             (prep_embedding.repeat(embedder.max_seq_length, 1),
@@ -72,7 +67,7 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         if eval:
             self.eval()
 
-    def forward(self, verb, args, code_tokens):
+    def forward(self, verb, args, code_tokens, precomputed_embeddings):
         arg1, arg2 = args
         prep1_embedding, scores1 = arg1
         if isinstance(scores1, tuple):
@@ -83,17 +78,24 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         prep2_embedding, scores2 = arg2
         if isinstance(scores2, tuple):
             prep2_embedding = (scores2[0] + prep2_embedding) / 2
+            print(prep2_embedding)
             scores2 = scores2[1]
+            print(verb)
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
-        with torch.no_grad():
-            embedding_out = embedder.embed([verb], code_tokens, fast=True)
-            if embedding_out is None:
-                raise ProcessingException()
-            _, _, _, code_embeddings, _, _, verb_embedding = embedding_out
-        padding_size = embedder.max_seq_length - len(code_embeddings)
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embeddings = precomputed_embeddings
         self.set_hyper_param(verb_embedding)
+        print(prep1_embedding.repeat(embedder.max_seq_length, 1).shape,
+              prep2_embedding.repeat(embedder.max_seq_length, 1).shape,
+              code_embeddings.shape, scores1.shape, scores2.shape)
+        print(torch.cat(
+            (prep1_embedding.repeat(embedder.max_seq_length, 1),
+             prep2_embedding.repeat(embedder.max_seq_length, 1),
+             code_embeddings,
+             scores1,
+             scores2), dim=1).shape)
         scores_out = self.model1.forward(torch.cat(
             (prep1_embedding.repeat(embedder.max_seq_length, 1),
              prep2_embedding.repeat(embedder.max_seq_length, 1),

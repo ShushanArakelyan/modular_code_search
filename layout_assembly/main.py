@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
-from torch.utils.tensorboard import SummaryWriter
 
 from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
+
+
+# from torch.utils.tensorboard import SummaryWriter
 
 
 def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_every, version):
@@ -18,15 +20,13 @@ def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_ev
         action_module = ActionModuleFacade_v1(device)
     elif version == 2:
         action_module = ActionModuleFacade_v2(device)
-    else:
-        raise Exception("unknown Action Module Version!")
     layout_net = LayoutNet(scoring_module, action_module, device)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=1e-4)
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
-    writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
+    # writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
 
     writer_it = 0
@@ -35,7 +35,7 @@ def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_ev
     for _ in range(num_epochs):
         cumulative_loss = []
         accuracy = []
-        for i in tqdm.tqdm(range(len(data))):
+        for i in tqdm.tqdm(range(50)):
             for li, label in enumerate([positive, negative]):
                 for param in layout_net.parameters():
                     param.grad = None
