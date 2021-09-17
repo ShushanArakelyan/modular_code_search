@@ -12,14 +12,13 @@ from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, Action
 
 
 def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_every, version):
+    
     data = pd.read_json(data_file, lines=True)
     scoring_module = ScoringModule(device, scoring_checkpoint)
     if version == 1:
         action_module = ActionModuleFacade_v1(device)
     elif version == 2:
         action_module = ActionModuleFacade_v2(device)
-    else:
-        raise Exception("unknown Action Module Version!")
     layout_net = LayoutNet(scoring_module, action_module, device)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=1e-4)
@@ -35,7 +34,7 @@ def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_ev
     for _ in range(num_epochs):
         cumulative_loss = []
         accuracy = []
-        for i in tqdm.tqdm(range(len(data))):
+        for i in tqdm.tqdm(range(50)):
             for li, label in enumerate([positive, negative]):
                 for param in layout_net.parameters():
                     param.grad = None
@@ -72,7 +71,7 @@ def main(device, data_file, scoring_checkpoint, num_epochs, print_every, save_ev
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(f"/home/shushan/action_test_checkpoint_v_{version}_it_{i}")
                 print("saved successfully")
-
+            
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
@@ -92,5 +91,4 @@ if __name__ == '__main__':
                         help='Whether to run ActionV1 or ActionV2', required=True)
 
     args = parser.parse_args()
-    main(args.device, args.data_file, args.scoring_checkpoint, args.num_epochs, args.print_every, args.save_every,
-         args.version)
+    main(args.device, args.data_file, args.scoring_checkpoint, args.num_epochs, args.print_every, args.save_every, args.version)

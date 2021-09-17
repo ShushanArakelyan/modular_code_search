@@ -18,12 +18,12 @@ class ActionModuleFacade_v1:
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
-    def forward(self, verb, inputs, code):
+    def forward(self, verb, inputs, code, verb_embedding):
         num_inputs = len(inputs)
         if num_inputs > 2:
             raise ProcessingException()
         module = self.modules[num_inputs]
-        emb, pred = module.forward(verb, inputs, code)
+        emb, pred = module.forward(verb, inputs, code, verb_embedding)
         return emb, pred
 
     def parameters(self):
@@ -82,7 +82,7 @@ class ScoringModule:
             raise Exception("Separate embedding not supported for processing in batch")
         with torch.no_grad():
             query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
-            query_embeddings = query_embeddings.unsqueeze(dim=1).repeat(embedder.max_seq_length, 1)
+            query_embeddings = query_embeddings.repeat(1, embedder.max_seq_length, 1)
             forward_input = torch.cat((query_embeddings, code_embeddings), dim=2)
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input))
         return scorer_out

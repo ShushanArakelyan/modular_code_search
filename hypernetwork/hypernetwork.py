@@ -61,3 +61,10 @@ class FC_Hypernetwork(nn.Module):
 
     def parameters(self, **kwargs):
         return self.model.parameters(**kwargs)
+    
+    def load_state_dict(self, d):
+        self.model.load_state_dict({'0.weight': d['model.0.weight'], '2.weight': d['model.2.weight'], '0.bias': d['model.0.bias'], '2.bias': d['model.2.bias']})
+        self.model = self.model.to(self.device)
+
+    def state_dict(self):
+        return self.model.state_dict()

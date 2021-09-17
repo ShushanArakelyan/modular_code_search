@@ -50,7 +50,7 @@ class ActionModule_v1_one_input(ActionModule_v1):
         if eval:
             self.eval()
 
-    def forward(self, verb, arg1, code_tokens):
+    def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
             emb, scores = scores
@@ -58,16 +58,9 @@ class ActionModule_v1_one_input(ActionModule_v1):
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
 
-        with torch.no_grad():
-            embedding_out = embedder.embed(verb, code_tokens, fast=True)
-            if embedding_out is None:
-                raise ProcessingException()
-            _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
-
-        padding_size = embedder.max_seq_length - len(code_embeddings)
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
-        verb_embedding = cls_token_embedding
-
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embeddings = precomputed_embeddings 
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
         model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
@@ -92,7 +85,7 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         if eval:
             self.eval()
 
-    def forward(self, verb, args, code_tokens):
+    def forward(self, verb, args, code_tokens, precomputed_embeddings):
         arg1, arg2 = args
         prep1_embedding, scores1 = arg1
         if isinstance(scores1, tuple):
@@ -107,15 +100,9 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
 
-        with torch.no_grad():
-            embedding_out = embedder.embed([verb], code_tokens, fast=True)
-            if embedding_out is None:
-                raise ProcessingException()
-            _, _, _, code_embeddings, _, _, cls_token_embedding = embedding_out
-
-        padding_size = embedder.max_seq_length - len(code_embeddings)
-        code_embeddings = torch.nn.functional.pad(code_embeddings, (0, 0, 0, padding_size), 'constant', 0)
-        verb_embedding = cls_token_embedding
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embeddings = precomputed_embeddings 
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep1_emb = prep1_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep2_emb = prep2_embedding.repeat(embedder.max_seq_length, 1)

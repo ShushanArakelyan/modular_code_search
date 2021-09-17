@@ -61,12 +61,13 @@ def get_feature_inputs_batch(queries, codes):
             'token_type_ids': None}
 
 
-def get_embeddings(inputs):
+def get_embeddings(inputs, batch=False):
     """Gets the embeddings of all the tokens of the input sentence."""
     output = model(**inputs, output_hidden_states=True)
     embeddings = output['hidden_states']
     embeddings = inputs['attention_mask'].unsqueeze(dim=2) * embeddings[-1]
-    embeddings = embeddings.squeeze()
+    if not batch:
+        embeddings = embeddings.squeeze()
     return embeddings
 
 
@@ -97,11 +98,11 @@ def filter_embedding_by_id(query_embedding, token_ids):
 
 
 def embed_batch(docs, codes):
-    inputs = get_feature_inputs_batch([' '.join(d) for d in docs], [' '.join(c) for c in codes])
-    embedding = get_embeddings(inputs)
-    cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor(0).to(device))
+    inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
+    embedding = get_embeddings(inputs, True)
+    cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
-    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(range(0, sep_tokens.shape[0], 2)))[:, 1]
+    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(range(0, sep_tokens.shape[0], 2)).to(device))[:, 1]
     code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
                                                          (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
                                  for i in range(separator.shape[0])], dim=0)
