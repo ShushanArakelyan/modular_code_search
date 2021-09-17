@@ -87,15 +87,6 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         self.set_hyper_param(verb_embedding)
-        print(prep1_embedding.repeat(embedder.max_seq_length, 1).shape,
-              prep2_embedding.repeat(embedder.max_seq_length, 1).shape,
-              code_embeddings.shape, scores1.shape, scores2.shape)
-        print(torch.cat(
-            (prep1_embedding.repeat(embedder.max_seq_length, 1),
-             prep2_embedding.repeat(embedder.max_seq_length, 1),
-             code_embeddings,
-             scores1,
-             scores2), dim=1).shape)
         scores_out = self.model1.forward(torch.cat(
             (prep1_embedding.repeat(embedder.max_seq_length, 1),
              prep2_embedding.repeat(embedder.max_seq_length, 1),
