@@ -1,6 +1,7 @@
 from itertools import chain
 
 import torch
+import numpy as np
 
 import codebert_embedder as embedder
 from layout_assembly.utils import ActionModuleWrapper
@@ -13,6 +14,9 @@ class LayoutNode:
         self.node_value = None
         self.children = []
         self.parent = None
+        self.scoring_outputs = None
+        self.verb_embeddings = None
+        self.code_embeddings = None
 
 
 class LayoutNet:
@@ -52,10 +56,22 @@ class LayoutNet:
         tree = self.remove_concats(tree)
         code = sample[1]
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-        self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-        self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
+#         self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+#         self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
+#         return 
+#         self.scoring_outputs_test = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+#         self.verb_embeddings_test, self.code_embeddings_test = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
+#         a = self.scoring_outputs.cpu().numpy()
+#         b = self.scoring_outputs_test.cpu().numpy()
+#         assert np.all(a == b), (np.where(a != b), a, b)
+#         a = self.verb_embeddings_test.detach().cpu().numpy()
+#         b = self.verb_embeddings.detach().cpu().numpy()
+#         assert np.all(a == b), (np.where(a != b), a, b)
+#         a = self.code_embeddings.detach().cpu().numpy()
+#         b = self.code_embeddings_test.detach().cpu().numpy()
+#         assert np.all(a == b), (np.where(a != b), a, b)
         try:
-            _, output, _ = self.process_node(tree, code)
+            _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         pred = self.classifier.forward(output[0])
