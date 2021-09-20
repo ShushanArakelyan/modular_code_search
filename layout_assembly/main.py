@@ -3,7 +3,6 @@ from datetime import datetime
 
 import numpy as np
 import os
-import pandas as pd
 import torch
 import tqdm
 
@@ -14,7 +13,7 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced
-from layout_assembly.data_loader import CodeSearchNetDataset
+from eval.dataset import CodeSearchNetDataset
 
 
 def transform_sample(sample):

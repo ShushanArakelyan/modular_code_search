@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 import codebert_embedder as embedder
-from scoring.eval_utils import find_split_point, eval_example
+from scoring.scoring_eval_utils import find_split_point, eval_example
 
 
 def run_eval_epoch(data, scorer, embedder, embed_separately, version, normalize, split_point=0.5):
