@@ -13,21 +13,7 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced
-from eval.dataset import CodeSearchNetDataset
-
-
-def transform_sample(sample):
-    nsample = []
-    for si in sample[:-1]:
-        nsii = []
-        for sii in si:
-            if len(sii) > 0:
-                nsii.append(sii[0])
-            else:
-                nsii.append(sii)
-        nsample.append(nsii)
-    ccg_parse = sample[-1][0][1:-1]
-    return ccg_parse, nsample
+from eval.dataset import CodeSearchNetDataset, transform_sample
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version):

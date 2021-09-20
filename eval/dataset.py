@@ -7,6 +7,20 @@ from torch.utils.data import Dataset
 import numpy as np
 
 
+def transform_sample(sample):
+    nsample = []
+    for si in sample[:-1]:
+        nsii = []
+        for sii in si:
+            if len(sii) > 0:
+                nsii.append(sii[0])
+            else:
+                nsii.append(sii)
+        nsample.append(nsii)
+    ccg_parse = sample[-1][0][1:-1]
+    return ccg_parse, nsample
+
+
 class CodeSearchNetDataset(Dataset):
     def __init__(self, data_dir, file_it, device):
         self.data = pd.read_json(f'{data_dir}/ccg_train_{file_it}.jsonl.gz', lines=True)
@@ -53,20 +67,6 @@ class CodeSearchNetDataset(Dataset):
         code_embeddings = torch.FloatTensor(self.code_data_memmap[code_start:code_end]).to(self.device)
 
         return (sample, scores, verbs, code_embeddings, label)
-
-
-def transform_sample(sample):
-    nsample = []
-    for si in sample[:-1]:
-        nsii = []
-        for sii in si:
-            if len(sii) > 0:
-                nsii.append(sii[0])
-            else:
-                nsii.append(sii)
-        nsample.append(nsii)
-    ccg_parse = sample[-1][0][1:-1]
-    return ccg_parse, nsample
 
 
 class CodeSearchNetDataset_NotPrecomputed(Dataset):
