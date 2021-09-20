@@ -4,8 +4,7 @@ import torch
 import numpy as np
 
 import codebert_embedder as embedder
-from layout_assembly.utils import ActionModuleWrapper
-from layout_assembly.utils import ProcessingException
+from layout_assembly.utils import ActionModuleWrapper, ProcessingException
 
 
 class LayoutNode:
@@ -20,10 +19,11 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device, eval=False):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False):
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
         self.device = device
+        self.precomputed_scores_provided = precomputed_scores_provided
         dim = embedder.dim
         half_dim = int(dim / 2)
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
@@ -55,21 +55,10 @@ class LayoutNet:
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-#         self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-#         self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
-#         return 
-#         self.scoring_outputs_test = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-#         self.verb_embeddings_test, self.code_embeddings_test = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
-#         a = self.scoring_outputs.cpu().numpy()
-#         b = self.scoring_outputs_test.cpu().numpy()
-#         assert np.all(a == b), (np.where(a != b), a, b)
-#         a = self.verb_embeddings_test.detach().cpu().numpy()
-#         b = self.verb_embeddings.detach().cpu().numpy()
-#         assert np.all(a == b), (np.where(a != b), a, b)
-#         a = self.code_embeddings.detach().cpu().numpy()
-#         b = self.code_embeddings_test.detach().cpu().numpy()
-#         assert np.all(a == b), (np.where(a != b), a, b)
+        if not self.precomputed_scores_provided:
+            scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
+            self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+            self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
         try:
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
@@ -85,6 +74,8 @@ class LayoutNet:
                 action_module, _, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
                                                                             action_module)
             precomputed_embeddings = (self.verb_embeddings[action_it], self.code_embeddings[action_it])
+            if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
+                raise ProcessingException()
             action_it += 1
             output = action_module.forward(code, precomputed_embeddings)
             if parent_module:
@@ -92,6 +83,8 @@ class LayoutNet:
             return parent_module, output, scoring_it, action_it
         elif node.node_type == 'scoring':
             output = self.scoring_outputs[scoring_it]
+            if output.shape[0] == 0:
+                raise ProcessingException()
             scoring_it += 1
             parent_module.add_input(output)
             return parent_module, output, scoring_it, action_it

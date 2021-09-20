@@ -7,7 +7,7 @@ import numpy as np
 class CodeSearchNetDataset(Dataset):
     def __init__(self, data_dir, file_it, device):
         self.data = pd.read_json(f'{data_dir}/ccg_train_{file_it}.jsonl.gz', lines=True)
-        data_dir = '/home/shushan/train'
+        data_dir = '/home/shushan/train' # TODO - move all preprocessed scoring files to the datasets directory;
         self.device = device
         self.scores_data_memmap = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}.npy', dtype='float32', mode='r', shape=(200000, 512, 1))
         self.scores_offsets_memmap = np.memmap(f'{data_dir}/memmap_scores_offsets_{file_it}.npy', dtype='int32', mode='r', shape=(60000, 1))
@@ -22,7 +22,6 @@ class CodeSearchNetDataset(Dataset):
         return 2 * len(self.data) - 1 # TODO: temporary -1 until redo precomputed scores
 
     def __getitem__(self, idx):
-        print(idx)
         if idx < len(self.data):
             sample = (self.data['docstring_tokens'][idx],
                       self.data['code_tokens'][idx],
