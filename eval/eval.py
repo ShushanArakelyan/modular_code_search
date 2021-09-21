@@ -74,3 +74,6 @@ def main():
             if (i + 1) % 100 == 0:
                 print(np.mean(MRRs))
         print(np.mean(MRRs))
+
+if __name__ == "__main__":
+    main()
