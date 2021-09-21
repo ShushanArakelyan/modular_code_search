@@ -16,8 +16,8 @@ def main():
     parser = argparse.ArgumentParser(description='Fine-tune codebert model for attend module')
     parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
                         help='load scoring model saved in checkpoint', required=True)
-    parser.add_argument('--action_checkpoint', dest='action_checkpoint', type=str,
-                        help='load action model saved in checkpoint', required=True)
+    parser.add_argument('--layoutnet_checkpoint', dest='layoutnet_checkpoint', type=str,
+                        help='checkpoint for the action module', required=True)
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
