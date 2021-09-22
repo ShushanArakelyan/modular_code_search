@@ -19,8 +19,10 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False,
+                 finetune_codebert=False):
         self.scoring_module = scoring_module
+        self.finetune_codebert = finetune_codebert
         self.action_module_facade = action_module_facade
         self.device = device
         self.precomputed_scores_provided = precomputed_scores_provided
@@ -35,7 +37,10 @@ class LayoutNet:
             self.classifier.eval()
 
     def parameters(self):
-        return chain(self.classifier.parameters(), self.action_module_facade.parameters())
+        if self.finetune_codebert:
+            return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
+                         embedder.model.parameters())
+        return chain(self.classifier.parameters(), self.action_module_facade.parameters(), embedder.model.parameters())
 
     def load_from_checkpoint(self, checkpoint):
         self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
@@ -43,10 +48,15 @@ class LayoutNet:
         models = torch.load(checkpoint, map_location=self.device)
         self.classifier.load_state_dict(models['classifier'])
         self.classifier = self.classifier.to(self.device)
+        if self.finetune_codebert:
+            embedder.model.load_state_dict(models['codebert.model'])
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
-        torch.save({'classifier': self.classifier.state_dict()}, checkpoint)
+        model_dict = {'classifier': self.classifier.state_dict()}
+        if self.finetune_codebert:
+            model_dict['codebert.model']=embedder.model.state_dict()
+        torch.save(model_dict, checkpoint)
 
     def state_dict(self):
         return {'action_module': self.action_module_facade.state_dict(), 'classifier': self.classifier.state_dict()}
@@ -58,6 +68,12 @@ class LayoutNet:
         if not self.precomputed_scores_provided:
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+            if not self.finetune_codebert:
+                with torch.no_grad():
+                    self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0],
+                                                                                      verb_embeddings[1])
+        if self.finetune_codebert:
+            _, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
         try:
             _, output, _, _ = self.process_node(tree, code)

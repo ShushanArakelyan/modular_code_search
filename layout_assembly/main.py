@@ -16,7 +16,8 @@ from layout_assembly.modules import ActionModuleFacade_v1_1_reduced
 from eval.dataset import CodeSearchNetDataset, transform_sample
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version):
+def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
+         finetune_codebert=False):
     dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 1)])
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     scoring_module = ScoringModule(device, scoring_checkpoint)
@@ -30,9 +31,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         action_module = ActionModuleFacade_v1_1_reduced(device)
     
     if layout_net_version == 'classic':
-        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=True)
+        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=True,
+                               finetune_codebert=finetune_codebert)
     elif layout_net_version == 'with_adapters':
-        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=True)
+        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=True,
+                                           finetune_codebert=finetune_codebert)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr)
 
@@ -59,8 +62,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
             # an extra dimension
             layout_net.scoring_outputs = scores[0]
-            layout_net.verb_embeddings = verbs[0]
-            layout_net.code_embeddings = code_embeddings[0]
+            if not finetune_codebert:
+                layout_net.verb_embeddings = verbs[0]
+                layout_net.code_embeddings = code_embeddings[0]
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
@@ -106,6 +110,8 @@ if __name__ == '__main__':
                         help='learning rate', required=True)
     parser.add_argument('--layout_net_version', dest='layout_net_version', type=str,
                         help='"classic" or "with_adapters"', required=True)
+    parser.add_argument('--finetune_codebert', dest='finetune_codebert', default=False, action='store_true')
 
     args = parser.parse_args()
-    main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every, args.save_every, args.version, args.layout_net_version)
+    main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
+         args.save_every, args.version, args.layout_net_version, args.finetune_codebert)
