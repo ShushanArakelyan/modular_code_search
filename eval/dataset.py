@@ -20,9 +20,49 @@ def transform_sample(sample):
     ccg_parse = sample[-1][0][1:-1]
     return ccg_parse, nsample
 
-
+    
 class CodeSearchNetDataset(Dataset):
     def __init__(self, data_dir, file_it, device):
+        self.device = device
+        
+        print('loading ', f'{data_dir}/ccg_train_{file_it}.jsonl.gz')
+        self.data = pd.read_json(f'{data_dir}/ccg_train_{file_it}.jsonl.gz', lines=True)
+        offsets_count = int(len(self.data) + 1)
+        data_map_count = int(len(self.data) * 3.5)
+
+        self.scores_data_memmap = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}.npy', dtype='float32', mode='r', shape=(data_map_count, 512, 1))
+        self.scores_offsets_memmap = np.memmap(f'{data_dir}/memmap_scores_offsets_{file_it}.npy', dtype='int32', mode='r', shape=(offsets_count, 1))
+        self.verbs_data_memmap = np.memmap(f'{data_dir}/memmap_verbs_data_{file_it}.npy', dtype='float32', mode='r', shape=(data_map_count, 1, 768))
+        self.verbs_offsets_memmap = np.memmap(f'{data_dir}/memmap_verbs_offsets_{file_it}.npy', dtype='int32', mode='r', shape=(offsets_count, 1))
+        self.code_data_memmap = np.memmap(f'{data_dir}/memmap_code_data_{file_it}.npy', dtype='float32', mode='r', shape=(data_map_count, 512, 768))
+        self.code_offsets_memmap = np.memmap(f'{data_dir}/memmap_code_offsets_{file_it}.npy', dtype='int32', mode='r', shape=(offsets_count, 1))
+        self.positive_label = torch.FloatTensor([1]).to(device)
+        self.negative_label = torch.FloatTensor([0]).to(device)
+    
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sample = (self.data['docstring_tokens'][idx],
+                  self.data['code_tokens'][idx],
+                  self.data['static_tags'][idx],
+                  self.data['regex_tags'][idx],
+                  self.data['ccg_parse'][idx])
+        label =  self.positive_label if (self.data['label'][idx] == 1) else self.negative_label
+        scores_start = self.scores_offsets_memmap[idx][0]
+        scores_end = self.scores_offsets_memmap[idx + 1][0]
+        scores = torch.FloatTensor(self.scores_data_memmap[scores_start:scores_end]).to(self.device)
+        verbs_start = self.verbs_offsets_memmap[idx][0]
+        verbs_end = self.verbs_offsets_memmap[idx + 1][0]
+        verbs = torch.FloatTensor(self.verbs_data_memmap[verbs_start:verbs_end]).to(self.device)
+        code_start = self.code_offsets_memmap[idx][0]
+        code_end = self.code_offsets_memmap[idx + 1][0]
+        code_embeddings = torch.FloatTensor(self.code_data_memmap[code_start:code_end]).to(self.device)
+        return (sample, scores, verbs, code_embeddings, label)
+
+
+class CodeSearchNetDataset_BalancedNegatives(Dataset):
+    def __init__(self, data_dir, file_it, device, num_negatives=1):
         self.data = pd.read_json(f'{data_dir}/ccg_train_{file_it}.jsonl.gz', lines=True)
         data_dir = '/home/shushan/train' # TODO - move all preprocessed scoring files to the datasets directory;
         self.device = device
@@ -67,7 +107,7 @@ class CodeSearchNetDataset(Dataset):
         code_embeddings = torch.FloatTensor(self.code_data_memmap[code_start:code_end]).to(self.device)
 
         return (sample, scores, verbs, code_embeddings, label)
-
+    
 
 class CodeSearchNetDataset_NotPrecomputed(Dataset):
     def __init__(self, filename, device, neg_count):
@@ -147,10 +187,11 @@ class CodeSearchNetDataset_TFIDFOracle(Dataset):
         distances = euclidean_distances(tfIdf_query, tfIdf_docs)
         correct_distance = distances[:, 0]
         rank = np.sum(distances[:, 1:] < correct_distance)
-        if rank >= self.oracle_neg_count:
-            oracle_idxs = [0] + np.argsort(distances[:, 1:])[0, :self.oracle_neg_count - 1]
+        if rank >= self.oracle_neg_count + 1:
+            oracle_idxs = [0]
+            oracle_idxs.extend(np.argsort(distances[:, 1:])[0, :self.oracle_neg_count])
         else:
             # sort indices so the correct one is in index 0
-            oracle_idxs = sorted(np.argsort(distances[:, 1:])[0, :self.oracle_neg_count])
+            oracle_idxs = sorted(np.argsort(distances[:, 1:])[0, :self.oracle_neg_count + 1])
         oracle_negative_samples = [all_samples[i] for i in oracle_idxs]
         return oracle_negative_samples

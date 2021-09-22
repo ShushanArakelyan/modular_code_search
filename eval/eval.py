@@ -22,7 +22,7 @@ def main():
                         help='device to run on', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
                         help='validation file name', required=True)
-    parser.add_argument('--action_version', dest='action_version', type=str,
+    parser.add_argument('--action_version', dest='action_version', type=int,
                         help='Action version 1 or 2', required=True)
     parser.add_argument('--neg_sample_count', dest='neg_sample_count', type=int,
                         help='Negative samples to compare against', required=True)
@@ -45,18 +45,19 @@ def main():
 
     neg_sample_count = args.neg_sample_count
     oracle_neg_sample_count = args.oracle_neg_sample_count
-
     valid_file_name = args.valid_file_name
-    eval_version = 'classic'
+    eval_version = args.eval_version
+    print("Evaluation ", eval_version)
     if eval_version == 'classic':
         dataset = CodeSearchNetDataset_NotPrecomputed(valid_file_name, device, neg_sample_count)
     elif eval_version == 'tf-idf':
         dataset = CodeSearchNetDataset_TFIDFOracle(valid_file_name, device, neg_sample_count, oracle_neg_sample_count)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
-
     MRRs = []
-    with torch.no_grad():
-        for i, samples in tqdm.tqdm(enumerate(data_loader)):
+    with torch.no_grad(): 
+        i = 0
+        for samples in tqdm.tqdm(data_loader):
+            i += 1
             ranks = []
             sample = samples[0]
             pred = layout_net.forward(*transform_sample(sample))
@@ -71,7 +72,7 @@ def main():
                 else:
                     ranks.append(np.random.rand(1)[0])
             MRRs.append(mrr(ranks))
-            if (i + 1) % 100 == 0:
+            if i % 100 == 0:
                 print(np.mean(MRRs))
         print(np.mean(MRRs))
 

@@ -105,7 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', dest='lr', type=float,
                         help='learning rate', required=True)
     parser.add_argument('--layout_net_version', dest='layout_net_version', type=str,
-                        help='Version of Layout Net', required=True)
+                        help='"classic" or "with_adapters"', required=True)
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every, args.save_every, args.version, args.layout_net_version)
