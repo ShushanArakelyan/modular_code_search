@@ -1,35 +1,29 @@
 import argparse
-from datetime import datetime
-
 import glob
+
 import natsort
 import numpy as np
-import os
 import torch
-import tqdm
+from torch.utils.data import DataLoader
 
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import ConcatDataset, DataLoader
-
-from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle
+from eval.dataset import CodeSearchNetDataset_NotPrecomputed
+from eval.dataset import transform_sample
 from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
-
+from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 
 device = 'cuda:0'
-valid_file_name = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz' 
+valid_file_name = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz'
 valid_dataset = CodeSearchNetDataset_NotPrecomputed(valid_file_name, device, neg_count=9)
 valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
 
 def run_valid(data_loader, layout_net, count):
     MRRs = []
-    with torch.no_grad(): 
-        layout_net.precomputed_scores_provided = False 
+    with torch.no_grad():
+        layout_net.precomputed_scores_provided = False
         i = 0
         for samples in data_loader:
             if i == count:
@@ -60,10 +54,10 @@ if __name__ == "__main__":
     parser.add_argument('--action_version', dest='action_version', type=int,
                         help='action version')
     args = parser.parse_args()
-    
+
     scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    
+
     version = args.action_version
     if version == 1:
         action_module = ActionModuleFacade_v1(device)

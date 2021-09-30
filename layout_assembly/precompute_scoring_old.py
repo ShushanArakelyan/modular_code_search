@@ -6,12 +6,11 @@ import tqdm
 from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
 
-
 device = 'cuda:0'
-data_file = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_0.jsonl.gz' 
+data_file = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_0.jsonl.gz'
 scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
 num_negatives = 1
-new_df = pd.DataFrame(columns=['docstring_tokens', 'code_tokens', 'static_tags', 'regex_tags', 
+new_df = pd.DataFrame(columns=['docstring_tokens', 'code_tokens', 'static_tags', 'regex_tags',
                                'ccg_parse', 'score_offsets', 'verb_offsets', 'code_offsets'])
 
 
@@ -26,7 +25,7 @@ def sample_negative(idx, data):
         return random_idx
     elif NEG_SAMPLE_STRATEGY = 'hard':
         return sample_hard()
-    
+
 
 docstring_tokens = []
 code_tokens = []
@@ -37,11 +36,10 @@ score_offsets = []
 verb_offsets = []
 code_offsets = []
 
-
 for file_it in range(6):
     data_dir = '/home/shushan/train_v2'
     data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
-    data_file = f'{data_dir1}/ccg_train_{file_it}.jsonl.gz' 
+    data_file = f'{data_dir1}/ccg_train_{file_it}.jsonl.gz'
     data = pd.read_json(data_file, lines=True)
     scoring_module = ScoringModule(device, scoring_checkpoint)
     version = 2
@@ -56,14 +54,20 @@ for file_it in range(6):
     positive = torch.FloatTensor([[1]]).to(device)
     negative = torch.FloatTensor([[0]]).to(device)
 
-    scores_data_map = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}.npy', dtype='float32', mode='w+', shape=(200000, 512, 1))
-    scores_offsets_map = np.memmap(f'{data_dir}/memmap_scores_offsets_{file_it}.npy', dtype='int32', mode='w+', shape=(60001, 1))
+    scores_data_map = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}.npy', dtype='float32', mode='w+',
+                                shape=(200000, 512, 1))
+    scores_offsets_map = np.memmap(f'{data_dir}/memmap_scores_offsets_{file_it}.npy', dtype='int32', mode='w+',
+                                   shape=(60001, 1))
 
-    verbs_data_map = np.memmap(f'{data_dir}/memmap_verbs_data_{file_it}.npy', dtype='float32', mode='w+', shape=(200000, 1, 768))
-    verbs_offsets_map = np.memmap(f'{data_dir}/memmap_verbs_offsets_{file_it}.npy', dtype='int32', mode='w+', shape=(60001, 1))
-    
-    code_data_map = np.memmap(f'{data_dir}/memmap_code_data_{file_it}.npy', dtype='float32', mode='w+', shape=(200000, 512, 768))
-    code_offsets_map = np.memmap(f'{data_dir}/memmap_code_offsets_{file_it}.npy', dtype='int32', mode='w+', shape=(60001, 1))
+    verbs_data_map = np.memmap(f'{data_dir}/memmap_verbs_data_{file_it}.npy', dtype='float32', mode='w+',
+                               shape=(200000, 1, 768))
+    verbs_offsets_map = np.memmap(f'{data_dir}/memmap_verbs_offsets_{file_it}.npy', dtype='int32', mode='w+',
+                                  shape=(60001, 1))
+
+    code_data_map = np.memmap(f'{data_dir}/memmap_code_data_{file_it}.npy', dtype='float32', mode='w+',
+                              shape=(200000, 512, 768))
+    code_offsets_map = np.memmap(f'{data_dir}/memmap_code_offsets_{file_it}.npy', dtype='int32', mode='w+',
+                                 shape=(60001, 1))
 
     scores_offset = 0
     verbs_offset = 0
@@ -71,7 +75,7 @@ for file_it in range(6):
     new_scores_offset = 0
     new_verbs_offset = 0
     new_code_offset = 0
-    it = 0 
+    it = 0
     with torch.no_grad():
         for li, label in enumerate([positive] + num_negative * [negative]):
             for i in tqdm.tqdm(range(len(data))):
@@ -93,7 +97,7 @@ for file_it in range(6):
                               data['regex_tags'][random_idx],
                               data['ccg_parse'][i])
                 try:
-                    pred = layout_net.forward(ccg_parse, sample)                    
+                    pred = layout_net.forward(ccg_parse, sample)
                     scoring_outputs = layout_net.scoring_outputs
                     verb_embeddings = layout_net.verb_embeddings
                     code_embeddings = layout_net.code_embeddings
@@ -102,7 +106,6 @@ for file_it in range(6):
                     verb_embeddings = torch.FloatTensor(np.zeros((0, 1, 768)))
                     code_embeddings = torch.FloatTensor(np.zeros((0, 512, 768)))
 
-                
                 new_scores_offset = scores_offset + scoring_outputs.shape[0]
                 scores_offsets_map[it] = scores_offset
                 scores_data_map[scores_offset:new_scores_offset] = scoring_outputs.cpu().numpy()
@@ -112,12 +115,12 @@ for file_it in range(6):
                 verbs_offsets_map[it] = verbs_offset
                 verbs_data_map[verbs_offset:new_verbs_offset] = verb_embeddings.cpu().numpy()
                 verbs_offset = new_verbs_offset
-                
+
                 new_code_offset = code_offset + code_embeddings.shape[0]
                 code_offsets_map[it] = code_offset
                 code_data_map[code_offset:new_code_offset] = code_embeddings.cpu().numpy()
                 code_offset = new_code_offset
-                
+
                 it += 1
                 scores_data_map.flush()
                 scores_offsets_map.flush()
@@ -125,19 +128,18 @@ for file_it in range(6):
                 verbs_offsets_map.flush()
                 code_data_map.flush()
                 code_offsets_map.flush()
-            
+
         scores_offsets_map[it] = scores_offset
         scores_offsets_map.flush()
         verbs_offsets_map[it] = verbs_offset
         verbs_offsets_map.flush()
         code_offsets_map[it] = code_offset
         code_offsets_map.flush()
-        
-        
+
+
 def main(num_negatives):
-    
-    
-         
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Precompute CodeBERT embeddings for data')
     parser.add_argument('--device', dest='device', type=str,

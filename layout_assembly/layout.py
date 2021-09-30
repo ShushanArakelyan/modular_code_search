@@ -1,7 +1,6 @@
 from itertools import chain
 
 import torch
-import numpy as np
 
 import codebert_embedder as embedder
 from layout_assembly.utils import ActionModuleWrapper, ProcessingException
@@ -27,7 +26,7 @@ class LayoutNet:
         self.precomputed_scores_provided = precomputed_scores_provided
         dim = embedder.dim
         half_dim = int(dim / 2)
-        
+
         def init_weights(m):
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.xavier_uniform(m.weight)
@@ -58,7 +57,7 @@ class LayoutNet:
     def save_to_checkpoint(self, checkpoint):
         self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
         model_dict = {'classifier': self.classifier.state_dict()}
-        model_dict['codebert.model']=embedder.model.state_dict()
+        model_dict['codebert.model'] = embedder.model.state_dict()
         torch.save(model_dict, checkpoint)
 
     def state_dict(self):
@@ -68,7 +67,7 @@ class LayoutNet:
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        if len(code) == 0: # erroneous example
+        if len(code) == 0:  # erroneous example
             return None
         try:
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')

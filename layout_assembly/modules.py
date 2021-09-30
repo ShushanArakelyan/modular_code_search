@@ -3,12 +3,12 @@ from itertools import chain
 import torch
 
 import codebert_embedder as embedder
+from layout_assembly.action_adapter import ActionModule_v1_reduced_one_input, ActionModule_v1_reduced_two_inputs
+from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.action_v4 import ActionModule_v4_one_input, ActionModule_v4_two_inputs
-from layout_assembly.action_adapter import ActionModule_v1_reduced_one_input, ActionModule_v1_reduced_two_inputs
-from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input, ActionModule_v2_1_two_inputs
 from layout_assembly.utils import ProcessingException
 
 
@@ -54,8 +54,8 @@ class ActionModuleFacade_v2(ActionModuleFacade_v1):
         self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
-            
-            
+
+
 class ActionModuleFacade_v3(ActionModuleFacade_v1):
     def __init__(self, device, checkpoint=None, eval=False):
         ActionModuleFacade_v1.__init__(self, device)
@@ -65,7 +65,7 @@ class ActionModuleFacade_v3(ActionModuleFacade_v1):
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
-            
+
 class ActionModuleFacade_v4(ActionModuleFacade_v1):
     def __init__(self, device, checkpoint=None, eval=False):
         ActionModuleFacade_v1.__init__(self, device)
@@ -75,7 +75,7 @@ class ActionModuleFacade_v4(ActionModuleFacade_v1):
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
-            
+
 class ActionModuleFacade_v1_1_reduced(ActionModuleFacade_v1):
     def __init__(self, device, checkpoint=None, eval=False):
         ActionModuleFacade_v1.__init__(self, device)
@@ -85,7 +85,7 @@ class ActionModuleFacade_v1_1_reduced(ActionModuleFacade_v1):
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
-            
+
 class ActionModuleFacade_v2_1(ActionModuleFacade_v1):
     def __init__(self, device, checkpoint=None, eval=False):
         ActionModuleFacade_v1.__init__(self, device)
@@ -94,8 +94,8 @@ class ActionModuleFacade_v2_1(ActionModuleFacade_v1):
         self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
-            
-            
+
+
 class ScoringModule:
     def __init__(self, device, checkpoint=None, eval=True):
         if not embedder.initialized:

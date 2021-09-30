@@ -1,10 +1,9 @@
-import numpy as np
 import torch
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer
 
+from codebert_embedder_with_adapter.roberta_with_adapter import RobertaWithAdaptersConfig, RobertaModelWithAdapter, \
+    ParameterGenerator, RobertaWithHyperAdapters
 from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_features, InputExample
-
-from codebert_embedder_with_adapter.roberta_with_adapter import RobertaWithAdaptersConfig, RobertaModelWithAdapter, ParameterGenerator, RobertaWithHyperAdapters
 
 max_seq_length = 512
 dim = 768
@@ -25,15 +24,16 @@ def init_embedder(_device):
         device = _device
     else:
         device = 'cpu'
-    
+
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
     config = RobertaWithAdaptersConfig.from_pretrained('microsoft/codebert-base')
-    codebert = RobertaModelWithAdapter.from_pretrained("microsoft/codebert-base", config=config, device=device).to(device)
+    codebert = RobertaModelWithAdapter.from_pretrained("microsoft/codebert-base", config=config, device=device).to(
+        device)
     param_generator = ParameterGenerator(config, device)
     model = RobertaWithHyperAdapters(codebert, param_generator, config, device=device)
     initialized = True
 
-    
+
 def get_feature_inputs(code):
     examples = [InputExample(0, text_a=' ', text_b=code, label="0")]
     """Converts the input tokens into CodeBERT inputs."""
@@ -57,15 +57,15 @@ def get_embedding(hyperparam, inputs, batch=False):
     output = model(**inputs, output_hidden_states=True, verb_embedding=hyperparam)
     embeddings = output['hidden_states']
     embeddings = inputs['attention_mask'].unsqueeze(dim=2) * embeddings[-1]
-#     if not batch:
-#         embeddings = embeddings.squeeze()
+    #     if not batch:
+    #         embeddings = embeddings.squeeze()
     return embeddings
-  
+
 
 def embed(hyperparam, code):
     inputs = get_feature_inputs(code)
     embedding = get_embedding(hyperparam, inputs, True)
     separator = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)[0][1]
     code_embeddings = torch.nn.functional.pad(embedding[:, separator + 1:, :],
-                                                         (0, 0, 0, separator + 1), 'constant', 0)
+                                              (0, 0, 0, separator + 1), 'constant', 0)
     return code_embeddings

@@ -27,7 +27,7 @@ class ActionModule_v2_1_one_input(ActionModule_v2):
             scores = scores[1]
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
-            
+
         if precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
@@ -44,7 +44,7 @@ class ActionModule_v2_1_one_input(ActionModule_v2):
 class ActionModule_v2_1_two_inputs(ActionModule_v2):
     def __init__(self, device, eval=False):
         ActionModule_v2.__init__(self, device)
-        dim = embedder.dim        
+        dim = embedder.dim
         # outputs a sequence of scores
         self.model1 = FC_Hypernetwork(dim,
                                       torch.nn.Sequential(torch.nn.Linear(dim * 3 + 2, 128),
@@ -70,7 +70,7 @@ class ActionModule_v2_1_two_inputs(ActionModule_v2):
             scores2 = scores2[1]
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
-        
+
         if precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings

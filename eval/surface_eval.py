@@ -1,32 +1,28 @@
 import argparse
-from datetime import datetime
-
 import glob
+
 import natsort
 import numpy as np
-import os
 import torch
 import tqdm
+from torch.utils.data import DataLoader
 
-from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import ConcatDataset, DataLoader
-
-from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle, CodeSearchNetDataset_SavedOracle
+from eval.dataset import CodeSearchNetDataset_TFIDFOracle, \
+    CodeSearchNetDataset_SavedOracle
+from eval.dataset import transform_sample
 from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
-
+from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 
 device = 'cuda:0'
 
 
 def run_valid(data_loader, layout_net, count):
     MRRs = []
-    with torch.no_grad(): 
-        layout_net.precomputed_scores_provided = False 
+    with torch.no_grad():
+        layout_net.precomputed_scores_provided = False
         i = 0
         for samples in tqdm.tqdm(data_loader):
             if i == count:
@@ -51,7 +47,6 @@ def run_valid(data_loader, layout_net, count):
     return np.mean(MRRs)
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
     parser.add_argument('--layoutnet_checkpoint', dest='model_checkpoint', type=str,
@@ -61,10 +56,10 @@ if __name__ == "__main__":
     parser.add_argument('--eval_version', dest='eval_version', type=str,
                         help='"tf-idf" or "codebert"', required=True)
     args = parser.parse_args()
-    
+
     scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    
+
     version = args.action_version
     if version == 1:
         action_module = ActionModuleFacade_v1(device)
@@ -82,17 +77,16 @@ if __name__ == "__main__":
         layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=False)
-        
-    valid_file_name = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz' 
+
+    valid_file_name = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz'
     if args.eval_version == 'tf-idf':
         valid_dataset = CodeSearchNetDataset_TFIDFOracle(valid_file_name, device, neg_count=999, oracle_neg_count=9)
     elif args.eval_version == 'codebert':
-        valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, 
-                                                         device, neg_count=9, 
+        valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name,
+                                                         device, neg_count=9,
                                                          oracle_idxs='/home/shushan/codebert_valid_oracle_scores_full.txt')
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
-        
     model_checkpoint = args.model_checkpoint
     checkpoint_dir = '/home/shushan/modular_code_search/model_checkpoints/action/' + model_checkpoint
     checkpoints = natsort.natsorted(glob.glob(checkpoint_dir + '/*'))

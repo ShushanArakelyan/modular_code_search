@@ -5,6 +5,7 @@ from hypernetwork.hypernetwork import FC_Hypernetwork
 from layout_assembly.action_v2 import ActionModule_v2
 from layout_assembly.utils import ProcessingException
 
+
 class ActionModule_v4(ActionModule_v2):
     def __init__(self, device):
         super(ActionModule_v4, self).__init__(device)
@@ -61,12 +62,12 @@ class ActionModule_v4_two_inputs(ActionModule_v2):
         self.reduce_dim_model = torch.nn.Linear(dim, 32)
         # outputs a sequence of scores
         self.model1 = FC_Hypernetwork(dim,
-                                      torch.nn.Sequential(torch.nn.Linear(dim + 2*32 + 2, 128),
+                                      torch.nn.Sequential(torch.nn.Linear(dim + 2 * 32 + 2, 128),
                                                           torch.nn.ReLU(),
                                                           torch.nn.Linear(128, 1)).to(self.device),
                                       device)
         # outputs an embedding
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(2*32 + embedder.max_seq_length, 128),
+        self.model2 = torch.nn.Sequential(torch.nn.Linear(2 * 32 + embedder.max_seq_length, 128),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)
         if eval:
@@ -102,7 +103,6 @@ class ActionModule_v4_two_inputs(ActionModule_v2):
                                                  prep2_embedding,
                                                  scores_out.squeeze().unsqueeze(dim=0)), dim=1))
         return emb_out, scores_out
-
 
 # class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
 #     def __init__(self, device):

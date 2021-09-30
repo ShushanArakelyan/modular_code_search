@@ -54,7 +54,7 @@ def main():
         dataset = CodeSearchNetDataset_TFIDFOracle(valid_file_name, device, neg_sample_count, oracle_neg_sample_count)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
     MRRs = []
-    with torch.no_grad(): 
+    with torch.no_grad():
         i = 0
         for samples in tqdm.tqdm(data_loader):
             i += 1
@@ -75,6 +75,7 @@ def main():
             if i % 100 == 0:
                 print(np.mean(MRRs))
         print(np.mean(MRRs))
+
 
 if __name__ == "__main__":
     main()

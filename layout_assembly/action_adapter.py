@@ -1,6 +1,6 @@
-import torch
-
 from itertools import chain
+
+import torch
 
 import codebert_embedder_with_adapter as embedder
 from layout_assembly.action_v1 import ActionModule_v1
@@ -14,6 +14,7 @@ class ActionModule_v1_reduced(ActionModule_v1):
 
     def parameters(self):
         return chain(self.model1.parameters(), self.model2.parameters())
+
 
 #     def load_state_dict(self, d):
 #         self.model1.load_state_dict(d['model1'])
@@ -33,13 +34,12 @@ class ActionModule_v1_reduced(ActionModule_v1):
 #         self.model2.train()
 
 
-
 class ActionModule_v1_reduced_one_input(ActionModule_v1_reduced):
     def __init__(self, device, eval=False):
         ActionModule_v1_reduced.__init__(self, device)
         dim = embedder.dim
-#         reduced_dim = 32
-#         self.reduce_linear = torch.nn.Linear(embedder.dim, reduced_dim).to(self.device)
+        #         reduced_dim = 32
+        #         self.reduce_linear = torch.nn.Linear(embedder.dim, reduced_dim).to(self.device)
         # outputs a sequence of scores
         self.model1 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, 128),
                                           torch.nn.ReLU(),
@@ -54,14 +54,14 @@ class ActionModule_v1_reduced_one_input(ActionModule_v1_reduced):
         if isinstance(scores, tuple):
             prep_embedding = (scores[0] + prep_embedding) / 2
             scores = scores[1]
-#         prep_embedding = self.reduce_linear(prep_embedding)
+        #         prep_embedding = self.reduce_linear(prep_embedding)
         if len(scores.shape) == 1:
             scores = scores.unsqueeze(dim=1)
-            
+
         if precomputed_embeddings is None:
             raise ProcessingException()
         _, code_embeddings = precomputed_embeddings
-        
+
         scores_out = self.model1.forward(torch.cat(
             (prep_embedding.repeat(embedder.max_seq_length, 1),
              code_embeddings,
@@ -74,9 +74,9 @@ class ActionModule_v1_reduced_one_input(ActionModule_v1_reduced):
 class ActionModule_v1_reduced_two_inputs(ActionModule_v1_reduced):
     def __init__(self, device, eval=False):
         ActionModule_v1_reduced.__init__(self, device)
-        dim = embedder.dim        
-#         reduced_dim = 32
-#         self.reduce_linear = torch.nn.Linear(embedder.dim, reduced_dim).to(self.device)
+        dim = embedder.dim
+        #         reduced_dim = 32
+        #         self.reduce_linear = torch.nn.Linear(embedder.dim, reduced_dim).to(self.device)
         # outputs a sequence of scores
         self.model1 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + dim + 2, 128),
                                           torch.nn.ReLU(),
@@ -100,9 +100,9 @@ class ActionModule_v1_reduced_two_inputs(ActionModule_v1_reduced):
             scores2 = scores2[1]
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
-#         prep1_embedding = self.reduce_linear(prep1_embedding)
-#         prep2_embedding = self.reduce_linear(prep2_embedding)
-        
+        #         prep1_embedding = self.reduce_linear(prep1_embedding)
+        #         prep2_embedding = self.reduce_linear(prep2_embedding)
+
         if precomputed_embeddings is None:
             raise ProcessingException()
         _, code_embeddings = precomputed_embeddings

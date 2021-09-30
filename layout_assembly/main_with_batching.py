@@ -1,27 +1,26 @@
 import argparse
+import os
 from datetime import datetime
 
 import numpy as np
-import os
 import torch
 import tqdm
-
-from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
+from eval.dataset import CodeSearchNetDataset, transform_sample
+from eval.dataset import CodeSearchNetDataset_TFIDFOracle
+from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
-from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle
-from eval.utils import mrr
+from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 
 
 def run_valid(data_loader, layout_net, count):
     MRRs = []
-    with torch.no_grad(): 
-        layout_net.precomputed_scores_provided = False 
+    with torch.no_grad():
+        layout_net.precomputed_scores_provided = False
         i = 0
         for samples in data_loader:
             if i == count:
@@ -45,8 +44,9 @@ def run_valid(data_loader, layout_net, count):
     return np.mean(MRRs)
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version, valid_file_name, layout_checkpoint=None):
-    if '_neg_10_' in data_dir: # ugly, ugly, ugly
+def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
+         valid_file_name, layout_checkpoint=None):
+    if '_neg_10_' in data_dir:  # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
     else:
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 1)])
@@ -80,7 +80,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
     writer_it = 0
-    
+
     checkpoint_dir = f'/home/shushan/modular_code_search/model_checkpoints/action/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
@@ -88,7 +88,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         os.makedirs(checkpoint_dir)
 
     batch_size = 4
-    print_every_batch = int(print_every/batch_size)
+    print_every_batch = int(print_every / batch_size)
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
@@ -100,15 +100,15 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             if loss and (i % batch_size) == 0:
                 if real_batch_size > 0:
                     # TODO: do we need this normalization here?
-#                     loss /= real_batch_size
+                    #                     loss /= real_batch_size
                     batch_i += 1
                     loss.backward()
-                    cumulative_loss.append(loss.data.cpu().numpy()/real_batch_size)
+                    cumulative_loss.append(loss.data.cpu().numpy() / real_batch_size)
                     op.step()
                     if batch_i % print_every_batch == 0:
-                        writer.add_scalar("Loss/train", 
+                        writer.add_scalar("Loss/train",
                                           np.mean(cumulative_loss), writer_it)
-                        writer.add_scalar("Acc/train", 
+                        writer.add_scalar("Acc/train",
                                           np.mean(accuracy), writer_it)
                         cumulative_loss = []
                         accuracy = []
@@ -144,7 +144,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
-            
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')

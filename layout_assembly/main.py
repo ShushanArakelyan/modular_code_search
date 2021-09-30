@@ -1,28 +1,27 @@
 import argparse
+import os
 from datetime import datetime
 
 import numpy as np
-import os
 import torch
 import tqdm
-
-from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
-from layout_assembly.layout import LayoutNet
-from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
-from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
 from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle, CodeSearchNetDataset_SavedOracle
+from eval.dataset import CodeSearchNetDataset_SavedOracle
 from eval.dataset import CodeSearchNetDataset_wShards
 from eval.utils import mrr
+from layout_assembly.layout import LayoutNet
+from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
+from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
+from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 
 
 def run_valid(data_loader, layout_net, count):
     MRRs = []
-    with torch.no_grad(): 
-        layout_net.precomputed_scores_provided = False 
+    with torch.no_grad():
+        layout_net.precomputed_scores_provided = False
         i = 0
         for samples in data_loader:
             if i == count:
@@ -46,16 +45,18 @@ def run_valid(data_loader, layout_net, count):
     return np.mean(MRRs)
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version, 
+def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, layout_checkpoint=None):
-    if '_neg_10_' in data_dir: # ugly, ugly, ugly
+    if '_neg_10_' in data_dir:  # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
-    elif '_codebert' in data_dir: # ugly
+    elif '_codebert' in data_dir:  # ugly
         shard_range = num_negatives
-        dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in range(shard_range + 1)])
+        dataset = ConcatDataset(
+            [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
+             range(shard_range + 1)])
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9, 
+    valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9,
                                                      oracle_idxs='/home/shushan/codebert_valid_oracle_scores.txt')
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
@@ -72,9 +73,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         action_module = ActionModuleFacade_v2_1(device)
 
     if layout_net_version == 'classic':
-        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNet(scoring_module, action_module, device,
+                               precomputed_scores_provided=precomputed_scores_provided)
     elif layout_net_version == 'with_adapters':
-        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
+                                           precomputed_scores_provided=precomputed_scores_provided)
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
     loss_func = torch.nn.BCEWithLogitsLoss()
@@ -85,7 +88,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
     writer_it = 0
-    
+
     checkpoint_dir = f'/home/shushan/modular_code_search/model_checkpoints/action/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
@@ -116,9 +119,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             accuracy.append(int(torch.sigmoid(pred).round() == label))
             del pred, loss
             if (i + 1) % print_every == 0:
-                writer.add_scalar("Loss/train", 
+                writer.add_scalar("Loss/train",
                                   np.mean(cumulative_loss[-print_every:]), writer_it)
-                writer.add_scalar("Acc/train", 
+                writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 writer_it += 1
 
@@ -133,7 +136,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
-            
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
@@ -161,7 +164,7 @@ if __name__ == '__main__':
                         help='Continue training from this checkpoint, not implemented')
     parser.add_argument('--num_negatives', dest='num_negatives', type=int,
                         help='Number of distractors to use in training')
-    parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided', 
+    parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided',
                         default=False, action='store_true')
 
     args = parser.parse_args()

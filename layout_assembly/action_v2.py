@@ -78,9 +78,9 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         prep2_embedding, scores2 = arg2
         if isinstance(scores2, tuple):
             prep2_embedding = (scores2[0] + prep2_embedding) / 2
-#             print(prep2_embedding)
+            #             print(prep2_embedding)
             scores2 = scores2[1]
-#             print(verb)
+        #             print(verb)
         if len(scores2.shape) == 1:
             scores2 = scores2.unsqueeze(dim=1)
         if precomputed_embeddings is None:

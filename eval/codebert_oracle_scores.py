@@ -1,18 +1,13 @@
-import argparse
-from datetime import datetime
-
-import pandas as pd
-import numpy as np
-import os
 import sys
+
+import numpy as np
+import pandas as pd
 import torch
 import tqdm
-from transformers import (WEIGHTS_NAME, get_linear_schedule_with_warmup, AdamW,
-                          RobertaConfig,
-                          RobertaForSequenceClassification)
 from transformers import AutoTokenizer
+from transformers import (RobertaForSequenceClassification)
+
 import codebert_embedder as embedder
-from eval.utils import mrr
 
 device = 'cuda:0'
 model_dir = '/home/anna/CodeBERT/CodeBERT/codesearch/models/'
@@ -20,8 +15,12 @@ model = RobertaForSequenceClassification.from_pretrained(model_dir + "python_red
 tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
 model = model.to(device)
 
-data = pd.read_json('/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_0.jsonl.gz', lines=True)
-neg_data = pd.read_json('/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_5.jsonl.gz', lines=True)
+data = pd.read_json(
+    '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_0.jsonl.gz',
+    lines=True)
+neg_data = pd.read_json(
+    '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_5.jsonl.gz',
+    lines=True)
 embedder.init_embedder('cuda:0')
 
 range_start = sys.argv[1]
@@ -72,4 +71,3 @@ with open(f'/home/shushan/oracle_scores_{range_start}_{range_end}.txt', 'w') as 
             f.write(str(score))
             f.write(' ')
         f.write('\n')
-
