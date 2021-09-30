@@ -19,28 +19,32 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False,
-                 finetune_codebert=False):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False):
+        print(device)
         self.scoring_module = scoring_module
-        self.finetune_codebert = finetune_codebert
         self.action_module_facade = action_module_facade
         self.device = device
         self.precomputed_scores_provided = precomputed_scores_provided
         dim = embedder.dim
         half_dim = int(dim / 2)
+        
+        def init_weights(m):
+            if isinstance(m, torch.nn.Linear):
+                torch.nn.init.xavier_uniform(m.weight)
+                m.bias.data.fill_(0.01)
+
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
                                               torch.nn.ReLU(),
-                                              torch.nn.Linear(half_dim, 1)).to(device)
+                                              torch.nn.Linear(half_dim, 1)).to(self.device)
+        self.classifier.apply(init_weights)
         self.scoring_outputs = None
         self.eval = eval
         if self.eval:
             self.classifier.eval()
 
     def parameters(self):
-        if self.finetune_codebert:
-            return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
-                         embedder.model.parameters())
-        return chain(self.classifier.parameters(), self.action_module_facade.parameters(), embedder.model.parameters())
+        return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
+                     embedder.model.parameters())
 
     def load_from_checkpoint(self, checkpoint):
         self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
@@ -48,14 +52,13 @@ class LayoutNet:
         models = torch.load(checkpoint, map_location=self.device)
         self.classifier.load_state_dict(models['classifier'])
         self.classifier = self.classifier.to(self.device)
-        if self.finetune_codebert:
+        if 'codebert.model' in models:
             embedder.model.load_state_dict(models['codebert.model'])
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
         model_dict = {'classifier': self.classifier.state_dict()}
-        if self.finetune_codebert:
-            model_dict['codebert.model']=embedder.model.state_dict()
+        model_dict['codebert.model']=embedder.model.state_dict()
         torch.save(model_dict, checkpoint)
 
     def state_dict(self):
@@ -65,17 +68,13 @@ class LayoutNet:
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        if not self.precomputed_scores_provided:
-            scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-            self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-            if not self.finetune_codebert:
-                with torch.no_grad():
-                    self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0],
-                                                                                      verb_embeddings[1])
-        if self.finetune_codebert:
-            _, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-            self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
+        if len(code) == 0: # erroneous example
+            return None
         try:
+            scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
+            if not self.precomputed_scores_provided:
+                self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+            self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?

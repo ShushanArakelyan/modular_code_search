@@ -64,8 +64,8 @@ def main():
             if pred:
                 ranks.append(torch.sigmoid(pred).cpu().numpy())
             else:
-                ranks.append(np.random.rand(1)[0])
-            for sample in samples:
+                continue
+            for sample in samples[1:]:
                 pred = layout_net.forward(*transform_sample(sample))
                 if pred:
                     ranks.append(torch.sigmoid(pred).cpu().numpy())

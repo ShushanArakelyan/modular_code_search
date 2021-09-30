@@ -8,6 +8,7 @@ from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.action_v4 import ActionModule_v4_one_input, ActionModule_v4_two_inputs
 from layout_assembly.action_adapter import ActionModule_v1_reduced_one_input, ActionModule_v1_reduced_two_inputs
+from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input, ActionModule_v2_1_two_inputs
 from layout_assembly.utils import ProcessingException
 
 
@@ -30,6 +31,9 @@ class ActionModuleFacade_v1:
 
     def parameters(self):
         return chain(self.one_input_module.parameters(), self.two_inputs_module.parameters())
+
+    def named_parameters(self):
+        return chain(self.one_input_module.named_parameters(), self.two_inputs_module.named_parameters())
 
     def save_to_checkpoint(self, checkpoint):
         state_dict = {'one_input': self.one_input_module.state_dict(),
@@ -81,7 +85,17 @@ class ActionModuleFacade_v1_1_reduced(ActionModuleFacade_v1):
         if checkpoint:
             self.load_from_checkpoint(checkpoint)
 
-
+            
+class ActionModuleFacade_v2_1(ActionModuleFacade_v1):
+    def __init__(self, device, checkpoint=None, eval=False):
+        ActionModuleFacade_v1.__init__(self, device)
+        self.one_input_module = ActionModule_v2_1_one_input(device, eval)
+        self.two_inputs_module = ActionModule_v2_1_one_input(device, eval)
+        self.modules = {1: self.one_input_module, 2: self.two_inputs_module}
+        if checkpoint:
+            self.load_from_checkpoint(checkpoint)
+            
+            
 class ScoringModule:
     def __init__(self, device, checkpoint=None, eval=True):
         if not embedder.initialized:

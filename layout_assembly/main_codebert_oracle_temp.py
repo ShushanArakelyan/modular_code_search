@@ -15,7 +15,6 @@ from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, Action
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
 from eval.dataset import CodeSearchNetDataset, transform_sample
 from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle, CodeSearchNetDataset_SavedOracle
-from eval.dataset import CodeSearchNetDataset_wShards
 from eval.utils import mrr
 
 
@@ -47,13 +46,16 @@ def run_valid(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version, 
-         valid_file_name, num_negatives, precomputed_scores_provided, layout_checkpoint=None):
+         valid_file_name, oracle_negatives_dir, num_negatives, layout_checkpoint=None):
     if '_neg_10_' in data_dir: # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
-    elif '_codebert' in data_dir: # ugly
-        shard_range = num_negatives
-        dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in range(shard_range + 1)])
-
+    else:
+        if oracle_negatives_dir is None:            
+            dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 1)])
+        else:
+            dataset = CodeSearchNetDataset_SavedOracle(data_dir, device, 
+                                                       oracle_idxs=oracle_negatives_dir, 
+                                                       neg_count=num_negatives)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9, 
                                                      oracle_idxs='/home/shushan/codebert_valid_oracle_scores.txt')
@@ -72,9 +74,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         action_module = ActionModuleFacade_v2_1(device)
 
     if layout_net_version == 'classic':
-        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False)
     elif layout_net_version == 'with_adapters':
-        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=False)
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
     loss_func = torch.nn.BCEWithLogitsLoss()
@@ -96,24 +98,25 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         cumulative_loss = []
         accuracy = []
         checkpoint_prefix = checkpoint_dir + f'/model_{epoch}'
-        for i, datum in tqdm.tqdm(enumerate(data_loader)):
+        for i, samples in tqdm.tqdm(enumerate(data_loader)):
             for param in layout_net.parameters():
                 param.grad = None
-            sample, scores, verbs, label = datum
-            # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
-            # an extra dimension
-            if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
-                continue
-            layout_net.scoring_outputs = scores[0]
-            layout_net.verb_embeddings = verbs[0]
+            sample = samples[0]
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
-            loss = loss_func(pred, label)
+            loss = loss_func(pred, dataset.positive_label.unsqueeze(dim=0))
             loss.backward()
+            accuracy.append(int(torch.sigmoid(pred).round() == dataset.positive_label))
+            for sample in samples[1:]:
+                pred = layout_net.forward(*transform_sample(sample))
+                if pred is None:
+                    continue
+                loss = loss_func(pred, dataset.negative_label.unsqueeze(dim=0))
+                loss.backward()
+                accuracy.append(int(torch.sigmoid(pred).round() ==  dataset.negative_label))
             op.step()
             cumulative_loss.append(loss.data.cpu().numpy())
-            accuracy.append(int(torch.sigmoid(pred).round() == label))
             del pred, loss
             if (i + 1) % print_every == 0:
                 writer.add_scalar("Loss/train", 
@@ -159,12 +162,12 @@ if __name__ == '__main__':
                         help='Validation data file', required=True)
     parser.add_argument('--layout_checkpoint_file', dest='layout_checkpoint_file', type=str,
                         help='Continue training from this checkpoint, not implemented')
+    parser.add_argument('--oracle_negatives_dir', dest='oracle_negatives_dir', type=str,
+                        help='Directory with distractors by oracle')
     parser.add_argument('--num_negatives', dest='num_negatives', type=int,
                         help='Number of distractors to use in training')
-    parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided', 
-                        default=False, action='store_true')
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.layout_checkpoint_file)
+         args.oracle_negatives_dir, args.num_negatives, args.layout_checkpoint_file)

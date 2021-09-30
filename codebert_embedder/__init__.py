@@ -15,6 +15,7 @@ initialized = False
 def init_embedder(_device):
     global device, initialized
     global tokenizer, model
+    print(_device)
     if 'cuda' in _device:
         torch.cuda.set_device(_device)
         device = _device
@@ -102,7 +103,9 @@ def embed_batch(docs, codes):
     embedding = get_embeddings(inputs, True)
     cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
-    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(range(0, sep_tokens.shape[0], 2)).to(device))[:, 1]
+    counts = torch.unique(sep_tokens[:, 0], return_counts=True)[1]
+    index = [sum(counts[:i]) for i in range(len(counts))]
+    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(index).to(device))[:, 1]
     code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
                                                          (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
                                  for i in range(separator.shape[0])], dim=0)

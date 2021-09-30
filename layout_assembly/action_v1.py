@@ -17,6 +17,9 @@ class ActionModule_v1:
     def parameters(self):
         return chain(self.model1.parameters(), self.model2.parameters())
 
+    def named_parameters(self):
+        return chain(self.model1.named_parameters(), self.model2.named_parameters())
+
     def load_state_dict(self, d):
         self.model1.load_state_dict(d['model1'])
         self.model1 = self.model1.to(self.device)
@@ -45,7 +48,9 @@ class ActionModule_v1_one_input(ActionModule_v1):
         self.model2 = torch.nn.Sequential(
             torch.nn.Linear(embedder.dim * 2 + embedder.max_seq_length, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(128, embedder.dim)).to(
+            torch.nn.Linear(128, embedder.dim)
+            ,torch.nn.ReLU()
+        ).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()
@@ -80,7 +85,9 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         self.model2 = torch.nn.Sequential(
             torch.nn.Linear(embedder.dim * 3 + embedder.max_seq_length, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(128, embedder.dim)).to(
+            torch.nn.Linear(128, embedder.dim)
+            ,torch.nn.ReLU()
+        ).to(
             self.device)  # outputs an embedding
         if eval:
             self.eval()

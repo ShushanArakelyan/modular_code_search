@@ -26,9 +26,14 @@ class EncoderLayerWithAdapter(RobertaLayer):
         self.device = device
         self.adapter_down_layer = torch.nn.Linear(in_features=config.hidden_size, 
                                                   out_features=config.adapter_dim).to(self.device)
+        torch.nn.init.xavier_uniform_(self.adapter_down_layer.weight, gain=0.0000001)
+        torch.nn.init.constant_(self.adapter_down_layer.bias, 0.0)
         self.adapter_up_layer = torch.nn.Linear(in_features=config.adapter_dim, 
                                                 out_features=config.hidden_size).to(self.device)
+        torch.nn.init.xavier_uniform_(self.adapter_up_layer.weight, gain=0.0000001)
+        torch.nn.init.constant_(self.adapter_up_layer.bias, 0.0)
         self.activation_fn = ACT2FN[config.hidden_act]
+        self.use_adapter = True
 
     def adapter_down(self, x):
         return self.adapter_down_layer(x)
@@ -57,12 +62,12 @@ class EncoderLayerWithAdapter(RobertaLayer):
                 past_key_value=self_attn_past_key_value,
             )
             attention_output = self_attention_outputs[0]
-            residual_adapter = attention_output
-            attention_output = self.adapter_down(attention_output)
-            attention_output = self.activation_fn(attention_output)
-            attention_output = self.adapter_up(attention_output)
-            attention_output = residual_adapter + attention_output
-            attention_output = attention_output
+            if self.use_adapter:
+                residual_adapter = attention_output
+                attention_output = self.adapter_down(attention_output)
+                attention_output = self.activation_fn(attention_output)
+                attention_output = self.adapter_up(attention_output)
+                attention_output = residual_adapter + attention_output
 
             # if decoder, the last output is tuple of self-attn cache
             if self.is_decoder:
@@ -89,11 +94,12 @@ class EncoderLayerWithAdapter(RobertaLayer):
                     output_attentions,
                 )
                 attention_output = cross_attention_outputs[0]
-                residual_adapter = attention_output
-                attention_output = self.adapter_down(attention_output)
-                attention_output = self.activation_fn(attention_output)
-                attention_output = self.adapter_up(attention_output)
-                attention_output = residual_adapter + attention_output
+                if self.use_adapter:
+                    residual_adapter = attention_output
+                    attention_output = self.adapter_down(attention_output)
+                    attention_output = self.activation_fn(attention_output)
+                    attention_output = self.adapter_up(attention_output)
+                    attention_output = residual_adapter + attention_output
                 outputs = outputs + cross_attention_outputs[1:-1]  # add cross attentions if we output attention weights
 
                 # add cross-attn cache to positions 3,4 of present_key_value tuple
@@ -112,11 +118,18 @@ class EncoderLayerWithAdapter(RobertaLayer):
 
             return outputs
         
+    def skip_adapter(self, use_adapter):
+        self.use_adapter = use_adapter
+        
 
 class RobertaEncoderWithAdapter(RobertaEncoder):
     def __init__(self, config, device):
         super(RobertaEncoderWithAdapter, self).__init__(config)
         self.layer = nn.ModuleList([EncoderLayerWithAdapter(config, device).to(device) for _ in range(config.num_hidden_layers)])
+    
+    def use_adapter(self, use_adapter):
+        for layer in self.layer:
+            layer.skip_adapter(use_adapter)
         
 
 class RobertaModelWithAdapter(RobertaModel):
@@ -124,6 +137,9 @@ class RobertaModelWithAdapter(RobertaModel):
         super(RobertaModelWithAdapter, self).__init__(config)
         self.encoder = RobertaEncoderWithAdapter(config, device).to(device)
         self.init_weights()
+    
+    def use_adapter(self, use_adapter):
+        self.encoder.use_adapter(use_adapter)
 
         
 class SimpleGenerator(nn.Module):
@@ -182,6 +198,9 @@ class RobertaWithHyperAdapters(nn.Module):
         # apply the parameters to the adapters
         self.apply_params_to_adapters(generated_params)
 
+    def use_adapter(self, use_adapter):
+        self.model.use_adapter(use_adapter)
+        
     def forward(self, verb_embedding, 
         input_ids=None,
         attention_mask=None,

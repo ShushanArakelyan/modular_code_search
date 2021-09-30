@@ -14,8 +14,7 @@ from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
 from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
 from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle, CodeSearchNetDataset_SavedOracle
-from eval.dataset import CodeSearchNetDataset_wShards
+from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_TFIDFOracle
 from eval.utils import mrr
 
 
@@ -46,18 +45,14 @@ def run_valid(data_loader, layout_net, count):
     return np.mean(MRRs)
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version, 
-         valid_file_name, num_negatives, precomputed_scores_provided, layout_checkpoint=None):
+def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version, valid_file_name, layout_checkpoint=None):
     if '_neg_10_' in data_dir: # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
-    elif '_codebert' in data_dir: # ugly
-        shard_range = num_negatives
-        dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in range(shard_range + 1)])
-
+    else:
+        dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 1)])
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9, 
-                                                     oracle_idxs='/home/shushan/codebert_valid_oracle_scores.txt')
-    valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
+    valid_dataset = CodeSearchNetDataset_TFIDFOracle(valid_file_name, device, neg_count=999, oracle_neg_count=9)
+    valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     if version == 1:
@@ -72,9 +67,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         action_module = ActionModuleFacade_v2_1(device)
 
     if layout_net_version == 'classic':
-        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=True)
     elif layout_net_version == 'with_adapters':
-        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=precomputed_scores_provided)
+        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=True)
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
     loss_func = torch.nn.BCEWithLogitsLoss()
@@ -92,13 +87,36 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
+    batch_size = 4
+    print_every_batch = int(print_every/batch_size)
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
         checkpoint_prefix = checkpoint_dir + f'/model_{epoch}'
+        loss = None
+        real_batch_size = 0
+        batch_i = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
-            for param in layout_net.parameters():
-                param.grad = None
+            if loss and (i % batch_size) == 0:
+                if real_batch_size > 0:
+                    # TODO: do we need this normalization here?
+#                     loss /= real_batch_size
+                    batch_i += 1
+                    loss.backward()
+                    cumulative_loss.append(loss.data.cpu().numpy()/real_batch_size)
+                    op.step()
+                    if batch_i % print_every_batch == 0:
+                        writer.add_scalar("Loss/train", 
+                                          np.mean(cumulative_loss), writer_it)
+                        writer.add_scalar("Acc/train", 
+                                          np.mean(accuracy), writer_it)
+                        cumulative_loss = []
+                        accuracy = []
+                        writer_it += 1
+                loss = None
+                real_batch_size = 0
+                for param in layout_net.parameters():
+                    param.grad = None
             sample, scores, verbs, label = datum
             # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
             # an extra dimension
@@ -109,19 +127,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
-            loss = loss_func(pred, label)
-            loss.backward()
-            op.step()
-            cumulative_loss.append(loss.data.cpu().numpy())
+            if loss is None:
+                loss = loss_func(pred, label)
+            else:
+                loss += loss_func(pred, label)
+            real_batch_size += 1
             accuracy.append(int(torch.sigmoid(pred).round() == label))
-            del pred, loss
-            if (i + 1) % print_every == 0:
-                writer.add_scalar("Loss/train", 
-                                  np.mean(cumulative_loss[-print_every:]), writer_it)
-                writer.add_scalar("Acc/train", 
-                                  np.mean(accuracy[-print_every:]), writer_it)
-                writer_it += 1
-
             if (i + 1) % save_every == 0:
                 print("running validation evaluation....")
                 mrr = run_valid(valid_data_loader, layout_net, count=500)
@@ -159,12 +170,7 @@ if __name__ == '__main__':
                         help='Validation data file', required=True)
     parser.add_argument('--layout_checkpoint_file', dest='layout_checkpoint_file', type=str,
                         help='Continue training from this checkpoint, not implemented')
-    parser.add_argument('--num_negatives', dest='num_negatives', type=int,
-                        help='Number of distractors to use in training')
-    parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided', 
-                        default=False, action='store_true')
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
-         args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.layout_checkpoint_file)
+         args.save_every, args.version, args.layout_net_version, args.valid_file_name, args.layout_checkpoint_file)
