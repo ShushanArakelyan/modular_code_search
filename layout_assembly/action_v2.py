@@ -3,7 +3,7 @@ import torch
 import codebert_embedder as embedder
 from hypernetwork.hypernetwork import FC_Hypernetwork
 from layout_assembly.action_v1 import ActionModule_v1
-from layout_assembly.utils import ProcessingException
+from layout_assembly.utils import ProcessingException, FC2, FC2_normalized
 
 
 # Hypernetwork, where the MLPs are parametrized by the verb
@@ -14,22 +14,25 @@ class ActionModule_v2(ActionModule_v1):
 
 
 class ActionModule_v2_one_input(ActionModule_v2):
-    def __init__(self, device, eval=False):
-        ActionModule_v2.__init__(self, device)
-        dim = embedder.dim
-        self.model1 = FC_Hypernetwork(dim,
-                                      torch.nn.Sequential(torch.nn.Linear(dim * 2 + 1, 128),
-                                                          torch.nn.ReLU(),
-                                                          torch.nn.Linear(128, 1)).to(device),
-                                      device)
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 2 + embedder.max_seq_length, 128),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(128, dim)).to(self.device)  # outputs an embedding
+    def init_networks(self):
+        # outputs scores
+        hidden_input_dims = [embedder.dim * 2 + 1, 128]
+        hidden_output_dims = [128, 1]
+        if self.normalized:
+            dest_net = FC2_normalized(hidden_input_dims, hidden_output_dims)
+        else:
+            dest_net = FC2(hidden_input_dims, hidden_output_dims)
+        self.model1 = FC_Hypernetwork(embedder.dim, dest_net, self.device)
+
+        # outputs an embedding
+        hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
+        hidden_output_dims = [128, embedder.dim]
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
 
         if eval:
             self.eval()
 
-    def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
+    def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
             prep_embedding = (scores[0] + prep_embedding) / 2
@@ -51,23 +54,25 @@ class ActionModule_v2_one_input(ActionModule_v2):
 
 
 class ActionModule_v2_two_inputs(ActionModule_v2):
-    def __init__(self, device, eval=False):
-        ActionModule_v2.__init__(self, device)
-        dim = embedder.dim
-        # outputs a sequence of scores
-        self.model1 = FC_Hypernetwork(dim,
-                                      torch.nn.Sequential(torch.nn.Linear(dim * 3 + 2, 128),
-                                                          torch.nn.ReLU(),
-                                                          torch.nn.Linear(128, 1)).to(self.device),
-                                      device)
+    def init_networks(self):
+        # outputs scores
+        hidden_input_dims = [embedder.dim * 3 + 2, 128]
+        hidden_output_dims = [128, 1]
+        if self.normalized:
+            dest_net = FC2_normalized(hidden_input_dims, hidden_output_dims)
+        else:
+            dest_net = FC2(hidden_input_dims, hidden_output_dims)
+        self.model1 = FC_Hypernetwork(embedder.dim, dest_net, self.device)
+
         # outputs an embedding
-        self.model2 = torch.nn.Sequential(torch.nn.Linear(dim * 3 + embedder.max_seq_length, 128),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(128, dim)).to(self.device)
+        hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
+        hidden_output_dims = [128, embedder.dim]
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+
         if eval:
             self.eval()
 
-    def forward(self, verb, args, code_tokens, precomputed_embeddings):
+    def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args
         prep1_embedding, scores1 = arg1
         if isinstance(scores1, tuple):
@@ -98,25 +103,3 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
                                                  prep2_embedding,
                                                  scores_out.squeeze().unsqueeze(dim=0)), dim=1))
         return emb_out, scores_out
-
-
-class ActionModule_v2_1_one_input(ActionModule_v2_one_input):
-    def __init__(self, device):
-        ActionModule_v2_one_input.__init__(self, device)
-        self.model1 = FC_Hypernetwork(embedder.dim, self.model1, device)
-        self.model2 = FC_Hypernetwork(embedder.dim, self.model2, device)
-
-    def set_hyper_param(self, verb_embedding):
-        ActionModule_v2_one_input.set_hyper_param(self, verb_embedding)
-        self.model2.set_hyper_param(verb_embedding)
-
-
-class ActionModule_v2_1_two_inputs(ActionModule_v2_two_inputs):
-    def __init__(self, device):
-        ActionModule_v2_two_inputs.__init__(self, device)
-        self.model1 = FC_Hypernetwork(embedder.dim, self.model1, device)
-        self.model2 = FC_Hypernetwork(embedder.dim, self.model2, device)
-
-    def set_hyper_param(self, verb_embedding):
-        ActionModule_v2_1_two_inputs.set_hyper_param(self, verb_embedding)
-        self.model2.set_hyper_param(verb_embedding)

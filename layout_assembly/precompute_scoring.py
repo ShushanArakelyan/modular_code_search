@@ -10,7 +10,7 @@ from sklearn.metrics import euclidean_distances
 
 import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
+from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 device = 'cuda:0'
 scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
@@ -37,10 +37,7 @@ def main(num_negatives, neg_sampling_strategy):
         data = pd.read_json(data_file, lines=True)
         scoring_module = ScoringModule(device, scoring_checkpoint)
         version = 2
-        if version == 1:
-            action_module = ActionModuleFacade_v1(device)
-        elif version == 2:
-            action_module = ActionModuleFacade_v2(device)
+        action_module = ActionModuleFacade(device, version, normalized=False)
         layout_net = LayoutNet(scoring_module, action_module, device)
 
         positive = torch.FloatTensor([[1]]).to(device)

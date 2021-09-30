@@ -3,16 +3,22 @@ from itertools import chain
 import torch
 
 import codebert_embedder as embedder
-from layout_assembly.utils import ProcessingException
+from layout_assembly.utils import ProcessingException, FC2, FC2_normalized
 
 
 class ActionModule_v1:
-    def __init__(self, device):
+    def __init__(self, device, normalize=False, eval=False):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.model1 = None
         self.model2 = None
+        self.normalized = normalize
+        self.eval = eval
+        self.init_networks()
+
+    def init_networks(self):
+        raise Exception("Not Implemented")
 
     def parameters(self):
         return chain(self.model1.parameters(), self.model2.parameters())
@@ -39,23 +45,22 @@ class ActionModule_v1:
 
 
 class ActionModule_v1_one_input(ActionModule_v1):
-    def __init__(self, device, eval=False):
-        ActionModule_v1.__init__(self, device)
-        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 3 + 1, 128),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(128, 1)).to(
-            self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(
-            torch.nn.Linear(embedder.dim * 2 + embedder.max_seq_length, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, embedder.dim)
-            , torch.nn.ReLU()
-        ).to(
-            self.device)  # outputs an embedding
+    def init_networks(self):
+        hidden_input_dims = [embedder.dim * 3 + 1, 128]
+        hidden_output_dims = [128, 1]
+        # outputs a sequence of scores
+        if self.normalized:
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+        else:
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
+        hidden_output_dims = [128, embedder.dim]
+        # outputs an embedding
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         if eval:
             self.eval()
 
-    def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
+    def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
         if isinstance(scores, tuple):
             emb, scores = scores
@@ -76,23 +81,20 @@ class ActionModule_v1_one_input(ActionModule_v1):
 
 
 class ActionModule_v1_two_inputs(ActionModule_v1):
-    def __init__(self, device, eval=False):
-        ActionModule_v1.__init__(self, device)
-        self.model1 = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 4 + 2, 128),
-                                          torch.nn.ReLU(),
-                                          torch.nn.Linear(128, 1)).to(
-            self.device)  # outputs a sequence of scores
-        self.model2 = torch.nn.Sequential(
-            torch.nn.Linear(embedder.dim * 3 + embedder.max_seq_length, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, embedder.dim)
-            , torch.nn.ReLU()
-        ).to(
-            self.device)  # outputs an embedding
+    def init_networks(self):
+        hidden_input_dims = [embedder.dim * 4 + 2, 128]
+        hidden_output_dims = [128, 1]
+        if self.normalized:
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+        else:
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
+        hidden_output_dims = [128, embedder.dim]
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         if eval:
             self.eval()
 
-    def forward(self, verb, args, code_tokens, precomputed_embeddings):
+    def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args
         prep1_embedding, scores1 = arg1
         if isinstance(scores1, tuple):
