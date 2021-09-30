@@ -14,7 +14,7 @@ class ActionModule_v1:
         self.model1 = None
         self.model2 = None
         self.normalized = normalize
-        self.eval = eval
+        self.is_eval = eval
         self.init_networks()
 
     def init_networks(self):
@@ -57,7 +57,7 @@ class ActionModule_v1_one_input(ActionModule_v1):
         hidden_output_dims = [128, embedder.dim]
         # outputs an embedding
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
-        if eval:
+        if self.is_eval:
             self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -91,7 +91,7 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
         hidden_output_dims = [128, embedder.dim]
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
-        if eval:
+        if self.is_eval:
             self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):

@@ -29,7 +29,7 @@ class ActionModule_v2_one_input(ActionModule_v2):
         hidden_output_dims = [128, embedder.dim]
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
 
-        if eval:
+        if self.is_eval:
             self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -69,7 +69,7 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
         hidden_output_dims = [128, embedder.dim]
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
 
-        if eval:
+        if self.is_eval:
             self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):
