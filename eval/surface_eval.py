@@ -13,8 +13,7 @@ from eval.dataset import transform_sample
 from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
+from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 device = 'cuda:0'
 
@@ -55,23 +54,16 @@ if __name__ == "__main__":
                         help='action version', required=True)
     parser.add_argument('--eval_version', dest='eval_version', type=str,
                         help='"tf-idf" or "codebert"', required=True)
+    parser.add_argument('--normalized_action', dest='normalized_action',
+                        default=False, action='store_true')
     args = parser.parse_args()
 
     scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
     scoring_module = ScoringModule(device, scoring_checkpoint)
 
     version = args.action_version
-    if version == 1:
-        action_module = ActionModuleFacade_v1(device)
-    elif version == 2:
-        action_module = ActionModuleFacade_v2(device)
-    elif version == 4:
-        action_module = ActionModuleFacade_v4(device)
-    elif version == 11:
-        action_module = ActionModuleFacade_v1_1_reduced(device)
-    elif version == 21:
-        action_module = ActionModuleFacade_v2_1(device)
-
+    normalized = args.normalized_action
+    action_module = ActionModuleFacade(device, version, normalized)
     layout_net_version = 'classic'
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False)

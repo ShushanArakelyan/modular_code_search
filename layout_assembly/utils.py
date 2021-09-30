@@ -72,3 +72,16 @@ class TestScoringModuleWrapper:
 
     def forward(self, value, _):
         return value
+
+
+def FC2(hidden_input_dims, hidden_output_dims):
+    return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
+                               torch.nn.ReLU(),
+                               torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]))
+
+
+def FC2_normalized(hidden_input_dims, hidden_output_dims):
+    return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
+                               torch.nn.ReLU(),
+                               torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),
+                               torch.nn.Sigmoid())

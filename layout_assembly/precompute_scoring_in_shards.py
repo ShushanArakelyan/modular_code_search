@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 
 import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
+from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 
 class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
@@ -118,10 +118,7 @@ def main(num_negatives, neg_sampling_strategy, shard_size):
 
         scoring_module = ScoringModule(device, scoring_checkpoint)
         version = 1
-        if version == 1:
-            action_module = ActionModuleFacade_v1(device)
-        elif version == 2:
-            action_module = ActionModuleFacade_v2(device)
+        action_module = ActionModuleFacade(device, version, normalized=False)
         layout_net = LayoutNet(scoring_module, action_module, device)
 
         positive = torch.FloatTensor([[1]]).to(device)

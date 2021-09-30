@@ -14,11 +14,10 @@ from eval.dataset import CodeSearchNetDataset_wShards
 from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
-from layout_assembly.modules import ActionModuleFacade_v1_1_reduced, ActionModuleFacade_v2_1
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2, ActionModuleFacade_v4
+from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 
-def run_valid(data_loader, layout_net, count):
+def eval_mrr(data_loader, layout_net, count):
     MRRs = []
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
@@ -45,8 +44,28 @@ def run_valid(data_loader, layout_net, count):
     return np.mean(MRRs)
 
 
+def eval_acc(data_loader, layout_net, count):
+    accs = []
+    with torch.no_grad():
+        layout_net.precomputed_scores_provided = False
+        i = 0
+        for samples in data_loader:
+            for j, sample in enumerate(samples):
+                if i == count:
+                    break
+                i += 1
+                pred = layout_net.forward(*transform_sample(sample))
+                if j == 0:
+                    label = 1
+                else:
+                    label = 0
+                accs.append(int(torch.sigmoid(pred).round() == label))
+        layout_net.precomputed_scores_provided = True
+    return np.mean(accs)
+
+
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, layout_checkpoint=None):
     if '_neg_10_' in data_dir:  # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
     elif '_codebert' in data_dir:  # ugly
@@ -57,21 +76,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9,
-                                                     oracle_idxs='/home/shushan/codebert_valid_oracle_scores.txt')
+                                                     oracle_idxs='/home/shushan/codebert_valid_oracle_scores_full.txt')
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    if version == 1:
-        action_module = ActionModuleFacade_v1(device)
-    elif version == 2:
-        action_module = ActionModuleFacade_v2(device)
-    elif version == 4:
-        action_module = ActionModuleFacade_v4(device)
-    elif version == 11:
-        action_module = ActionModuleFacade_v1_1_reduced(device)
-    elif version == 21:
-        action_module = ActionModuleFacade_v2_1(device)
-
+    action_module = ActionModuleFacade(device, version, normalized_action)
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided)
@@ -115,6 +124,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             loss = loss_func(pred, label)
             loss.backward()
             op.step()
+            writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             cumulative_loss.append(loss.data.cpu().numpy())
             accuracy.append(int(torch.sigmoid(pred).round() == label))
             del pred, loss
@@ -123,12 +133,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(cumulative_loss[-print_every:]), writer_it)
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
-                writer_it += 1
+                writer.add_scalar("Acc/valid",
+                                  np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
 
             if (i + 1) % save_every == 0:
                 print("running validation evaluation....")
-                mrr = run_valid(valid_data_loader, layout_net, count=500)
-                writer.add_scalar("MRR/valid", mrr, writer_it)
+                writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
                 print("validation complete")
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
@@ -149,9 +159,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', dest='num_epochs', type=int,
                         help='number of epochs to train', default=50)
     parser.add_argument('--print_every', dest='print_every', type=int,
-                        help='print to tensorboard after this many iterations', default=100)
+                        help='print to tensorboard after this many iterations', default=1000)
     parser.add_argument('--save_every', dest='save_every', type=int,
-                        help='save to checkpoint after this many iterations', default=10000)
+                        help='save to checkpoint after this many iterations', default=50000)
     parser.add_argument('--version', dest='version', type=int,
                         help='Whether to run ActionV1 or ActionV2', required=True)
     parser.add_argument('--lr', dest='lr', type=float,
@@ -166,8 +176,10 @@ if __name__ == '__main__':
                         help='Number of distractors to use in training')
     parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided',
                         default=False, action='store_true')
+    parser.add_argument('--normalized_action', dest='normalized_action',
+                        default=False, action='store_true')
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.layout_checkpoint_file)
+         args.num_negatives, args.precomputed_scores_provided, args.normalized_action, args.layout_checkpoint_file)

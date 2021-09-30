@@ -9,7 +9,7 @@ from eval.dataset import transform_sample, CodeSearchNetDataset_NotPrecomputed, 
     CodeSearchNetDataset_TFIDFOracle
 from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
-from layout_assembly.modules import ScoringModule, ActionModuleFacade_v1, ActionModuleFacade_v2
+from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 
 def main():
@@ -36,10 +36,7 @@ def main():
     device = args.device
     action_version = args.action_version
     scoring_module = ScoringModule(device, checkpoint=args.scoring_checkpoint, eval=True)
-    if action_version == 1:
-        action_module = ActionModuleFacade_v1(device, eval=True)
-    elif action_version == 2:
-        action_module = ActionModuleFacade_v2(device, eval=True)
+    action_module = ActionModuleFacade(device, action_version, eval=True)
     layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False, eval=True)
     layout_net.load_from_checkpoint(args.layoutnet_checkpoint)
 

@@ -8,7 +8,7 @@ class FC_Hypernetwork(nn.Module):
         self.param_shapes = []
         self.param_sizes = []
         self.dim = dim
-        self.dest_net = dest_net
+        self.dest_net = dest_net.to(device)
         self.device = device
         self.model = None
         self.weights = None
