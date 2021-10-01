@@ -37,6 +37,7 @@ class LayoutNet:
                                               torch.nn.Linear(half_dim, 1)).to(self.device)
         self.classifier.apply(init_weights)
         self.scoring_outputs = None
+        self.accumulated_loss = None
         self.eval = eval
         if self.eval:
             self.classifier.eval()
@@ -67,6 +68,7 @@ class LayoutNet:
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
+        self.accumulated_loss = None
         if len(code) == 0:  # erroneous example
             return None
         try:
@@ -85,13 +87,17 @@ class LayoutNet:
             action_module = ActionModuleWrapper(self.action_module_facade)
             action_module.param = node.node_value
             for child in node.children:
-                action_module, _, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
-                                                                            action_module)
+                action_module, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
+                                                                         action_module)
             precomputed_embeddings = (self.verb_embeddings[action_it], self.code_embeddings[action_it])
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
             output = action_module.forward(code, precomputed_embeddings)
+            if self.accumulated_loss is None:
+                self.accumulated_loss = output[-1]
+            else:
+                self.accumulated_loss += output[-1]
             if parent_module:
                 parent_module.add_input(output)
             return parent_module, output, scoring_it, action_it
@@ -106,7 +112,7 @@ class LayoutNet:
             parent_module.add_preposition(node.node_value)
             for child in node.children:
                 self.process_node(child, code, scoring_it, action_it, parent_module)
-            return parent_module, None, scoring_it, action_it
+            return parent_module, scoring_it, action_it
 
     def precompute_inputs(self, node, code, scoring_inputs, verb_embeddings, param=None):
         if node.node_type == 'action':

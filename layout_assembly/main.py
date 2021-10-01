@@ -138,7 +138,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
-            loss = loss_func(pred, label)
+            loss = loss_func(pred, label) + 0.5 * layout_net.accumulated_loss
             loss.backward()
             op.step()
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations

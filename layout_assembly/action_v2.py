@@ -50,7 +50,8 @@ class ActionModule_v2_one_input(ActionModule_v2):
              scores), dim=1))
         emb_out = self.model2.forward(
             torch.cat((verb_embedding, prep_embedding, scores_out.squeeze().unsqueeze(dim=0)), dim=1))
-        return emb_out, scores_out
+        l1_reg_loss = torch.norm(scores_out, 1)
+        return emb_out, scores_out, l1_reg_loss
 
 
 class ActionModule_v2_two_inputs(ActionModule_v2):
@@ -102,4 +103,5 @@ class ActionModule_v2_two_inputs(ActionModule_v2):
                                                  prep1_embedding,
                                                  prep2_embedding,
                                                  scores_out.squeeze().unsqueeze(dim=0)), dim=1))
-        return emb_out, scores_out
+        l1_reg_loss = torch.norm(scores_out, 1)
+        return emb_out, scores_out, l1_reg_loss
