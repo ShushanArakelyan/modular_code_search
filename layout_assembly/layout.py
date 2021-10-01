@@ -87,8 +87,8 @@ class LayoutNet:
             action_module = ActionModuleWrapper(self.action_module_facade)
             action_module.param = node.node_value
             for child in node.children:
-                action_module, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
-                                                                         action_module)
+                action_module, _, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
+                                                                            action_module)
             precomputed_embeddings = (self.verb_embeddings[action_it], self.code_embeddings[action_it])
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
@@ -112,7 +112,7 @@ class LayoutNet:
             parent_module.add_preposition(node.node_value)
             for child in node.children:
                 self.process_node(child, code, scoring_it, action_it, parent_module)
-            return parent_module, scoring_it, action_it
+            return parent_module, None, scoring_it, action_it
 
     def precompute_inputs(self, node, code, scoring_inputs, verb_embeddings, param=None):
         if node.node_type == 'action':
