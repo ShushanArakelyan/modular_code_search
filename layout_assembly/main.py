@@ -55,11 +55,12 @@ def eval_acc(data_loader, layout_net, count):
                     break
                 i += 1
                 pred = layout_net.forward(*transform_sample(sample))
-                if j == 0:
-                    label = 1
-                else:
-                    label = 0
-                accs.append(int(torch.sigmoid(pred).round() == label))
+                if pred:
+                    if j == 0:
+                        label = 1
+                    else:
+                        label = 0
+                    accs.append(int(torch.sigmoid(pred).round() == label))
         layout_net.precomputed_scores_provided = True
     return np.mean(accs)
 
@@ -109,6 +110,22 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         accuracy = []
         checkpoint_prefix = checkpoint_dir + f'/model_{epoch}'
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
+            if (i + 1) % print_every == 0:
+                writer.add_scalar("Loss/train",
+                                  np.mean(cumulative_loss[-print_every:]), writer_it)
+                writer.add_scalar("Acc/train",
+                                  np.mean(accuracy[-print_every:]), writer_it)
+                writer.add_scalar("Acc/valid",
+                                  np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
+
+            if (i + 1) % save_every == 0:
+                print("running validation evaluation....")
+                writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
+                print("validation complete")
+                print("saving to checkpoint: ")
+                layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
+                print("saved successfully")
+                
             for param in layout_net.parameters():
                 param.grad = None
             sample, scores, verbs, label = datum
@@ -128,21 +145,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             cumulative_loss.append(loss.data.cpu().numpy())
             accuracy.append(int(torch.sigmoid(pred).round() == label))
             del pred, loss
-            if (i + 1) % print_every == 0:
-                writer.add_scalar("Loss/train",
-                                  np.mean(cumulative_loss[-print_every:]), writer_it)
-                writer.add_scalar("Acc/train",
-                                  np.mean(accuracy[-print_every:]), writer_it)
-                writer.add_scalar("Acc/valid",
-                                  np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
-
-            if (i + 1) % save_every == 0:
-                print("running validation evaluation....")
-                writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
-                print("validation complete")
-                print("saving to checkpoint: ")
-                layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
-                print("saved successfully")
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
