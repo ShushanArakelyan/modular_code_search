@@ -68,7 +68,6 @@ class LayoutNet:
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        self.accumulated_loss = None
         if len(code) == 0:  # erroneous example
             return None
         try:
@@ -76,6 +75,7 @@ class LayoutNet:
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
+            self.accumulated_loss = []
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
@@ -94,10 +94,8 @@ class LayoutNet:
                 raise ProcessingException()
             action_it += 1
             output = action_module.forward(code, precomputed_embeddings)
-            if self.accumulated_loss is None:
-                self.accumulated_loss = output[-1]
-            else:
-                self.accumulated_loss += output[-1]
+            self.accumulated_loss.append(output[-1])
+            output = (output[0], output[1]) # remove last element
             if parent_module:
                 parent_module.add_input(output)
             return parent_module, output, scoring_it, action_it

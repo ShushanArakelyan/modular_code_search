@@ -26,8 +26,8 @@ class ActionModuleFacade:
         if num_inputs > 2:
             raise ProcessingException()
         module = self.modules[num_inputs]
-        emb, pred = module.forward(verb, inputs, code, verb_embedding)
-        return emb, pred
+        emb, pred, reg_loss = module.forward(verb, inputs, code, verb_embedding)
+        return emb, pred, reg_loss
 
     def init_networks(self, version, normalized):
         if version == 1:

@@ -66,7 +66,7 @@ def eval_acc(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
     if '_neg_10_' in data_dir:  # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
     elif '_codebert' in data_dir:  # ugly
@@ -138,7 +138,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
-            loss = loss_func(pred, label) + 0.5 * layout_net.accumulated_loss
+            loss = loss_func(pred, label)
+            if l1_reg_coef > 0:
+                for al in layout_net.accumulated_loss:
+                    loss += l1_reg_coef * al
             loss.backward()
             op.step()
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
@@ -180,8 +183,11 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--normalized_action', dest='normalized_action',
                         default=False, action='store_true')
+    parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=int,
+                        default=0)
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.normalized_action, args.layout_checkpoint_file)
+         args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
+         args.l1_reg_coef, args.layout_checkpoint_file)
