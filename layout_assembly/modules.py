@@ -7,6 +7,7 @@ from layout_assembly.action_adapter import ActionModule_v1_1_one_input, ActionMo
 from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
+from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.utils import ProcessingException
 
 
@@ -36,6 +37,9 @@ class ActionModuleFacade:
         elif version == 2:
             self.one_input_module = ActionModule_v2_one_input(self.device, normalized, self.eval)
             self.two_inputs_module = ActionModule_v2_two_inputs(self.device, normalized, self.eval)
+        elif version == 3:
+            self.one_input_module = ActionModule_v3_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v3_two_inputs(self.device, normalized, self.eval)
         elif version == 11:
             raise Exception('This code has not been refactored')
             self.one_input_module = ActionModule_v1_1_one_input(self.device, self.eval)
