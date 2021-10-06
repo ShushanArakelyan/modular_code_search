@@ -11,6 +11,7 @@ class ActionModule_v3(ActionModule_v1):
     def __init__(self, device, normalize=False, eval=False):
         ActionModule_v1.__init__(self, device, normalize, eval)
         self.attention = None
+        self.init_networks()
 
     def parameters(self):
         return chain(self.model1.parameters(), self.model2.parameters(), self.attention.parameters())
@@ -42,7 +43,7 @@ class ActionModule_v3_one_input(ActionModule_v3):
         # attentions for the sequence
         hidden_input_dims = [embedder.dim + 2, 64]
         hidden_output_dims = [64, embedder.max_seq_length]
-        self.attention = FC2(hidden_input_dims, hidden_output_dims)
+        self.attention = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         # outputs a sequence of scores
         hidden_input_dims = [embedder.dim * 2, 128]
         hidden_output_dims = [128, 1]
@@ -74,12 +75,12 @@ class ActionModule_v3_one_input(ActionModule_v3):
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
         weights = self.attention(
-            torch.cat((tiled_prep_emb, scores, torch.arange(embedder.max_seq_length).unsqueeze(dim=1))))
-        print(weights.shape)  # 512x512
+            torch.cat((tiled_prep_emb, scores, torch.arange(embedder.max_seq_length).unsqueeze(dim=1).to(self.device)), dim=1))
+#         print(weights.shape)  # 512x512
         weights = weights.unsqueeze(dim=1)
-        print(weights.shape)  # 512x1x512
+#         print(weights.shape)  # 512x1x512
         weighted_code_embeddings = torch.matmul(weights, code_embeddings)
-        print(weighted_code_embeddings.shape)  # 512x1x768
+#         print(weighted_code_embeddings.shape)  # 512x1x768
         weighted_code_embeddings = weighted_code_embeddings.squeeze()  # 512x768
         model1_input = torch.cat((tiled_verb_emb, weighted_code_embeddings), dim=1)
         scores_out = self.model1.forward(model1_input)
@@ -95,7 +96,7 @@ class ActionModule_v3_two_inputs(ActionModule_v3):
         # attentions for the sequence
         hidden_input_dims = [embedder.dim + 2, 64]
         hidden_output_dims = [64, embedder.max_seq_length]
-        self.attention = FC2(hidden_input_dims, hidden_output_dims)
+        self.attention = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         # outputs a sequence of scores
         hidden_input_dims = [embedder.dim * 3, 128]
         hidden_output_dims = [128, 1]
@@ -132,17 +133,19 @@ class ActionModule_v3_two_inputs(ActionModule_v3):
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep1_emb = prep1_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep2_emb = prep2_embedding.repeat(embedder.max_seq_length, 1)
+#         print(tiled_prep1_emb.shape, scores1.shape, torch.arange(embedder.max_seq_length).unsqueeze(dim=1).shape)
         weights_prep1 = self.attention.forward(
-            torch.cat((tiled_prep1_emb, scores1, torch.arange(embedder.max_seq_length).unsqueeze(dim=1))))
+            torch.cat(
+                (tiled_prep1_emb, scores1, torch.arange(embedder.max_seq_length).unsqueeze(dim=1).to(self.device)), dim=1))
         weights_prep2 = self.attention.forward(
-            torch.cat((tiled_prep2_emb, scores2, torch.arange(embedder.max_seq_length).unsqueeze(dim=1))))
-        print(weights_prep1.shape)  # 512x512
+            torch.cat((tiled_prep2_emb, scores2, torch.arange(embedder.max_seq_length).unsqueeze(dim=1).to(self.device)), dim=1))
+#         print(weights_prep1.shape)  # 512x512
         weights_prep1 = weights_prep1.unsqueeze(dim=1)
         weights_prep2 = weights_prep2.unsqueeze(dim=1)
-        print(weights_prep2.shape)  # 512x1x512
+#         print(weights_prep2.shape)  # 512x1x512
         weighted_code_embeddings_prep1 = torch.matmul(weights_prep1, code_embeddings)
         weighted_code_embeddings_prep2 = torch.matmul(weights_prep2, code_embeddings)
-        print(weighted_code_embeddings_prep2.shape)  # 512x1x768
+#         print(weighted_code_embeddings_prep2.shape)  # 512x1x768
         weighted_code_embeddings_prep1 = weighted_code_embeddings_prep1.squeeze()  # 512x768
         weighted_code_embeddings_prep2 = weighted_code_embeddings_prep2.squeeze()  # 512x768
         model1_input = torch.cat((tiled_verb_emb, weighted_code_embeddings_prep1, weighted_code_embeddings_prep2),

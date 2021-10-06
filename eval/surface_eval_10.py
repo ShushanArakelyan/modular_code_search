@@ -56,7 +56,7 @@ if __name__ == "__main__":
                         default=False, action='store_true')
     args = parser.parse_args()
 
-    scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
+    scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
     scoring_module = ScoringModule(device, scoring_checkpoint)
 
     version = args.action_version

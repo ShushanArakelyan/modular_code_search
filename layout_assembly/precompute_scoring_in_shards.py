@@ -86,7 +86,7 @@ class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
 
 
 device = 'cuda:0 '
-scoring_checkpoint = '/home/shushan/finetuned_scoring_models/06-09-2021 20:23:12/model_3_ep_5.tar'
+scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
 
 def sample_hard(idx, distances):
