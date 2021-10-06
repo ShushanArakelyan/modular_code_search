@@ -92,6 +92,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         layout_net.load_from_checkpoint(layout_checkpoint)
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
@@ -117,6 +118,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(accuracy[-print_every:]), writer_it)
                 writer.add_scalar("Acc/valid",
                                   np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
+                scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
             if (i + 1) % save_every == 0:
                 print("running validation evaluation....")
@@ -183,7 +185,7 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--normalized_action', dest='normalized_action',
                         default=False, action='store_true')
-    parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=int,
+    parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
                         default=0)
 
     args = parser.parse_args()
