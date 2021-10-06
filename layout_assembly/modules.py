@@ -56,11 +56,14 @@ class ActionModuleFacade:
 
     def named_parameters(self):
         return chain(self.one_input_module.named_parameters(), self.two_inputs_module.named_parameters())
-
-    def save_to_checkpoint(self, checkpoint):
+    
+    def state_dict(self):
         state_dict = {'one_input': self.one_input_module.state_dict(),
                       'two_inputs': self.two_inputs_module.state_dict()}
-        torch.save(state_dict, checkpoint)
+        return state_dict
+
+    def save_to_checkpoint(self, checkpoint):
+        torch.save(self.state_dict(), checkpoint)
 
     def load_from_checkpoint(self, checkpoint):
         models = torch.load(checkpoint, map_location=self.device)
