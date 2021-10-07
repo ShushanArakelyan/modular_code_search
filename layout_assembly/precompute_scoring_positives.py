@@ -13,111 +13,17 @@ import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
-
-class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
-    def __init__(self, filename, device, neg_count, oracle_idxs):
-        self.data = pd.read_json(filename, lines=True)
-        self.neg_data = pd.read_json(
-            '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_5.jsonl.gz',
-            lines=True)
-        self.device = device
-        self.neg_count = neg_count
-        self.oracle_idxs = []
-        self.positive_label = torch.FloatTensor([1]).to(device)
-        self.negative_label = torch.FloatTensor([0]).to(device)
-        self.read_oracle_idxs(oracle_idxs)
-
-    def __len__(self):
-        return len(
-            self.oracle_idxs)  # TODO: currently we sometimes only have the part of all indexes processed and saved
-
-    def __getitem__(self, idx):
-        all_samples = []
-        all_samples.extend(self.get_oracle_idxs_or_random(idx, all_samples))
-        return all_samples
-
-    # TODO: remove random part when we have finished processing oracle
-    # indexes for all of the training data
-    def get_oracle_idxs_or_random(self, idx, samples):
-        if len(self.oracle_idxs[idx]) == 0:
-            oracle_idxs = []
-            while len(oracle_idxs) < self.neg_count:
-                random_idx = np.random.randint(0, len(self.neg_data), 1)[0]
-                if random_idx != idx:
-                    oracle_idxs.append(random_idx)
-        else:
-            oracle_idxs = np.asarray(self.oracle_idxs[idx])
-            oracle_idxs = oracle_idxs[oracle_idxs != 0]
-            # 9 is the max value for neg_count, but real neg_count can be different
-            assert len(oracle_idxs) <= (9 + 1)
-            if len(oracle_idxs) == 9 + 1:
-                oracle_idxs = oracle_idxs[:-1]
-        for i in range(self.neg_count):
-            neg_idx = oracle_idxs[i]
-            sample = (self.data['docstring_tokens'][idx],
-                      self.neg_data['alt_code_tokens'][neg_idx],
-                      self.neg_data['static_tags'][neg_idx],
-                      self.neg_data['regex_tags'][neg_idx],
-                      self.data['ccg_parse'][idx])
-            samples.append(sample)
-        return samples
-
-    def read_oracle_idxs(self, oracle_idxs):
-        if os.path.isdir(oracle_idxs):
-            self.oracle_idxs = [[] for _ in range(30000)]
-            all_score_files = glob.glob(oracle_idxs + '/*')
-            all_score_files = natsort.natsorted(all_score_files)
-            for score_file in all_score_files:
-                print("Loading from file: ", score_file)
-                parts = score_file.split('/')[-1].split('_')
-                start = int(parts[-2])
-                end = int(parts[-1].split('.')[0])
-                self.read_oracle_idxs_from_file(start, score_file)
-        else:
-            self.oracle_idxs = [[] for _ in range(500)]  # TODO: fix me
-            self.read_oracle_idxs_from_file(0, oracle_idxs)
-
-    def read_oracle_idxs_from_file(self, start, filename):
-        with open(filename, 'r') as f:
-            for i, line in enumerate(f.readlines()):
-                scores = line.strip('\n').split(' ')
-                scores = [int(s) for s in scores if len(s) > 0]
-                self.oracle_idxs[start + i] = (scores)
-
-
 device = 'cuda:0'
 scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
-
-def sample_hard(idx, distances):
-    neg_idx = np.argsort(distances[idx])[1]  # the zero-th element is idx itself
-    distances[idx, neg_idx] = np.inf
-    return neg_idx, distances
-
-
-def sample_random(idx, data):
-    random_idx = np.random.randint(0, len(data), 1)[0]
-    return random_idx
-
-
-def main(num_negatives, neg_sampling_strategy, shard_size):
+def main(shard_size):
     for file_it in range(1):
-        data_dir = f'/home/shushan/train_v3_neg_{num_negatives}_{neg_sampling_strategy}'
+        data_dir = '/home/shushan/train_v3_positive'
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
         data_file = f'{data_dir1}/ccg_train_{file_it}.jsonl.gz'
-        if neg_sampling_strategy == 'codebert':
-            dataset = CodeSearchNetDataset_SavedOracle_NegOnly(data_file, device,
-                                                               oracle_idxs='/home/shushan/codebert_oracle_scores',
-                                                               neg_count=num_negatives)
-        elif neg_sampling_strategy == 'random':
-            dataset = CodeSearchNetDataset_NotPrecomputed(data_file, device, neg_count=num_negatives)
-        elif neg_sampling_strategy == 'tfidf':
-            dataset = CodeSearchNetDataset_SavedOracle_NegOnly(data_file, device,
-                                                               oracle_idxs='/home/shushan/tfidf_oracle_scores',
-                                                               neg_count=num_negatives)
-
+        data = pd.read_json(data_file, lines=True)
         scoring_module = ScoringModule(device, scoring_checkpoint)
         version = 1
         action_module = ActionModuleFacade(device, version, normalized=False)
@@ -126,7 +32,7 @@ def main(num_negatives, neg_sampling_strategy, shard_size):
         offsets_count = int(shard_size + 1)
         data_map_count = int(shard_size * 3.5)
 
-        for shard_it in range(1, num_negatives + 1):
+        for shard_it in range(1):
             scores_data_map = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}_{shard_it}.npy',
                                         dtype='float32', mode='w+', shape=(data_map_count, 512, 1))
             scores_offsets_map = np.memmap(f'{data_dir}/memmap_scores_offsets_{file_it}_{shard_it}.npy',
@@ -151,10 +57,14 @@ def main(num_negatives, neg_sampling_strategy, shard_size):
             verb_shape = []
             label = []
             it = 0
+
             with torch.no_grad():
-                for i in tqdm.tqdm(range(len(dataset))):
-                    batch = dataset[i]
-                    sample = batch[shard_it]
+                for idx in tqdm.tqdm(range(len(data))):
+                    sample = (data['docstring_tokens'][idx],
+                              data['alt_code_tokens'][idx],
+                              data['static_tags'][idx],
+                              data['regex_tags'][idx],
+                              data['ccg_parse'][idx])
                     try:
                         ccg_parse = sample[-1][1:-1]
                         tree = layout_net.construct_layout(ccg_parse)
@@ -216,11 +126,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Precompute CodeBERT embeddings for data')
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on')
-    parser.add_argument('--num_negatives', dest='num_negatives', type=int,
-                        help='number of negative samples to include', required=True)
-    parser.add_argument('--neg_sampling_strategy', dest='neg_sampling_strategy', type=str,
-                        help='"random" or "tfidf" or "codebert"', required=True)
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
     args = parser.parse_args()
 
-    main(args.num_negatives, args.neg_sampling_strategy, args.shard_size)
+    main(args.shard_size)
