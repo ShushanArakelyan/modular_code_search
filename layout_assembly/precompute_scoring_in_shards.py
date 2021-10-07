@@ -85,7 +85,7 @@ class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
                 self.oracle_idxs[start + i] = (scores)
 
 
-device = 'cuda:0 '
+device = 'cuda:0'
 scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
 

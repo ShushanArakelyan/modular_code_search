@@ -43,8 +43,10 @@ for idx in tqdm.tqdm(range(int(range_start), int(range_end))):
     docs = [' '.join(data['code_tokens'][idx])]
     query = [' '.join(data['docstring_tokens'][idx])]
     np.random.seed(idx)
+    negative_sample_idxs = []
     for _ in range(neg_count):
         random_idx = np.random.randint(0, len(neg_data), 1)[0]
+        negative_sample_idxs.append(random_idx)
         sample = (data['docstring_tokens'][idx],
                   neg_data['code_tokens'][random_idx],
                   neg_data['static_tags'][random_idx],
@@ -64,7 +66,9 @@ for idx in tqdm.tqdm(range(int(range_start), int(range_end))):
                 preds = logits.cpu().numpy()
             else:
                 preds = np.append(preds, logits.cpu().numpy(), axis=0)
-    oracle_scores.append(np.argsort(preds[:, 1])[::-1][:10])
+    top_idxs = np.argsort(preds[:, 1])[::-1][:10]
+    oracle_scores.append(negative_sample_idxs[top_idxs])
+    
 with open(f'/home/shushan/oracle_scores_{range_start}_{range_end}.txt', 'w') as f:
     for scores in oracle_scores:
         for score in scores:
