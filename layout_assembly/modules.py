@@ -2,7 +2,7 @@ from itertools import chain
 
 import torch
 
-import codebert_embedder as embedder
+import scoring as embedder # this instance of embedder is different than in the rest of the network, it remains frozen
 from layout_assembly.action_adapter import ActionModule_v1_1_one_input, ActionModule_v1_1_two_inputs
 from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input
 from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs

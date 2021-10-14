@@ -29,7 +29,7 @@ class LayoutNet:
 
         def init_weights(m):
             if isinstance(m, torch.nn.Linear):
-                torch.nn.init.xavier_uniform(m.weight)
+                torch.nn.init.xavier_uniform_(m.weight)
                 m.bias.data.fill_(0.01)
 
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
@@ -53,6 +53,7 @@ class LayoutNet:
         self.classifier.load_state_dict(models['classifier'])
         self.classifier = self.classifier.to(self.device)
         if 'codebert.model' in models:
+            print("Loading CodeBERT weights from the checkpoint")
             embedder.model.load_state_dict(models['codebert.model'])
 
     def save_to_checkpoint(self, checkpoint):

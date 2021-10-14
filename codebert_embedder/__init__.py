@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import warnings
 from transformers import AutoTokenizer, AutoModel
 
 from third_party.CodeBERT.CodeBERT.codesearch.utils import convert_examples_to_features, InputExample
@@ -12,7 +13,7 @@ device = None
 initialized = False
 
 
-def init_embedder(_device, checkpoint=None):
+def init_embedder(_device):
     global device, initialized
     global tokenizer, model
     print(_device)
@@ -23,11 +24,8 @@ def init_embedder(_device, checkpoint=None):
         device = 'cpu'
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
     model = AutoModel.from_pretrained("microsoft/codebert-base").to(device)
-    if checkpoint is not None:
-        ckp_model = torch.load(checkpoint, map_location=device)
-        model.load_state_dict(ckp_model['embedder'])
-        model = model.to(device)
     initialized = True
+    warnings.warn("The weights of the CodeBERT embedder in codebert_embedder module have been reset")
 
 
 def get_feature_inputs(query, code):
@@ -68,7 +66,6 @@ def get_feature_inputs_batch(queries, codes):
 
 def get_embeddings(inputs, batch=False):
     """Gets the embeddings of all the tokens of the input sentence."""
-    print(model.state_dict())
     output = model(**inputs, output_hidden_states=True)
     embeddings = output['hidden_states']
     embeddings = inputs['attention_mask'].unsqueeze(dim=2) * embeddings[-1]
@@ -121,18 +118,12 @@ def embed(doc, code, fast=False):
     # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
     # converting the docstring and code tokens into CodeBERT inputs
     # CodeBERT inputs are limited by 512 tokens, so this will truncate the inputs
-    print("doc: ", doc)
-    print("code: ", code)
     inputs = get_feature_inputs(' '.join(doc), ' '.join(code))
-    print("inputs: ", inputs)
     separator = np.where(
         inputs['input_ids'][0].cpu().numpy() == tokenizer.sep_token_id)[0][0]
-    print("separator: ", separator)
     # ignore CLS tokens at the beginning and at the end
     query_token_ids = inputs['input_ids'][0][1:separator]
     code_token_ids = inputs['input_ids'][0][separator + 1:-1]
-    print("query_token_ids: ", query_token_ids)
-    print("code_token_ids: ", code_token_ids)
     # get truncated version of code and query
     truncated_code_tokens = tokenizer.convert_ids_to_tokens(code_token_ids)
     truncated_query_tokens = tokenizer.convert_ids_to_tokens(query_token_ids)
@@ -154,11 +145,9 @@ def embed(doc, code, fast=False):
     embedding = get_embeddings(inputs)
     # query_embedding, code_embedding = embedding[1:separator], embedding[separator + 1:-1]
     cls_embedding = embedding.index_select(dim=0, index=torch.LongTensor(np.arange(0, 1)).to(device))
-    print("cls embedding: ", cls_embedding)
     query_embedding = embedding.index_select(dim=0, index=torch.LongTensor(np.arange(1, separator)).to(device))
     code_embedding = embedding.index_select(dim=0, index=torch.LongTensor(
         np.arange(separator + 1, embedding.shape[0] - 1)).to(device))
-    print("code_embedding: ", code_embedding)
     token_embeddings = filter_embedding_by_id(query_embedding, token_id_mapping)
 
     out_tuple = (token_id_mapping, token_embeddings, code_token_id_mapping, code_embedding, truncated_query_tokens,
