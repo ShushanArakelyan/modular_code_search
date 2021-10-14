@@ -31,7 +31,7 @@ for idx in tqdm.tqdm(range(int(range_start), int(range_end))):
     np.random.seed(idx)
     negative_sample_idxs = [0]
     for _ in range(neg_count):
-        random_idx = np.random.randint(0, len(neg_data), 1)[0]
+        random_idx = np.random.randint(1, len(neg_data), 1)[0]
         negative_sample_idxs.append(random_idx)
         docs.append(' '.join(neg_data['code_tokens'][random_idx]))
 

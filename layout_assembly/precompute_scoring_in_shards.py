@@ -85,7 +85,7 @@ class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
                 self.oracle_idxs[start + i] = (scores)
 
 
-device = 'cuda:0 '
+device = 'cuda:0'
 scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
 
@@ -102,7 +102,7 @@ def sample_random(idx, data):
 
 def main(num_negatives, neg_sampling_strategy, shard_size):
     for file_it in range(1):
-        data_dir = f'/home/shushan/train_v2_neg_{num_negatives}_{neg_sampling_strategy}'
+        data_dir = f'/home/shushan/train_v3_neg_{num_negatives}_{neg_sampling_strategy}'
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
@@ -113,26 +113,19 @@ def main(num_negatives, neg_sampling_strategy, shard_size):
                                                                neg_count=num_negatives)
         elif neg_sampling_strategy == 'random':
             dataset = CodeSearchNetDataset_NotPrecomputed(data_file, device, neg_count=num_negatives)
-        elif neg_sampling_strategy == 'hard':
-            dataset = CodeSearchNetDataset_TFIDFOracle(data_file, device, neg_count=999, oracle_neg_count=num_negatives)
+        elif neg_sampling_strategy == 'tfidf':
+            dataset = CodeSearchNetDataset_SavedOracle_NegOnly(data_file, device,
+                                                               oracle_idxs='/home/shushan/tfidf_oracle_scores',
+                                                               neg_count=num_negatives)
 
         scoring_module = ScoringModule(device, scoring_checkpoint)
         version = 1
         action_module = ActionModuleFacade(device, version, normalized=False)
         layout_net = LayoutNet(scoring_module, action_module, device)
 
-        positive = torch.FloatTensor([[1]]).to(device)
-        negative = torch.FloatTensor([[0]]).to(device)
-
         offsets_count = int(shard_size + 1)
         data_map_count = int(shard_size * 3.5)
 
-        #         if neg_sampling_strategy == 'hard':
-        #             tfIdfVectorizer = TfidfVectorizer(use_idf=True)
-        #             tfIdfVectorizer.fit_transform([' '.join(dt) for dt in data['docstring_tokens']] + [' '.join(ct) for ct in data['code_tokens']])
-        #             tfIdf_docs = tfIdfVectorizer.transform([' '.join(dt) for dt in data['docstring_tokens']])
-        #             tfIdf_codes = tfIdfVectorizer.transform([' '.join(ct) for ct in data['code_tokens']])
-        #             distances = euclidean_distances(tfIdf_docs, tfIdf_codes)
         for shard_it in range(1, num_negatives + 1):
             scores_data_map = np.memmap(f'{data_dir}/memmap_scores_data_{file_it}_{shard_it}.npy',
                                         dtype='float32', mode='w+', shape=(data_map_count, 512, 1))
@@ -161,10 +154,6 @@ def main(num_negatives, neg_sampling_strategy, shard_size):
             with torch.no_grad():
                 for i in tqdm.tqdm(range(len(dataset))):
                     batch = dataset[i]
-                    #                     if neg_sampling_strategy == 'random':
-                    #                         neg_idx = sample_random(i, data)
-                    #                     elif neg_sampling_strategy == 'hard':
-                    #                         neg_idx, distances = sample_hard(i, distances)
                     sample = batch[shard_it]
                     try:
                         ccg_parse = sample[-1][1:-1]
@@ -230,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_negatives', dest='num_negatives', type=int,
                         help='number of negative samples to include', required=True)
     parser.add_argument('--neg_sampling_strategy', dest='neg_sampling_strategy', type=str,
-                        help='"random" or "hard" or "codebert"', required=True)
+                        help='"random" or "tfidf" or "codebert"', required=True)
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
     args = parser.parse_args()
 
