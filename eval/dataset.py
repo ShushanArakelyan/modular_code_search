@@ -63,7 +63,7 @@ class CodeSearchNetDataset(Dataset):
         verbs_end = self.verbs_offsets_memmap[idx + 1][0]
         verbs = self.verbs_data_memmap[verbs_start:verbs_end]
         verbs = torch.FloatTensor(verbs).to(self.device)
-        return (sample, scores, verbs, label)
+        return (sample, scores, verbs, label) # verb embeddings are not used anymore
 
 
 class CodeSearchNetDataset_wShards(CodeSearchNetDataset):

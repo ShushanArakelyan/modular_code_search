@@ -18,11 +18,12 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False, finetune_codebert=True):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
         self.device = device
+        self.finetune_codebert = finetune_codebert
         self.precomputed_scores_provided = precomputed_scores_provided
         dim = embedder.dim
         half_dim = int(dim / 2)
@@ -43,8 +44,11 @@ class LayoutNet:
             self.classifier.eval()
 
     def parameters(self):
-        return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
-                     embedder.model.parameters())
+        if self.finetune_codebert:
+            return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
+                         embedder.model.parameters())
+        else:
+            return chain(self.classifier.parameters(), self.action_module_facade.parameters())
 
     def load_from_checkpoint(self, checkpoint):
         self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
