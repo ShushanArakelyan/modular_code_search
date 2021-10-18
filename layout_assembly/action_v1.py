@@ -3,7 +3,7 @@ from itertools import chain
 import torch
 
 import codebert_embedder as embedder
-from layout_assembly.utils import ProcessingException, FC2, FC2_normalized
+from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init_weights
 
 
 class ActionModule_v1:
@@ -46,19 +46,21 @@ class ActionModule_v1:
 
 class ActionModule_v1_one_input(ActionModule_v1):
     def init_networks(self):
-        hidden_input_dims = [embedder.dim * 3 + 1, 128]
-        hidden_output_dims = [128, 1]
+        hidden_input_dims = [embedder.dim * 3 + 1, 512]
+        hidden_output_dims = [512, 1]
         # outputs a sequence of scores
         if self.normalized:
             self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
         else:
             self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model1.apply(init_weights)
 #         hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
 #         hidden_output_dims = [128, embedder.dim]
-        hidden_input_dims = [embedder.max_seq_length, 128]
-        hidden_output_dims = [128, embedder.dim]
+        hidden_input_dims = [embedder.max_seq_length, 512]
+        hidden_output_dims = [512, embedder.dim]
         # outputs an embedding
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2.apply(init_weights)
         if self.is_eval:
             self.eval()
 
@@ -86,17 +88,19 @@ class ActionModule_v1_one_input(ActionModule_v1):
 
 class ActionModule_v1_two_inputs(ActionModule_v1):
     def init_networks(self):
-        hidden_input_dims = [embedder.dim * 4 + 2, 128]
-        hidden_output_dims = [128, 1]
+        hidden_input_dims = [embedder.dim * 4 + 2, 512]
+        hidden_output_dims = [512, 1]
         if self.normalized:
             self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
         else:
             self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model1.apply(init_weights)
 #         hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
 #         hidden_output_dims = [128, embedder.dim]
-        hidden_input_dims = [embedder.max_seq_length, 128]
-        hidden_output_dims = [128, embedder.dim]
+        hidden_input_dims = [embedder.max_seq_length, 512]
+        hidden_output_dims = [512, embedder.dim]
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2.apply(init_weights)
         if self.is_eval:
             self.eval()
 
