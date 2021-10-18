@@ -3,7 +3,7 @@ from itertools import chain
 import torch
 
 import codebert_embedder as embedder
-from layout_assembly.utils import ActionModuleWrapper, ProcessingException
+from layout_assembly.utils import ActionModuleWrapper, ProcessingException, init_weights
 
 
 class LayoutNode:
@@ -27,11 +27,6 @@ class LayoutNet:
         self.precomputed_scores_provided = precomputed_scores_provided
         dim = embedder.dim
         half_dim = int(dim / 2)
-
-        def init_weights(m):
-            if isinstance(m, torch.nn.Linear):
-                torch.nn.init.xavier_uniform_(m.weight)
-                m.bias.data.fill_(0.01)
 
         self.classifier = torch.nn.Sequential(torch.nn.Linear(dim, half_dim),
                                               torch.nn.ReLU(),

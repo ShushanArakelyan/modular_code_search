@@ -136,7 +136,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
                 continue
             layout_net.scoring_outputs = scores[0]
-            layout_net.verb_embeddings = verbs[0]
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
