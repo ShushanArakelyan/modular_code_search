@@ -67,9 +67,13 @@ def eval_acc(data_loader, layout_net, count):
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
-    shard_range = num_negatives
-    dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
-                             range(shard_range + 1)])
+    if '_neg_10_' in data_dir:  # ugly, ugly, ugly
+        dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
+    elif '_codebert' in data_dir:  # ugly
+        shard_range = num_negatives
+        dataset = ConcatDataset(
+            [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
+             range(shard_range + 1)])
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9,
@@ -78,7 +82,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModuleFacade(device, version, normalized_action)
-    
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided)
@@ -87,9 +90,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                            precomputed_scores_provided=precomputed_scores_provided)
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
-    
     loss_func = torch.nn.BCEWithLogitsLoss()
-    op = torch.optim.Adam(layout_net.parameters(), lr=lr)
+    op = torch.optim.Adagrad(layout_net.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
     now = datetime.now()
@@ -112,16 +114,16 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         loss = None
         steps = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
-            if (steps + 1) % print_every == 0:
+            if (i + 1) % print_every == 0:
                 writer.add_scalar("Loss/train",
-                                  np.mean(cumulative_loss[-int(print_every/batch_size):]), writer_it)
+                                  np.mean(cumulative_loss[-print_every:]), writer_it)
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 writer.add_scalar("Acc/valid",
                                   np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
                 scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
-            if (steps + 1) % save_every == 0:
+            if (i + 1) % save_every == 0:
                 print("running validation evaluation....")
                 writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
                 print("validation complete")

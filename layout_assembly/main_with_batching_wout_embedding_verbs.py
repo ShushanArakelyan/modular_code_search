@@ -12,10 +12,28 @@ from eval.dataset import CodeSearchNetDataset, transform_sample
 from eval.dataset import CodeSearchNetDataset_SavedOracle
 from eval.dataset import CodeSearchNetDataset_wShards
 from eval.utils import mrr
-from layout_assembly.layout import LayoutNet
+from layout_assembly.layout_wout_embedding_verbs import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
+
+class ActionModuleFacadeWoutEmbeddingVerbs(ActionModuleFacade):
+    def init_networks(self, version, normalized):
+        from layout_assembly.action_v1_wout_embedding_verbs import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+        if version == 1:
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.eval)
+        elif version == 2:
+            raise NotImplementedError()
+        elif version == 3:
+            raise NotImplementedError()       
+        elif version == 11:
+            raise NotImplementedError()
+        elif version == 21:
+            raise NotImplementedError()
+        else:
+            raise Exception("Unknown Action version")
+            
 
 def eval_mrr(data_loader, layout_net, count):
     MRRs = []
@@ -77,7 +95,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    action_module = ActionModuleFacade(device, version, normalized_action)
+    action_module = ActionModuleFacadeWoutEmbeddingVerbs(device, version, normalized_action)
     
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
@@ -157,6 +175,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+                    
+                    
+                    
+            if steps >= 5000:
+                break
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")

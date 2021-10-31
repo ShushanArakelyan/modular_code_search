@@ -15,6 +15,16 @@ from eval.utils import mrr
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
+from layout_assembly.action_v1_w_entr_reg import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+
+
+class ActionModuleFacadeWEntrReg(ActionModuleFacade):
+    def init_networks(self, version, normalized):
+        if version == 1:
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.eval)
+        else:
+            raise Exception("Not implemented!")
 
 
 def eval_mrr(data_loader, layout_net, count):
@@ -66,7 +76,7 @@ def eval_acc(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw, example_count, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
                              range(shard_range + 1)])
@@ -77,7 +87,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    action_module = ActionModuleFacade(device, version, normalized_action)
+    action_module = ActionModuleFacadeWEntrReg(device, version, normalized_action)
     
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
@@ -89,7 +99,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         layout_net.load_from_checkpoint(layout_checkpoint)
     
     loss_func = torch.nn.BCEWithLogitsLoss()
-    op = torch.optim.Adam(layout_net.parameters(), lr=lr)
+    op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
     now = datetime.now()
@@ -157,6 +167,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+            
+            
+            if steps >= example_count:
+                break
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
@@ -194,9 +208,13 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
                         default=0)
+    parser.add_argument('--adamw', dest='adamw', type=float,
+                        default=0)
+    parser.add_argument('--example_count', dest='example_count', type=int,
+                        default=0)
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
          args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
-         args.l1_reg_coef, args.layout_checkpoint_file)
+         args.l1_reg_coef, args.adamw, args.example_count, args.layout_checkpoint_file)

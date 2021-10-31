@@ -66,7 +66,7 @@ def eval_acc(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw, example_count, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
                              range(shard_range + 1)])
@@ -89,7 +89,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         layout_net.load_from_checkpoint(layout_checkpoint)
     
     loss_func = torch.nn.BCEWithLogitsLoss()
-    op = torch.optim.Adam(layout_net.parameters(), lr=lr)
+    op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
     now = datetime.now()
@@ -157,6 +157,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+            
+            
+            if steps >= example_count:
+                break
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
@@ -194,9 +198,13 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
                         default=0)
+    parser.add_argument('--adamw', dest='adamw', type=float,
+                        default=0)
+    parser.add_argument('--example_count', dest='example_count', type=int,
+                        default=0)
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
          args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
-         args.l1_reg_coef, args.layout_checkpoint_file)
+         args.l1_reg_coef, args.adamw, args.example_count, args.layout_checkpoint_file)

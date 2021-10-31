@@ -12,11 +12,31 @@ from eval.dataset import CodeSearchNetDataset, transform_sample
 from eval.dataset import CodeSearchNetDataset_SavedOracle
 from eval.dataset import CodeSearchNetDataset_wShards
 from eval.utils import mrr
-from layout_assembly.layout import LayoutNet
+from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
+from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
+from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
+from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
 
 
+class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
+    def init_networks(self, version, normalized):
+        if version == 1:
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.eval)
+        if version == 5:
+            self.one_input_module = ActionModule_v5_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v5_two_inputs(self.device, normalized, self.eval)
+        if version == 6:
+            self.one_input_module = ActionModule_v6_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v6_two_inputs(self.device, normalized, self.eval)
+        if version == 7:
+            self.one_input_module = ActionModule_v7_one_input(self.device, normalized, self.eval)
+            self.two_inputs_module = ActionModule_v7_two_inputs(self.device, normalized, self.eval)
+
+            
 def eval_mrr(data_loader, layout_net, count):
     MRRs = []
     with torch.no_grad():
@@ -55,18 +75,20 @@ def eval_acc(data_loader, layout_net, count):
                     break
                 i += 1
                 pred = layout_net.forward(*transform_sample(sample))
-                if pred:
-                    if j == 0:
-                        label = 1
-                    else:
-                        label = 0
-                    accs.append(int(torch.sigmoid(pred).round() == label))
+                if pred is None:
+                    continue
+                if j == 0:
+                    label = 1
+                else:
+                    label = 0
+                accs.append(int(torch.argmax(pred) == label))
         layout_net.precomputed_scores_provided = True
     return np.mean(accs)
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw, example_count, 
+         load_finetuned_codebert, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
                              range(shard_range + 1)])
@@ -75,13 +97,20 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9,
                                                      oracle_idxs='/home/shushan/codebert_valid_oracle_scores_full.txt')
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
-
+    if load_finetuned_codebert:
+        import codebert_embedder_v2 as embedder
+        embedder.init_embedder(device, load_finetuned_codebert)
+    
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    action_module = ActionModuleFacade(device, version, normalized_action)
+    action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action)
     
     if layout_net_version == 'classic':
+        if version == 5 or version == 6:
+            return_separators = True
+        else:
+            return_separators = False
         layout_net = LayoutNet(scoring_module, action_module, device,
-                               precomputed_scores_provided=precomputed_scores_provided)
+                               precomputed_scores_provided=precomputed_scores_provided, return_separators=return_separators)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
@@ -89,7 +118,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         layout_net.load_from_checkpoint(layout_checkpoint)
     
     loss_func = torch.nn.BCEWithLogitsLoss()
-    op = torch.optim.Adam(layout_net.parameters(), lr=lr)
+    op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
     now = datetime.now()
@@ -104,6 +133,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
+    positive_label = torch.FloatTensor([[0, 1]]).to(device)
+    negative_label = torch.FloatTensor([[1, 0]]).to(device)
     batch_size = 20
     for epoch in range(num_epochs):
         cumulative_loss = []
@@ -132,6 +163,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             for param in layout_net.parameters():
                 param.grad = None
             sample, scores, verbs, label = datum
+            if int(label) == 0:
+                label = negative_label
+            else:
+                label = positive_label
             # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
             # an extra dimension
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
@@ -149,7 +184,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                     loss += l1_reg_coef * al
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
-            accuracy.append(int(torch.sigmoid(pred).round() == label))
+            accuracy.append(int(torch.argmax(torch.sigmoid(pred)) == torch.argmax(label)))
             if steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy()/batch_size)
@@ -157,6 +192,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+            if steps >= example_count:
+                break
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
@@ -194,9 +231,14 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
                         default=0)
+    parser.add_argument('--adamw', dest='adamw', type=float,
+                        default=0)
+    parser.add_argument('--example_count', dest='example_count', type=int,
+                        default=0)
+    parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
          args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
-         args.l1_reg_coef, args.layout_checkpoint_file)
+         args.l1_reg_coef, args.adamw, args.example_count, args.load_finetuned_codebert, args.layout_checkpoint_file)
