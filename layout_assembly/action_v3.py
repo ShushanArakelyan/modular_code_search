@@ -58,8 +58,6 @@ class ActionModule_v3_one_input(ActionModule_v3):
         hidden_output_dims = [128, embedder.dim]
         # outputs an embedding
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -109,8 +107,6 @@ class ActionModule_v3_two_inputs(ActionModule_v3):
         hidden_input_dims = [embedder.max_seq_length, 128]
         hidden_output_dims = [128, embedder.dim]
         self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args

@@ -9,8 +9,8 @@ from layout_assembly.utils import ProcessingException
 
 
 class LayoutNetWithAdapters(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False):
-        super().__init__(scoring_module, action_module_facade, device, precomputed_scores_provided, eval)
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False):
+        super().__init__(scoring_module, action_module_facade, device, precomputed_scores_provided)
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.device = device

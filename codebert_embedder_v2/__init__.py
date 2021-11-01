@@ -15,6 +15,8 @@ device = None
 initialized = False
 sep_embedding = None
 cls_embedding = None
+sep_value = 0.1
+cls_value = -0.1
 
 
 def init_embedder(_device, load_finetuned=False):
@@ -37,8 +39,8 @@ def init_embedder(_device, load_finetuned=False):
         model = classifier.roberta
     initialized = True
     warnings.warn("The weights of the CodeBERT embedder in codebert_embedder module have been reset")
-    sep_embedding = (torch.ones((1, dim)) * 0.1).to(device)
-    cls_embedding = (torch.ones((1, dim)) * (-0.1)).to(device)
+    sep_embedding = (torch.ones((1, dim)) * sep_value).to(device)
+    cls_embedding = (torch.ones((1, dim)) * cls_value).to(device)
 
 
 def get_feature_inputs(query, code):
@@ -133,6 +135,15 @@ def embed_batch(docs, codes, return_separators=False):
         code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
                                                              (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
                                      for i in range(separator.shape[0])], dim=0)
+    return query_embeddings, code_embeddings
+
+
+def embed_batch_v7(docs, codes, return_separators=False):
+    inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
+    embedding = get_embeddings(inputs, True)
+    query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
+    sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
+    code_embeddings = [embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :] for i in range(embedding.shape[0])]
     return query_embeddings, code_embeddings
 
 

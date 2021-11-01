@@ -7,13 +7,12 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 
 
 class ActionModule_v1:
-    def __init__(self, device, normalize=False, eval=False):
+    def __init__(self, device, normalize=False):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.model1 = None
         self.normalized = normalize
-        self.is_eval = eval
         self.init_networks()
 
     def init_networks(self):
@@ -34,9 +33,11 @@ class ActionModule_v1:
 
     def eval(self):
         self.model1.eval()
+        embedder.classifier.eval()
 
     def train(self):
         self.model1.train()
+        embedder.classifier.train()
 
 
 class ActionModule_v1_one_input(ActionModule_v1):
@@ -49,8 +50,6 @@ class ActionModule_v1_one_input(ActionModule_v1):
         else:
             self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.model1.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -79,8 +78,6 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         else:
             self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.model1.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args

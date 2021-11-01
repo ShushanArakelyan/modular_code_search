@@ -18,7 +18,7 @@ class LayoutNode:
 
 
 class LayoutNet:
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False, finetune_codebert=True):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, finetune_codebert=True):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
@@ -38,9 +38,6 @@ class LayoutNet:
         
         self.scoring_outputs = None
         self.accumulated_loss = None
-        self.eval = eval
-        if self.eval:
-            self.classifier.eval()
 
     def parameters(self):
         if self.finetune_codebert:

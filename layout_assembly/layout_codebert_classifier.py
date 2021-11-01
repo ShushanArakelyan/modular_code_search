@@ -37,7 +37,7 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNet_w_codebert_classifier(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, return_separators=False, precomputed_scores_provided=False, eval=False, finetune_codebert=True):
+    def __init__(self, scoring_module, action_module_facade, device, return_separators=False, precomputed_scores_provided=False, finetune_codebert=True):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
@@ -50,10 +50,6 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
         self.classifier = embedder.classifier
         self.scoring_outputs = None
         self.accumulated_loss = None
-        self.eval = eval
-        if self.eval:
-            self.classifier.eval()
-
     def parameters(self):
         return chain(self.classifier.parameters(), self.action_module_facade.parameters())
 
@@ -86,9 +82,12 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-            self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], 
-                                                                              verb_embeddings[1], 
-                                                                              return_separators=self.return_separators)
+#             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], 
+#                                                                               verb_embeddings[1], 
+#                                                                               return_separators=self.return_separators)
+            self.verb_embeddings, self.code_embeddings = embedder.embed_batch_v7(verb_embeddings[0], 
+                                                                                 verb_embeddings[1], 
+                                                                                 return_separators=self.return_separators)
             self.accumulated_loss = []
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
@@ -96,7 +95,6 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
 
         inputs = embedder.get_feature_inputs_batch([" ".join(sample[0])], [" ".join(code)])
         inputs['weights'] = output[1]       
-#         inputs['weights'] = torch.ones_like(output[1])
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
 

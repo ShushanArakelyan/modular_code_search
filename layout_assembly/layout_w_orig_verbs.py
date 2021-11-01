@@ -18,7 +18,7 @@ from nltk.stem import WordNetLemmatizer
 
 POS_TAGGER = stanza.Pipeline(lang='en', processors='tokenize,pos', tokenize_pretokenized=True)
 class LayoutNetWOrigVerbs(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, eval=False, finetune_codebert=True):
+    def __init__(self, scoring_module, action_module_facade, device, precomputed_scores_provided=False, finetune_codebert=True):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
@@ -26,7 +26,6 @@ class LayoutNetWOrigVerbs(LayoutNet):
         self.finetune_codebert = finetune_codebert
         self.precomputed_scores_provided = precomputed_scores_provided
         self.reverse_string2predicate = self.construct_reverse_string2predicate()
-#         print("Constructed reverse string 2 predicate: ", self.reverse_string2predicate)
         self.lemmatizer = WordNetLemmatizer()
         dim = embedder.dim
         half_dim = int(dim / 2)
@@ -37,9 +36,6 @@ class LayoutNetWOrigVerbs(LayoutNet):
         self.classifier.apply(init_weights)
         self.scoring_outputs = None
         self.accumulated_loss = None
-        self.eval = eval
-        if self.eval:
-            self.classifier.eval()
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
@@ -50,11 +46,8 @@ class LayoutNetWOrigVerbs(LayoutNet):
         try:
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
-#                 print("np.unique(verb_embeddings[0], return_counts=True)[1]: ", np.unique(verb_embeddings[0], return_counts=True)[1])
-#                 print(verb_embeddings[0])
                 return None
             verb_embeddings[0] = [self.get_orig_verb(v, sample[0]) for v in verb_embeddings[0]]
-#             print("verbs in forward: ", verb_embeddings[0])
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])

@@ -17,7 +17,7 @@ class ActionModule_v4(ActionModule_v2):
 
 # Hypernetwork, where the MLPs are parametrized by the verb
 class ActionModule_v4_one_input(ActionModule_v2):
-    def __init__(self, device, eval=False):
+    def __init__(self, device):
         ActionModule_v2.__init__(self, device)
         dim = embedder.dim
         self.reduce_dim_model = torch.nn.Linear(dim, 32)
@@ -30,8 +30,6 @@ class ActionModule_v4_one_input(ActionModule_v2):
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)  # outputs an embedding
 
-        if eval:
-            self.eval()
 
     def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -56,7 +54,7 @@ class ActionModule_v4_one_input(ActionModule_v2):
 
 
 class ActionModule_v4_two_inputs(ActionModule_v2):
-    def __init__(self, device, eval=False):
+    def __init__(self, device):
         ActionModule_v2.__init__(self, device)
         dim = embedder.dim
         self.reduce_dim_model = torch.nn.Linear(dim, 32)
@@ -70,8 +68,6 @@ class ActionModule_v4_two_inputs(ActionModule_v2):
         self.model2 = torch.nn.Sequential(torch.nn.Linear(2 * 32 + embedder.max_seq_length, 128),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)
-        if eval:
-            self.eval()
 
     def forward(self, verb, args, code_tokens, precomputed_embeddings):
         arg1, arg2 = args

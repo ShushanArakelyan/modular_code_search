@@ -86,7 +86,14 @@ def FC2(hidden_input_dims, hidden_output_dims):
                             torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]))
 
 
-def FC2_normalized(hidden_input_dims, hidden_output_dims):
+def FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=0):
+#     if dropout > 0:
+#         return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
+#                            torch.nn.ReLU(),
+#                            torch.nn.Dropout(0.1)
+#                            torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),
+#                            torch.nn.Sigmoid())
+
     return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
                                torch.nn.ReLU(),
                                torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),
