@@ -20,8 +20,6 @@ class ActionModule_v6_one_input(ActionModule_v5):
         else:
             self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.mlp.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -53,8 +51,6 @@ class ActionModule_v6_two_inputs(ActionModule_v5):
         else:
             self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.mlp.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args

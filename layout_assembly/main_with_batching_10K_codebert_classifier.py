@@ -23,18 +23,10 @@ from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7
 
 class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
     def init_networks(self, version, normalized):
+        super().init_networks(version, normalized)
         if version == 1:
-            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.eval)
-            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.eval)
-        if version == 5:
-            self.one_input_module = ActionModule_v5_one_input(self.device, normalized, self.eval)
-            self.two_inputs_module = ActionModule_v5_two_inputs(self.device, normalized, self.eval)
-        if version == 6:
-            self.one_input_module = ActionModule_v6_one_input(self.device, normalized, self.eval)
-            self.two_inputs_module = ActionModule_v6_two_inputs(self.device, normalized, self.eval)
-        if version == 7:
-            self.one_input_module = ActionModule_v7_one_input(self.device, normalized, self.eval)
-            self.two_inputs_module = ActionModule_v7_two_inputs(self.device, normalized, self.eval)
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized)
 
             
 def eval_mrr(data_loader, layout_net, count):

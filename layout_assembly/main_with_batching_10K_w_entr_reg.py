@@ -21,8 +21,8 @@ from layout_assembly.action_v1_w_entr_reg import ActionModule_v1_one_input, Acti
 class ActionModuleFacadeWEntrReg(ActionModuleFacade):
     def init_networks(self, version, normalized):
         if version == 1:
-            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.eval)
-            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.eval)
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized)
         else:
             raise Exception("Not implemented!")
 

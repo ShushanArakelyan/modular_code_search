@@ -8,14 +8,13 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 
 
 class ActionModule_v5:
-    def __init__(self, device, normalize=False, eval=False):
+    def __init__(self, device, normalize=False):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.encoder_layer = None
         self.mlp = None
         self.normalized = normalize
-        self.is_eval = eval
         self.init_networks()
 
     def init_networks(self):
@@ -39,10 +38,12 @@ class ActionModule_v5:
     def eval(self):
         self.encoder_layer.eval()
         self.mlp.eval()
+        embedder.classifier.eval()
 
     def train(self):
         self.encoder_layer.train()
         self.mlp.train()
+        embedder.classifier.train()
 
 
 class ActionModule_v5_one_input(ActionModule_v5):
@@ -56,8 +57,6 @@ class ActionModule_v5_one_input(ActionModule_v5):
         else:
             self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.mlp.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -72,11 +71,9 @@ class ActionModule_v5_one_input(ActionModule_v5):
         weighted_code_emb = torch.mm(scores.T, code_embeddings[1:]) 
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, 
                                    prep_embedding, weighted_code_emb, code_embeddings)).unsqueeze(dim=1)
-#         print("encoder input: ", encoder_input.shape)
         mlp_input = self.encoder_layer(encoder_input)
-#         print("mlp input: ", mlp_input.shape)
-        mlp_input = torch.index_select(mlp_input, 0, torch.LongTensor(range(5, len(encoder_input))).to(self.device)).squeeze()
-#         print("mlp input: ", mlp_input.shape)
+        mlp_input = torch.index_select(mlp_input, 0, 
+                                       torch.LongTensor(range(5, len(encoder_input))).to(self.device)).squeeze()
         scores_out = self.mlp.forward(mlp_input)
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
@@ -92,8 +89,6 @@ class ActionModule_v5_two_inputs(ActionModule_v5):
         else:
             self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
         self.mlp.apply(init_weights)
-        if self.is_eval:
-            self.eval()
 
     def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args
@@ -112,17 +107,14 @@ class ActionModule_v5_two_inputs(ActionModule_v5):
             raise ProcessingException()
             
         verb_embedding, code_embeddings = precomputed_embeddings
-#         print(code_embeddings[1:].shape, scores1.shape)
         weighted_code_emb1 = torch.mm(scores1.T, code_embeddings[1:])
         weighted_code_emb2 = torch.mm(scores2.T, code_embeddings[1:])
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding, 
                                    prep2_embedding, weighted_code_emb1, 
                                    weighted_code_emb2, code_embeddings)).unsqueeze(dim=1)
-#         print("encoder input: ", encoder_input.shape)
         mlp_input = self.encoder_layer(encoder_input)
-#         print("mlp input: ", mlp_input.shape)
-        mlp_input = torch.index_select(mlp_input, 0, torch.LongTensor(range(7, len(encoder_input))).to(self.device)).squeeze()
-#         print("mlp input: ", mlp_input.shape)
+        mlp_input = torch.index_select(mlp_input, 0, 
+                                       torch.LongTensor(range(7, len(encoder_input))).to(self.device)).squeeze()
         scores_out = self.mlp.forward(mlp_input)
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
