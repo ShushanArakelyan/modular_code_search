@@ -36,6 +36,12 @@ class ActionModuleWrapper(object):
                 ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
         self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
 
+    def set_eval(self):
+        self.module.set_eval()
+
+    def set_train(self):
+        self.module.set_train()
+
 
 class TestActionModuleWrapper(object):
 

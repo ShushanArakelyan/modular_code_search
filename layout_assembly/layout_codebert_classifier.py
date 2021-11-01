@@ -6,7 +6,7 @@ import codebert_embedder_v2 as embedder
 from layout_assembly.utils import ProcessingException, init_weights
 from layout_assembly.layout import LayoutNet, LayoutNode
 
-
+# this copy here is necessary because otherwise we use an incorrect instance of codebert embedder
 class ActionModuleWrapper(object):
     empty_emb = None
     prep_emb_cache = {}
@@ -35,6 +35,12 @@ class ActionModuleWrapper(object):
                 ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
         self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
 
+    def set_eval(self):
+        self.module.set_eval()
+
+    def set_train(self):
+        self.module.set_train()
+
 
 class LayoutNet_w_codebert_classifier(LayoutNet):
     def __init__(self, scoring_module, action_module_facade, device, return_separators=False, precomputed_scores_provided=False, finetune_codebert=True):
@@ -44,14 +50,31 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
         self.device = device
         self.precomputed_scores_provided = precomputed_scores_provided
         self.return_separators=return_separators
-        dim = embedder.dim
-        half_dim = int(dim / 2)
-
         self.classifier = embedder.classifier
         self.scoring_outputs = None
         self.accumulated_loss = None
+
     def parameters(self):
         return chain(self.classifier.parameters(), self.action_module_facade.parameters())
+
+    def load_from_checkpoint(self, checkpoint):
+        self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
+
+        models = torch.load(checkpoint, map_location=self.device)
+        self.classifier.load_state_dict(models['classifier'])
+        self.classifier = self.classifier.to(self.device)
+        if 'codebert.model' in models:
+            print("Loading CodeBERT weights from the checkpoint")
+            embedder.model.load_state_dict(models['codebert.model'])
+
+    def save_to_checkpoint(self, checkpoint):
+        self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
+        model_dict = {'classifier': self.classifier.state_dict()}
+        model_dict['codebert.model'] = embedder.model.state_dict()
+        torch.save(model_dict, checkpoint)
+
+    def state_dict(self):
+        return {'action_module': self.action_module_facade.state_dict(), 'classifier': self.classifier.state_dict()}
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)

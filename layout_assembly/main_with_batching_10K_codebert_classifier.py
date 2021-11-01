@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import torch
 import tqdm
 from torch.utils.data import ConcatDataset, DataLoader
@@ -16,9 +17,6 @@ from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_clas
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
-from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
-from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
-from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
 
 
 class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
@@ -28,36 +26,71 @@ class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
             self.one_input_module = ActionModule_v1_one_input(self.device, normalized)
             self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized)
 
-            
-def eval_mrr(data_loader, layout_net, count):
-    MRRs = []
-    with torch.no_grad():
-        layout_net.precomputed_scores_provided = False
-        i = 0
-        for samples in data_loader:
-            if i == count:
-                break
-            i += 1
-            ranks = []
-            sample = samples[0]
-            pred = layout_net.forward(*transform_sample(sample))
-            if pred:
-                ranks.append(torch.sigmoid(pred).cpu().numpy())
+
+def eval_modular(data, idx, idxs_to_eval, layout_net):
+    ranks = []
+    sample = (data['docstring_tokens'][idx],
+              data['alt_code_tokens'][idx],
+              data['static_tags'][idx],
+              data['regex_tags'][idx],
+              data['ccg_parse'][idx])
+    pred = layout_net.forward(sample[-1][1:-1], sample)
+    if pred is None:
+        return None
+    else:
+        ranks.append(float(pred[0][1].cpu().numpy()))
+        for neg_idx in idxs_to_eval:
+            sample = (data['docstring_tokens'][idx],
+                      data['alt_code_tokens'][neg_idx],
+                      data['static_tags'][neg_idx],
+                      data['regex_tags'][neg_idx],
+                      data['ccg_parse'][idx])
+            pred = layout_net.forward(sample[-1][1:-1], sample)
+            if pred is not None:
+                ranks.append(float(pred[0][1].cpu().numpy()))
             else:
-                continue
-            for sample in samples[1:]:
-                pred = layout_net.forward(*transform_sample(sample))
-                if pred:
-                    ranks.append(torch.sigmoid(pred).cpu().numpy())
-                else:
-                    ranks.append(np.random.rand(1)[0])
-            MRRs.append(mrr(ranks))
-        layout_net.precomputed_scores_provided = True
-    return np.mean(MRRs)
+                np.random.seed(neg_idx)
+                ranks.append(np.random.rand(1)[0])
+    return mrr(ranks)
+
+
+def eval_mrr(data, data_dir_name, data_map, layout_net):
+    codebert_mrr = []
+    modular_mrr = []
+    with torch.no_grad():
+        for file_i in range(8):
+            filename = data_dir_name + f"{file_i}_batch_result.txt"
+            offset = file_i * 1000
+            with open(filename, 'r') as f:
+                for j in range(1000):
+                    scores = []
+                    sample_idxs = []
+                    for i in range(1000):
+                        line = f.readline()
+                        parts = line.split('<CODESPLIT>')
+                        score = float(parts[-1].strip('\n'))
+                        scores.append(score)
+                        sample_idxs.append(data_map[parts[2]])
+                    scores = np.asarray(scores)
+                    codebert_mrr.append(1. / (np.sum(scores >= scores[j])))
+                    idxs = np.argsort(scores)[::-1][:10]
+                    if j in idxs:
+                        idxs = idxs[idxs != j]
+                        idxs += offset
+                        out = eval_modular(data, j, idxs[:9], layout_net)
+                        if out is None:
+                            modular_mrr.append(codebert_mrr[-1])
+                        else:
+                            modular_mrr.append(out)
+                    else:
+                        modular_mrr.append(codebert_mrr[-1])
+                    if (j + 1) % 50 == 0:
+                        return np.mean(modular_mrr)
 
 
 def eval_acc(data_loader, layout_net, count):
     accs = []
+    layout_net.set_eval()
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
         i = 0
@@ -75,6 +108,7 @@ def eval_acc(data_loader, layout_net, count):
                     label = 0
                 accs.append(int(torch.argmax(pred) == label))
         layout_net.precomputed_scores_provided = True
+    layout_net.set_train()
     return np.mean(accs)
 
 
@@ -86,9 +120,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                              range(shard_range + 1)])
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    valid_dataset = CodeSearchNetDataset_SavedOracle(valid_file_name, device, neg_count=9,
-                                                     oracle_idxs='/home/shushan/codebert_valid_oracle_scores_full.txt')
-    valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
+    codebert_valid_dir_name = "/home/anna/CodeBERT/CodeBERT/codesearch/results/valid/"
+    valid_data = pd.read_json(valid_file_name, lines=True)
+    validation_data_map = {}
+    for i in range(len(valid_data)):
+        validation_data_map[valid_data['url'][i]] = i
+
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder
         embedder.init_embedder(device, load_finetuned_codebert)
@@ -140,14 +177,14 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(cumulative_loss[-int(print_every/batch_size):]), writer_it)
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
-                writer.add_scalar("Acc/valid",
-                                  np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
+                layout_net.set_eval()
+                writer.add_scalar("MRR/valid",
+                                  eval_mrr(valid_data, codebert_valid_dir_name, validation_data_map, layout_net),
+                                  writer_it)
+                layout_net.set_train()
                 scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
             if (steps + 1) % save_every == 0:
-                print("running validation evaluation....")
-                writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
-                print("validation complete")
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
                 print("saved successfully")

@@ -105,6 +105,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         os.makedirs(checkpoint_dir)
 
     batch_size = 20
+    layout_net.set_train()
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
@@ -117,13 +118,17 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(cumulative_loss[-int(print_every/batch_size):]), writer_it)
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
+                layout_net.set_eval()
                 writer.add_scalar("Acc/valid",
                                   np.mean(eval_acc(valid_data_loader, layout_net, count=50)), writer_it)
+                layout_net.set_train()
                 scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
             if (steps + 1) % save_every == 0:
                 print("running validation evaluation....")
+                layout_net.set_eval()
                 writer.add_scalar("MRR/valid", eval_mrr(valid_data_loader, layout_net, count=500), writer_it)
+                layout_net.set_train()
                 print("validation complete")
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')

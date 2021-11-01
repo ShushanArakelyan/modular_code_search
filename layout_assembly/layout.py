@@ -35,6 +35,13 @@ class LayoutNet:
         self.scoring_outputs = None
         self.accumulated_loss = None
 
+    def set_eval(self):
+        embedder
+        self.action_module_facade.set_eval()
+
+    def set_train(self):
+        self.action_module_facade.set_train()
+
     def parameters(self):
         if self.finetune_codebert:
             return chain(self.classifier.parameters(), self.action_module_facade.parameters(),
