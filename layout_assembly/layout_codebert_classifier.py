@@ -3,8 +3,9 @@ from itertools import chain
 import torch
 
 import codebert_embedder_v2 as embedder
-from layout_assembly.utils import ProcessingException, init_weights
-from layout_assembly.layout import LayoutNet, LayoutNode
+from layout_assembly.layout import LayoutNet
+from layout_assembly.utils import ProcessingException
+
 
 # this copy here is necessary because otherwise we use an incorrect instance of codebert embedder
 class ActionModuleWrapper(object):
@@ -43,14 +44,16 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNet_w_codebert_classifier(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, return_separators=False, precomputed_scores_provided=False, finetune_codebert=True):
+    def __init__(self, scoring_module, action_module_facade, device, return_separators=False,
+                 precomputed_scores_provided=False, embed_in_list=False):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
         self.device = device
         self.precomputed_scores_provided = precomputed_scores_provided
-        self.return_separators=return_separators
+        self.return_separators = return_separators
         self.classifier = embedder.classifier
+        self.embed_in_list = embed_in_list
         self.scoring_outputs = None
         self.accumulated_loss = None
 
@@ -86,22 +89,23 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-#             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], 
-#                                                                               verb_embeddings[1], 
-#                                                                               return_separators=self.return_separators)
-            self.verb_embeddings, self.code_embeddings = embedder.embed_batch_v7(verb_embeddings[0], 
-                                                                                 verb_embeddings[1], 
-                                                                                 return_separators=self.return_separators)
+            if not self.embed_in_list:
+                self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0],
+                                                                                  verb_embeddings[1],
+                                                                                  return_separators=self.return_separators)
+            else:
+                self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0],
+                                                                                    verb_embeddings[1])
             self.accumulated_loss = []
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
 
         inputs = embedder.get_feature_inputs_batch([" ".join(sample[0])], [" ".join(code)])
-        inputs['weights'] = output[1]       
+        inputs['weights'] = output[1]
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
-    
+
     def process_node(self, node, code, scoring_it=0, action_it=0, parent_module=None):
         if node.node_type == 'action':
             action_module = ActionModuleWrapper(self.action_module_facade)
@@ -115,7 +119,7 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             action_it += 1
             output = action_module.forward(code, precomputed_embeddings)
             self.accumulated_loss.append(output[-1])
-            output = (output[0], output[1]) # remove last element
+            output = (output[0], output[1])  # remove last element
             if parent_module:
                 parent_module.add_input(output)
             return parent_module, output, scoring_it, action_it
@@ -131,4 +135,3 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             for child in node.children:
                 self.process_node(child, code, scoring_it, action_it, parent_module)
             return parent_module, None, scoring_it, action_it
-

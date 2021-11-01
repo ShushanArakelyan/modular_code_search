@@ -138,7 +138,7 @@ def embed_batch(docs, codes, return_separators=False):
     return query_embeddings, code_embeddings
 
 
-def embed_batch_v7(docs, codes, return_separators=False):
+def embed_in_list(docs, codes):
     inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
     embedding = get_embeddings(inputs, True)
     query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))

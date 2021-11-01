@@ -9,14 +9,13 @@ import tqdm
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from eval.dataset import CodeSearchNetDataset, transform_sample
-from eval.dataset import CodeSearchNetDataset_SavedOracle
 from eval.dataset import CodeSearchNetDataset_wShards
+from eval.dataset import transform_sample
 from eval.utils import mrr
+from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
-from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 
 
 class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
@@ -113,11 +112,13 @@ def eval_acc(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw, example_count, 
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
+         example_count,
          load_finetuned_codebert, layout_checkpoint=None):
     shard_range = num_negatives
-    dataset = ConcatDataset([CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
-                             range(shard_range + 1)])
+    dataset = ConcatDataset(
+        [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
+         range(shard_range + 1)])
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     codebert_valid_dir_name = "/home/anna/CodeBERT/CodeBERT/codesearch/results/valid/"
@@ -129,23 +130,28 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder
         embedder.init_embedder(device, load_finetuned_codebert)
-    
+
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action)
-    
+
     if layout_net_version == 'classic':
         if version == 5 or version == 6:
             return_separators = True
         else:
             return_separators = False
+        if version == 7:
+            embed_in_list = True
+        else:
+            embed_in_list = False
         layout_net = LayoutNet(scoring_module, action_module, device,
-                               precomputed_scores_provided=precomputed_scores_provided, return_separators=return_separators)
+                               precomputed_scores_provided=precomputed_scores_provided,
+                               return_separators=return_separators, embed_in_list=embed_in_list)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
-    
+
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
@@ -174,7 +180,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if (steps + 1) % print_every == 0:
                 writer.add_scalar("Loss/train",
-                                  np.mean(cumulative_loss[-int(print_every/batch_size):]), writer_it)
+                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
@@ -188,7 +194,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
                 print("saved successfully")
-                
+
             for param in layout_net.parameters():
                 param.grad = None
             sample, scores, verbs, label = datum
@@ -216,7 +222,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             accuracy.append(int(torch.argmax(torch.sigmoid(pred)) == torch.argmax(label)))
             if steps % batch_size == 0:
                 loss.backward()
-                cumulative_loss.append(loss.data.cpu().numpy()/batch_size)
+                cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
@@ -269,5 +275,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
+         args.num_negatives, args.precomputed_scores_provided, args.normalized_action,
          args.l1_reg_coef, args.adamw, args.example_count, args.load_finetuned_codebert, args.layout_checkpoint_file)
