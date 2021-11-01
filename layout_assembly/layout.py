@@ -36,7 +36,6 @@ class LayoutNet:
         self.accumulated_loss = None
 
     def set_eval(self):
-        embedder
         self.action_module_facade.set_eval()
 
     def set_train(self):

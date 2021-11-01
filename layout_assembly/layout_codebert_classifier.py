@@ -101,3 +101,34 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
         inputs['weights'] = output[1]       
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
+    
+    def process_node(self, node, code, scoring_it=0, action_it=0, parent_module=None):
+        if node.node_type == 'action':
+            action_module = ActionModuleWrapper(self.action_module_facade)
+            action_module.param = node.node_value
+            for child in node.children:
+                action_module, _, scoring_it, action_it = self.process_node(child, code, scoring_it, action_it,
+                                                                            action_module)
+            precomputed_embeddings = (self.verb_embeddings[action_it], self.code_embeddings[action_it])
+            if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
+                raise ProcessingException()
+            action_it += 1
+            output = action_module.forward(code, precomputed_embeddings)
+            self.accumulated_loss.append(output[-1])
+            output = (output[0], output[1]) # remove last element
+            if parent_module:
+                parent_module.add_input(output)
+            return parent_module, output, scoring_it, action_it
+        elif node.node_type == 'scoring':
+            output = self.scoring_outputs[scoring_it]
+            if output.shape[0] == 0:
+                raise ProcessingException()
+            scoring_it += 1
+            parent_module.add_input(output)
+            return parent_module, output, scoring_it, action_it
+        elif node.node_type == 'preposition':
+            parent_module.add_preposition(node.node_value)
+            for child in node.children:
+                self.process_node(child, code, scoring_it, action_it, parent_module)
+            return parent_module, None, scoring_it, action_it
+
