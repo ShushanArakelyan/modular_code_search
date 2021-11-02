@@ -113,14 +113,14 @@ def eval_acc(data_loader, layout_net, count):
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
-         example_count, dropout, load_finetuned_codebert, layout_checkpoint=None):
+         example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
+         codebert_valid_results_dir, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
          range(shard_range + 1)])
 
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    codebert_valid_dir_name = "/home/anna/CodeBERT/CodeBERT/codesearch/results/valid/"
     valid_data = pd.read_json(valid_file_name, lines=True)
     validation_data_map = {}
     for i in range(len(valid_data)):
@@ -157,11 +157,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
-    writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
+    writer = SummaryWriter(summary_writer_dir + f'/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
     writer_it = 0
 
-    checkpoint_dir = f'/home/shushan/modular_code_search/model_checkpoints/action/{dt_string}'
+    checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
     if not os.path.exists(checkpoint_dir):
@@ -184,7 +184,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
                 writer.add_scalar("MRR/valid",
-                                  eval_mrr(valid_data, codebert_valid_dir_name, validation_data_map, layout_net),
+                                  eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net),
                                   writer_it)
                 layout_net.set_train()
                 scheduler.step(np.mean(cumulative_loss[-print_every:]))
@@ -263,10 +263,31 @@ if __name__ == '__main__':
     parser.add_argument('--adamw', dest='adamw', type=float, default=0)
     parser.add_argument('--example_count', dest='example_count', type=int, default=0)
     parser.add_argument('--dropout', dest='dropout', type=float, default=0)
+    parser.add_argument('--checkpoint_dir', dest='checkpoint_dir', type=str)
+    parser.add_argument('--summary_writer_dir', dest='summary_writer_dir', type=str)
+    parser.add_argument('--codebert_valid_results_dir', dest='codebert_valid_results_dir', type=str)
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
 
     args = parser.parse_args()
-    main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
-         args.save_every, args.version, args.layout_net_version, args.valid_file_name, args.num_negatives,
-         args.precomputed_scores_provided, args.normalized_action, args.l1_reg_coef, args.adamw, args.example_count,
-         args.load_finetuned_codebert, args.dropout, args.layout_checkpoint_file)
+    main(device=args.device,
+         data_dir=args.data_dir,
+         scoring_checkpoint=args.scoring_checkpoint,
+         num_epochs=args.num_epochs,
+         lr=args.lr,
+         print_every=args.print_every,
+         save_every=args.save_every,
+         version=args.version,
+         layout_net_version=args.layout_net_version,
+         valid_file_name=args.valid_file_name,
+         num_negatives=args.num_negatives,
+         precomputed_scores_provided=args.precomputed_scores_provided,
+         normalized_action=args.normalized_action,
+         l1_reg_coef=args.l1_reg_coef,
+         adamw=args.adamw,
+         example_count=args.example_count,
+         load_finetuned_codebert=args.load_finetuned_codebert,
+         dropout=args.dropout,
+         checkpoint_dir=args.checkpoint_dir,
+         summary_writer_dir=args.summary_writer_dir,
+         codebert_valid_results_dir=args.codebert_valid_results_dir,
+         layout_checkpoint=args.layout_checkpoint_file)
