@@ -121,11 +121,13 @@ def embed_batch(docs, codes, return_separators=False):
     query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
     counts = torch.unique(sep_tokens[:, 0], return_counts=True)[1]
-    index = [sum(counts[:i]) for i in range(len(counts))]
-    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(index).to(device))[:, 1]
+    first_sep_token_index = [sum(counts[:i]) for i in range(len(counts))]
+    last_sep_token_index =  [sum(counts[:i + 1]) - 1 for i in range(len(counts))]
+    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(first_sep_token_index).to(device))[:, 1]
     if return_separators:
         code_embeddings = [torch.cat([sep_embedding, 
-                                      embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :], 
+                                      embedding[i, sep_tokens[first_sep_token_index[i]][1] + 1:
+                                                   sep_tokens[last_sep_token_index[i]][1], :],
                                       sep_embedding], dim=0).unsqueeze(dim=0)
             for i in range(embedding.shape[0])]
         code_embeddings = torch.cat([torch.nn.functional.pad(

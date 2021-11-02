@@ -60,7 +60,7 @@ class ActionModule_v1_one_input(ActionModule_v1):
 
         if precomputed_embeddings is None:
             raise ProcessingException()
-        verb_embedding, code_embeddings, inputs = precomputed_embeddings
+        verb_embedding, code_embeddings = precomputed_embeddings
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
         model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
@@ -94,7 +94,7 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
 
         if precomputed_embeddings is None:
             raise ProcessingException()
-        verb_embedding, code_embeddings, inputs = precomputed_embeddings
+        verb_embedding, code_embeddings = precomputed_embeddings
         tiled_verb_emb = verb_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep1_emb = prep1_embedding.repeat(embedder.max_seq_length, 1)
         tiled_prep2_emb = prep2_embedding.repeat(embedder.max_seq_length, 1)
