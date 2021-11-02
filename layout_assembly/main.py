@@ -66,7 +66,8 @@ def eval_acc(data_loader, layout_net, count):
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
-         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, layout_checkpoint=None):
+         valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, dropout,
+         layout_checkpoint=None):
     if '_neg_10_' in data_dir:  # ugly, ugly, ugly
         dataset = ConcatDataset([CodeSearchNetDataset(data_dir, r, device) for r in range(0, 3)])
     elif '_codebert' in data_dir:  # ugly
@@ -81,7 +82,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    action_module = ActionModuleFacade(device, version, normalized_action)
+    action_module = ActionModuleFacade(device, version, normalized_action, dropout)
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided)
@@ -127,7 +128,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 print("saving to checkpoint: ")
                 layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
                 print("saved successfully")
-                
+
             for param in layout_net.parameters():
                 param.grad = None
             sample, scores, verbs, label = datum
@@ -186,9 +187,10 @@ if __name__ == '__main__':
                         default=False, action='store_true')
     parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
                         default=0)
+    parser.add_argument('--dropout', dest='dropout', type=float, default=0)
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
          args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.normalized_action, 
-         args.l1_reg_coef, args.layout_checkpoint_file)
+         args.num_negatives, args.precomputed_scores_provided, args.normalized_action,
+         args.l1_reg_coef, args.dropout, args.layout_checkpoint_file)

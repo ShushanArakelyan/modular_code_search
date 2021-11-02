@@ -7,12 +7,13 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 
 
 class ActionModule_v1:
-    def __init__(self, device, normalize=False):
+    def __init__(self, device, normalize=False, dropout=0):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.model1 = None
         self.model2 = None
+        self.dropout = dropout
         self.normalized = normalize
         self.init_networks()
 
@@ -51,16 +52,16 @@ class ActionModule_v1_one_input(ActionModule_v1):
         hidden_output_dims = [512, 1]
         # outputs a sequence of scores
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model1.apply(init_weights)
-#         hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
-#         hidden_output_dims = [128, embedder.dim]
+        #         hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
+        #         hidden_output_dims = [128, embedder.dim]
         hidden_input_dims = [embedder.max_seq_length, 512]
         hidden_output_dims = [512, embedder.dim]
         # outputs an embedding
-        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model2.apply(init_weights)
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -78,7 +79,7 @@ class ActionModule_v1_one_input(ActionModule_v1):
         tiled_prep_emb = prep_embedding.repeat(embedder.max_seq_length, 1)
         model1_input = torch.cat((tiled_verb_emb, tiled_prep_emb, code_embeddings, scores), dim=1)
         scores_out = self.model1.forward(model1_input)
-#         model2_input = torch.cat((verb_embedding, prep_embedding, scores_out.squeeze().unsqueeze(dim=0)), dim=1)
+        #         model2_input = torch.cat((verb_embedding, prep_embedding, scores_out.squeeze().unsqueeze(dim=0)), dim=1)
         model2_input = scores_out.squeeze().unsqueeze(dim=0)
         emb_out = self.model2.forward(model2_input)
         entr_reg_loss = -torch.matmul(scores_out.T, torch.log(scores_out)).mean()
@@ -90,15 +91,15 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         hidden_input_dims = [embedder.dim * 4 + 2, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model1.apply(init_weights)
-#         hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
-#         hidden_output_dims = [128, embedder.dim]
+        #         hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
+        #         hidden_output_dims = [128, embedder.dim]
         hidden_input_dims = [embedder.max_seq_length, 512]
         hidden_output_dims = [512, embedder.dim]
-        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model2.apply(init_weights)
 
     def forward(self, _, args, __, precomputed_embeddings):
@@ -125,9 +126,9 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         model1_input = torch.cat(
             (tiled_verb_emb, tiled_prep1_emb, tiled_prep2_emb, code_embeddings, scores1, scores2), dim=1)
         scores_out = self.model1.forward(model1_input)
-#         model2_input = torch.cat(
-#             (verb_embedding, prep1_embedding, prep2_embedding, scores_out.squeeze().unsqueeze(dim=0)),
-#             dim=1)
+        #         model2_input = torch.cat(
+        #             (verb_embedding, prep1_embedding, prep2_embedding, scores_out.squeeze().unsqueeze(dim=0)),
+        #             dim=1)
         model2_input = scores_out.squeeze().unsqueeze(dim=0)
         emb_out = self.model2.forward(model2_input)
         entr_reg_loss = -torch.matmul(scores_out.T, torch.log(scores_out)).mean()

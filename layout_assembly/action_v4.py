@@ -7,9 +7,10 @@ from layout_assembly.utils import ProcessingException
 
 
 class ActionModule_v4(ActionModule_v2):
-    def __init__(self, device):
+    def __init__(self, device, dropout=0):
         super(ActionModule_v4, self).__init__(device)
         self.reduce_dim_model = None
+        self.dropout = dropout
 
     def parameters(self):
         return chain(self.model1.parameters(), self.model2.parameters(), self.reduce_dim_model.parameters())
@@ -23,13 +24,14 @@ class ActionModule_v4_one_input(ActionModule_v2):
         self.reduce_dim_model = torch.nn.Linear(dim, 32)
         self.model1 = FC_Hypernetwork(dim,
                                       torch.nn.Sequential(torch.nn.Linear(dim + 32 + 1, 128),
+                                                          torch.nn.Dropout(self.dropout),
                                                           torch.nn.ReLU(),
                                                           torch.nn.Linear(128, 1)).to(device),
                                       device)
         self.model2 = torch.nn.Sequential(torch.nn.Linear(32 + embedder.max_seq_length, 128),
+                                          torch.nn.Dropout(self.dropout),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)  # outputs an embedding
-
 
     def forward(self, verb, arg1, code_tokens, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -61,11 +63,13 @@ class ActionModule_v4_two_inputs(ActionModule_v2):
         # outputs a sequence of scores
         self.model1 = FC_Hypernetwork(dim,
                                       torch.nn.Sequential(torch.nn.Linear(dim + 2 * 32 + 2, 128),
+                                                          torch.nn.Dropout(self.dropout),
                                                           torch.nn.ReLU(),
                                                           torch.nn.Linear(128, 1)).to(self.device),
                                       device)
         # outputs an embedding
         self.model2 = torch.nn.Sequential(torch.nn.Linear(2 * 32 + embedder.max_seq_length, 128),
+                                          torch.nn.Dropout(self.dropout),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(128, dim)).to(self.device)
 

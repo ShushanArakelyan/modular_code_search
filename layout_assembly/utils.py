@@ -79,27 +79,32 @@ class TestScoringModuleWrapper:
     def forward(self, value, _):
         return value
 
-    
+
 def init_weights(m):
     if isinstance(m, torch.nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
-    
-    
-def FC2(hidden_input_dims, hidden_output_dims):
+
+
+def FC2(hidden_input_dims, hidden_output_dims, dropout=0):
+    if dropout > 0:
+        return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
+                                   torch.nn.Dropout(dropout),
+                                   torch.nn.ReLU(),
+                                   torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]))
+
     return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
-                            torch.nn.ReLU(),
-                            torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]))
+                               torch.nn.ReLU(),
+                               torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]))
 
 
 def FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=0):
-#     if dropout > 0:
-#         return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
-#                            torch.nn.ReLU(),
-#                            torch.nn.Dropout(0.1)
-#                            torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),
-#                            torch.nn.Sigmoid())
-
+    if dropout > 0:
+        return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
+                                   torch.nn.Dropout(dropout),
+                                   torch.nn.ReLU(),
+                                   torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),
+                                   torch.nn.Sigmoid())
     return torch.nn.Sequential(torch.nn.Linear(hidden_input_dims[0], hidden_output_dims[0]),
                                torch.nn.ReLU(),
                                torch.nn.Linear(hidden_input_dims[1], hidden_output_dims[1]),

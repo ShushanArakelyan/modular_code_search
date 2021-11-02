@@ -1,5 +1,3 @@
-from itertools import chain
-
 import torch
 
 import codebert_embedder_v2 as embedder
@@ -7,12 +5,13 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 
 
 class ActionModule_v1:
-    def __init__(self, device, normalize=False):
+    def __init__(self, device, normalize=False, dropout=0):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.model1 = None
         self.normalized = normalize
+        self.dropout = dropout
         self.init_networks()
 
     def init_networks(self):
@@ -46,9 +45,9 @@ class ActionModule_v1_one_input(ActionModule_v1):
         hidden_output_dims = [512, 1]
         # outputs a sequence of scores
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model1.apply(init_weights)
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -74,9 +73,9 @@ class ActionModule_v1_two_inputs(ActionModule_v1):
         hidden_input_dims = [embedder.dim * 4 + 2, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.model1.apply(init_weights)
 
     def forward(self, _, args, __, precomputed_embeddings):

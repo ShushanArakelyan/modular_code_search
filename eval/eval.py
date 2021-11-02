@@ -36,9 +36,10 @@ def main():
     device = args.device
     action_version = args.action_version
     scoring_module = ScoringModule(device, checkpoint=args.scoring_checkpoint, eval=True)
-    action_module = ActionModuleFacade(device, action_version, eval=True)
+    action_module = ActionModuleFacade(device, action_version)
     layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False, eval=True)
     layout_net.load_from_checkpoint(args.layoutnet_checkpoint)
+    layout_net.set_eval()
 
     neg_sample_count = args.neg_sample_count
     oracle_neg_sample_count = args.oracle_neg_sample_count

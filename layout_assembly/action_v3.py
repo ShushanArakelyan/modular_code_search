@@ -8,9 +8,10 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized
 
 
 class ActionModule_v3(ActionModule_v1):
-    def __init__(self, device, normalize=False, eval=False):
+    def __init__(self, device, normalize=False, eval=False, dropout=0):
         ActionModule_v1.__init__(self, device, normalize, eval)
         self.attention = None
+        self.dropout = dropout
         self.init_networks()
 
     def parameters(self):
@@ -43,21 +44,21 @@ class ActionModule_v3_one_input(ActionModule_v3):
         # attentions for the sequence
         hidden_input_dims = [embedder.dim + 2, 64]
         hidden_output_dims = [64, embedder.max_seq_length]
-        self.attention = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.attention = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         # outputs a sequence of scores
         hidden_input_dims = [embedder.dim * 2, 128]
         hidden_output_dims = [128, 1]
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
 
         #         hidden_input_dims = [embedder.dim * 2 + embedder.max_seq_length, 128]
         #         hidden_output_dims = [128, embedder.dim]
         hidden_input_dims = [embedder.max_seq_length, 128]
         hidden_output_dims = [128, embedder.dim]
         # outputs an embedding
-        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
 
     def forward(self, _, arg1, __, precomputed_embeddings):
         prep_embedding, scores = arg1[0]
@@ -94,19 +95,19 @@ class ActionModule_v3_two_inputs(ActionModule_v3):
         # attentions for the sequence
         hidden_input_dims = [embedder.dim + 2, 64]
         hidden_output_dims = [64, embedder.max_seq_length]
-        self.attention = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.attention = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         # outputs a sequence of scores
         hidden_input_dims = [embedder.dim * 3, 128]
         hidden_output_dims = [128, 1]
         if self.normalized:
-            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.model1 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.model1 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         #         hidden_input_dims = [embedder.dim * 3 + embedder.max_seq_length, 128]
         #         hidden_output_dims = [128, embedder.dim]
         hidden_input_dims = [embedder.max_seq_length, 128]
         hidden_output_dims = [128, embedder.dim]
-        self.model2 = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+        self.model2 = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
 
     def forward(self, _, args, __, precomputed_embeddings):
         arg1, arg2 = args

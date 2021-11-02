@@ -68,7 +68,7 @@ if __name__ == "__main__":
         layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=False)
-
+    layout_net.set_eval()
     model_checkpoint = args.model_checkpoint
     checkpoint_dir = '/home/shushan/modular_code_search/model_checkpoints/action/' + model_checkpoint
     checkpoints = natsort.natsorted(glob.glob(checkpoint_dir + '/*'))

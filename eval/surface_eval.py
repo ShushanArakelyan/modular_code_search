@@ -69,7 +69,7 @@ if __name__ == "__main__":
         layout_net = LayoutNet(scoring_module, action_module, device, precomputed_scores_provided=False)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device, precomputed_scores_provided=False)
-
+    layout_net.set_eval()
     valid_file_name = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz'
     if args.eval_version == 'tf-idf':
         valid_dataset = CodeSearchNetDataset_TFIDFOracle(valid_file_name, device, neg_count=999, oracle_neg_count=9)

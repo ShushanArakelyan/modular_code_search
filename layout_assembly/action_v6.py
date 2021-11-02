@@ -1,11 +1,9 @@
-from itertools import chain
-
 import torch
 import torch.nn as nn
 
 import codebert_embedder_v2 as embedder
-from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init_weights
 from layout_assembly.action_v5 import ActionModule_v5
+from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init_weights
 
 
 # Same as V5, but uses CLS token to generate the output logits
@@ -16,9 +14,9 @@ class ActionModule_v6_one_input(ActionModule_v5):
         hidden_input_dims = [embedder.dim, 512]
         hidden_output_dims = [512, 512]
         if self.normalized:
-            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.mlp.apply(init_weights)
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -31,11 +29,11 @@ class ActionModule_v6_one_input(ActionModule_v5):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         # here the code embeddings have 1 more sep symbol at the beginning
-        weighted_code_emb = torch.mm(scores.T, code_embeddings[1:]) 
-        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, 
+        weighted_code_emb = torch.mm(scores.T, code_embeddings[1:])
+        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding,
                                    prep_embedding, weighted_code_emb, code_embeddings)).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
-        mlp_input = mlp_input[0, :, :] # cls token
+        mlp_input = mlp_input[0, :, :]  # cls token
         scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
@@ -47,9 +45,9 @@ class ActionModule_v6_two_inputs(ActionModule_v5):
         hidden_input_dims = [embedder.dim, 512]
         hidden_output_dims = [512, 512]
         if self.normalized:
-            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.mlp.apply(init_weights)
 
     def forward(self, _, args, __, precomputed_embeddings):
@@ -67,15 +65,15 @@ class ActionModule_v6_two_inputs(ActionModule_v5):
 
         if precomputed_embeddings is None:
             raise ProcessingException()
-            
+
         verb_embedding, code_embeddings = precomputed_embeddings
         weighted_code_emb1 = torch.mm(scores1.T, code_embeddings[1:])
         weighted_code_emb2 = torch.mm(scores2.T, code_embeddings[1:])
-        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding, 
-                                   prep2_embedding, weighted_code_emb1, 
+        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding,
+                                   prep2_embedding, weighted_code_emb1,
                                    weighted_code_emb2, code_embeddings)).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
-        mlp_input = mlp_input[0, :, :] # cls_token
+        mlp_input = mlp_input[0, :, :]  # cls_token
         scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss

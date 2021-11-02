@@ -22,8 +22,8 @@ class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
     def init_networks(self, version, normalized):
         super().init_networks(version, normalized)
         if version == 1:
-            self.one_input_module = ActionModule_v1_one_input(self.device, normalized)
-            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized)
+            self.one_input_module = ActionModule_v1_one_input(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.dropout)
 
 
 def eval_modular(data, idx, idxs_to_eval, layout_net):
@@ -113,8 +113,7 @@ def eval_acc(data_loader, layout_net, count):
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
-         example_count,
-         load_finetuned_codebert, layout_checkpoint=None):
+         example_count, dropout, load_finetuned_codebert, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -132,7 +131,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         embedder.init_embedder(device, load_finetuned_codebert)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
-    action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action)
+    action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action, dropout)
 
     if layout_net_version == 'classic':
         if version == 5 or version == 6:
@@ -236,22 +235,19 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
-    parser.add_argument('--device', dest='device', type=str,
-                        help='device to run on')
+    parser.add_argument('--device', dest='device', type=str, help='device to run on')
     parser.add_argument('--data_dir', dest='data_dir', type=str,
                         help='training data directory', required=True)
     parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
                         help='Scoring module checkpoint', required=True)
-    parser.add_argument('--num_epochs', dest='num_epochs', type=int,
-                        help='number of epochs to train', default=50)
+    parser.add_argument('--num_epochs', dest='num_epochs', type=int, help='number of epochs to train', default=50)
     parser.add_argument('--print_every', dest='print_every', type=int,
                         help='print to tensorboard after this many iterations', default=1000)
     parser.add_argument('--save_every', dest='save_every', type=int,
                         help='save to checkpoint after this many iterations', default=50000)
     parser.add_argument('--version', dest='version', type=int,
                         help='Whether to run ActionV1 or ActionV2', required=True)
-    parser.add_argument('--lr', dest='lr', type=float,
-                        help='learning rate', required=True)
+    parser.add_argument('--lr', dest='lr', type=float, help='learning rate', required=True)
     parser.add_argument('--layout_net_version', dest='layout_net_version', type=str,
                         help='"classic" or "with_adapters"', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
@@ -262,18 +258,15 @@ if __name__ == '__main__':
                         help='Number of distractors to use in training')
     parser.add_argument('--precomputed_scores_provided', dest='precomputed_scores_provided',
                         default=False, action='store_true')
-    parser.add_argument('--normalized_action', dest='normalized_action',
-                        default=False, action='store_true')
-    parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float,
-                        default=0)
-    parser.add_argument('--adamw', dest='adamw', type=float,
-                        default=0)
-    parser.add_argument('--example_count', dest='example_count', type=int,
-                        default=0)
+    parser.add_argument('--normalized_action', dest='normalized_action', default=False, action='store_true')
+    parser.add_argument('--l1_reg_coef', dest='l1_reg_coef', type=float, default=0)
+    parser.add_argument('--adamw', dest='adamw', type=float, default=0)
+    parser.add_argument('--example_count', dest='example_count', type=int, default=0)
+    parser.add_argument('--dropout', dest='dropout', type=float, default=0)
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
 
     args = parser.parse_args()
     main(args.device, args.data_dir, args.scoring_checkpoint, args.num_epochs, args.lr, args.print_every,
-         args.save_every, args.version, args.layout_net_version, args.valid_file_name,
-         args.num_negatives, args.precomputed_scores_provided, args.normalized_action,
-         args.l1_reg_coef, args.adamw, args.example_count, args.load_finetuned_codebert, args.layout_checkpoint_file)
+         args.save_every, args.version, args.layout_net_version, args.valid_file_name, args.num_negatives,
+         args.precomputed_scores_provided, args.normalized_action, args.l1_reg_coef, args.adamw, args.example_count,
+         args.load_finetuned_codebert, args.dropout, args.layout_checkpoint_file)

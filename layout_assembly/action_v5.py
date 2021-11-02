@@ -8,11 +8,12 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 
 
 class ActionModule_v5:
-    def __init__(self, device, normalize=False):
+    def __init__(self, device, normalize=False, dropout=0):
         self.device = device
         if not embedder.initialized:
             embedder.init_embedder(device)
         self.encoder_layer = None
+        self.dropout = dropout
         self.mlp = None
         self.normalized = normalize
         self.init_networks()
@@ -53,9 +54,9 @@ class ActionModule_v5_one_input(ActionModule_v5):
         hidden_input_dims = [embedder.dim, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
-            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.mlp.apply(init_weights)
 
     def forward(self, _, arg1, __, precomputed_embeddings):
@@ -68,11 +69,11 @@ class ActionModule_v5_one_input(ActionModule_v5):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         # here the code embeddings have 1 more sep symbol at the beginning
-        weighted_code_emb = torch.mm(scores.T, code_embeddings[1:]) 
-        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, 
+        weighted_code_emb = torch.mm(scores.T, code_embeddings[1:])
+        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding,
                                    prep_embedding, weighted_code_emb, code_embeddings)).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
-        mlp_input = torch.index_select(mlp_input, 0, 
+        mlp_input = torch.index_select(mlp_input, 0,
                                        torch.LongTensor(range(5, len(encoder_input))).to(self.device)).squeeze()
         scores_out = self.mlp.forward(mlp_input)
         l1_reg_loss = torch.norm(scores_out, 1)
@@ -85,9 +86,9 @@ class ActionModule_v5_two_inputs(ActionModule_v5):
         hidden_input_dims = [embedder.dim, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
-            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
-            self.mlp = FC2(hidden_input_dims, hidden_output_dims).to(self.device)
+            self.mlp = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         self.mlp.apply(init_weights)
 
     def forward(self, _, args, __, precomputed_embeddings):
@@ -105,15 +106,15 @@ class ActionModule_v5_two_inputs(ActionModule_v5):
 
         if precomputed_embeddings is None:
             raise ProcessingException()
-            
+
         verb_embedding, code_embeddings = precomputed_embeddings
         weighted_code_emb1 = torch.mm(scores1.T, code_embeddings[1:])
         weighted_code_emb2 = torch.mm(scores2.T, code_embeddings[1:])
-        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding, 
-                                   prep2_embedding, weighted_code_emb1, 
+        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding,
+                                   prep2_embedding, weighted_code_emb1,
                                    weighted_code_emb2, code_embeddings)).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
-        mlp_input = torch.index_select(mlp_input, 0, 
+        mlp_input = torch.index_select(mlp_input, 0,
                                        torch.LongTensor(range(7, len(encoder_input))).to(self.device)).squeeze()
         scores_out = self.mlp.forward(mlp_input)
         l1_reg_loss = torch.norm(scores_out, 1)
