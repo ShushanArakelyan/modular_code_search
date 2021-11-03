@@ -126,4 +126,4 @@ if __name__ == "__main__":
     parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str, required=True)
     args = parser.parse_args()
 
-    main(args.shard_size)
+    main(shard_size=args.shard_size, scoring_checkpoint=args.scoring_checkpoint)
