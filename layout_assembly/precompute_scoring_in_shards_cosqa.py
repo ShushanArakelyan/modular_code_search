@@ -38,7 +38,7 @@ class CoSQADataset_SavedOracle_NegOnly(Dataset):
         if len(self.oracle_idxs[idx]) == 0:
             oracle_idxs = []
             while len(oracle_idxs) < self.neg_count:
-                random_idx = np.random.randint(0, len(self.neg_data), 1)[0]
+                random_idx = np.random.randint(0, len(self.data), 1)[0]
                 if random_idx != idx:
                     oracle_idxs.append(random_idx)
         else:
@@ -51,9 +51,9 @@ class CoSQADataset_SavedOracle_NegOnly(Dataset):
         for i in range(self.neg_count):
             neg_idx = oracle_idxs[i]
             sample = (self.data['docstring_tokens'][idx],
-                      self.neg_data['alt_code_tokens'][neg_idx],
-                      self.neg_data['static_tags'][neg_idx],
-                      self.neg_data['regex_tags'][neg_idx],
+                      self.data['alt_code_tokens'][neg_idx],
+                      self.data['static_tags'][neg_idx],
+                      self.data['regex_tags'][neg_idx],
                       self.data['ccg_parse'][idx])
             samples.append(sample)
         return samples
