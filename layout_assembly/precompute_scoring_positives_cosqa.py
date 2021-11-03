@@ -1,23 +1,19 @@
 import argparse
-import glob
 import os
 
-import natsort
 import numpy as np
 import pandas as pd
 import torch
 import tqdm
-from torch.utils.data import Dataset
 
 import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 device = 'cuda:0'
-# TODO: should be a different checkpoint
-scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
-def main(shard_size):
+
+def main(shard_size, scoring_checkpoint):
     file_it = 0
     data_dir = '/home/shushan/train_v2_cosqa_positive'
     if not os.path.exists(data_dir):
@@ -127,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on')
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
+    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str, required=True)
     args = parser.parse_args()
 
     main(args.shard_size)

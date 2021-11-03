@@ -83,9 +83,6 @@ class CoSQADataset_SavedOracle_NegOnly(Dataset):
 
 device = 'cuda:0'
 
-# COSQA scoring checkpoint
-scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
-
 
 def sample_hard(idx, distances):
     neg_idx = np.argsort(distances[idx])[1]  # the zero-th element is idx itself
@@ -98,7 +95,7 @@ def sample_random(idx, data):
     return random_idx
 
 
-def main(num_negatives, neg_sampling_strategy, shard_size):
+def main(num_negatives, neg_sampling_strategy, shard_size, scoring_checkpoint):
     file_it = 0
     data_dir = f'/home/shushan/train_v2_cosqa_neg_{num_negatives}_{neg_sampling_strategy}'
     if not os.path.exists(data_dir):
@@ -217,6 +214,7 @@ if __name__ == "__main__":
     parser.add_argument('--neg_sampling_strategy', dest='neg_sampling_strategy', type=str,
                         help='"random" or "tfidf" or "codebert"', required=True)
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
+    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=int, required=True)
     args = parser.parse_args()
 
     main(args.num_negatives, args.neg_sampling_strategy, args.shard_size)
