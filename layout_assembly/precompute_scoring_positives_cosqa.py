@@ -14,11 +14,12 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 device = 'cuda:0'
+# TODO: should be a different checkpoint
 scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
 def main(shard_size):
     file_it = 0
-    data_dir = '/home/shushan/train_cosqa_positive'
+    data_dir = '/home/shushan/train_v2_cosqa_positive'
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
     data_file = '/home/shushan/datasets/CoSQA/resources/ccg_parses_only/python/final/jsonl/train/ccg_cosqa_parsed.jsonl.gz'
