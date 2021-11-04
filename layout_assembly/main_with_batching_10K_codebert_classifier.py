@@ -110,7 +110,7 @@ def eval_acc(data_loader, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, use_lr_scheduler, layout_checkpoint=None):
+         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -226,6 +226,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             if steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
+                if clip_grad_value > 0:
+                    torch.nn.utils.clip_grad_value_(model.parameters(), clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
@@ -272,6 +274,7 @@ if __name__ == '__main__':
     parser.add_argument('--codebert_valid_results_dir', dest='codebert_valid_results_dir', type=str)
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
+    parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -296,4 +299,5 @@ if __name__ == '__main__':
          summary_writer_dir=args.summary_writer_dir,
          codebert_valid_results_dir=args.codebert_valid_results_dir,
          use_lr_scheduler=args.use_lr_scheduler,
+         clip_grad_value=args.clip_grad_value,
          layout_checkpoint=args.layout_checkpoint_file)
