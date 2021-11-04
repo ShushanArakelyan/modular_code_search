@@ -114,18 +114,22 @@ def eval_acc(data_loader, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, layout_checkpoint=None):
+         codebert_valid_results_dir, use_lr_scheduler, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
          range(shard_range + 1)])
 
+    if valid_file_name != "None":
+    	valid_data = pd.read_json(valid_file_name, lines=True)
+    	validation_data_map = {}
+    	for i in range(len(valid_data)):
+        	validation_data_map[valid_data['url'][i]] = i
+    else:
+        valid_dataset, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)], 
+                                              generator=torch.Generator().manual_seed(42))
+        valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    valid_data = pd.read_json(valid_file_name, lines=True)
-    validation_data_map = {}
-    for i in range(len(valid_data)):
-        validation_data_map[valid_data['url'][i]] = i
-
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder
         embedder.init_embedder(device, load_finetuned_codebert)
@@ -183,11 +187,15 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                writer.add_scalar("MRR/valid",
-                                  eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net),
-                                  writer_it)
+                if valid_file_name != "None":
+                    writer.add_scalar("MRR/valid",
+                                      eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net),
+                                      writer_it)
+                else:
+                    writer.add_scalar("Acc/valid", eval_acc(valid_data_loader, layout_net, count=100))
                 layout_net.set_train()
-                scheduler.step(np.mean(cumulative_loss[-print_every:]))
+                if use_lr_scheduler:
+                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
             if (steps + 1) % save_every == 0:
                 print("saving to checkpoint: ")
@@ -267,6 +275,7 @@ if __name__ == '__main__':
     parser.add_argument('--summary_writer_dir', dest='summary_writer_dir', type=str)
     parser.add_argument('--codebert_valid_results_dir', dest='codebert_valid_results_dir', type=str)
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
+    parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -290,4 +299,5 @@ if __name__ == '__main__':
          checkpoint_dir=args.checkpoint_dir,
          summary_writer_dir=args.summary_writer_dir,
          codebert_valid_results_dir=args.codebert_valid_results_dir,
+         use_lr_scheduler=args.use_lr_scheduler,
          layout_checkpoint=args.layout_checkpoint_file)
