@@ -94,7 +94,7 @@ def eval_acc(data_loader, layout_net, count):
         layout_net.precomputed_scores_provided = False
         i = 0
         for sample in data_loader:
-            sample, scores, verbs, label = datum
+            sample, scores, verbs, label = sample
             if i == count:
                 break
             i += 1
