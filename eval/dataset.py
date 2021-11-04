@@ -230,7 +230,6 @@ class CodeSearchNetDataset_SavedOracle(Dataset):
     def __init__(self, filename, device, neg_count, oracle_idxs):
         self.data = pd.read_json(filename, lines=True)
         self.neg_data = pd.read_json(filename, lines=True)
-        #         self.neg_data = pd.read_json('/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train/ccg_train_5.jsonl.gz', lines=True)
         self.device = device
         self.neg_count = neg_count
         self.oracle_idxs = []

@@ -180,7 +180,7 @@ class LayoutNet:
                     parent.children.append(node)
                 parent = node
                 node = LayoutNode()
-            elif current_part == '@Concat' or current_part == '@Num':
+            elif current_part == '@Concat' or current_part == '@Compose' or current_part == '@Num':
                 node.node_type = 'scoring'
                 parts.pop()  # opening bracket
                 node.node_value = parts.pop()
