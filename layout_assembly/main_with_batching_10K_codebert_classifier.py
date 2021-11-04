@@ -188,7 +188,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                       eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net),
                                       writer_it)
                 else:
-                    writer.add_scalar("Acc/valid", eval_acc(valid_data_loader, layout_net, count=100))
+                    writer.add_scalar("Acc/valid", eval_acc(valid_data_loader, layout_net, count=100), writer_it)
                 layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
