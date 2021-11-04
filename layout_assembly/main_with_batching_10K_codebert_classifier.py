@@ -121,10 +121,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
          range(shard_range + 1)])
 
     if valid_file_name != "None":
-    	valid_data = pd.read_json(valid_file_name, lines=True)
-    	validation_data_map = {}
-    	for i in range(len(valid_data)):
-        	validation_data_map[valid_data['url'][i]] = i
+        valid_data = pd.read_json(valid_file_name, lines=True)
+        validation_data_map = {}
+        for i in range(len(valid_data)):
+            validation_data_map[valid_data['url'][i]] = i
     else:
         valid_dataset, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)], 
                                               generator=torch.Generator().manual_seed(42))
