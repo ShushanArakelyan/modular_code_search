@@ -15,10 +15,10 @@ device = 'cuda:0'
 
 def main(shard_size, scoring_checkpoint):
     file_it = 0
-    data_dir = '/home/shushan/train_v2_cosqa_positive'
+    data_dir = '/project/hauserc_374/shushan/train_v2_cosqa_positive'
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    data_file = '/home/shushan/datasets/CoSQA/resources/ccg_parses_only/python/final/jsonl/train/ccg_cosqa_parsed.jsonl.gz'
+    data_file = '/project/hauserc_374/shushan/CoSQA/resources/ccg_parses_only/python/final/jsonl/train/ccg_cosqa_parsed.jsonl.gz'
     data = pd.read_json(data_file, lines=True)
     scoring_module = ScoringModule(device, scoring_checkpoint)
     version = 1
