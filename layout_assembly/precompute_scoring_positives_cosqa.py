@@ -80,7 +80,7 @@ def main(shard_size, scoring_checkpoint):
                 static_tags.append(sample[2])
                 regex_tags.append(sample[3])
                 ccg_parses.append(sample[4])
-                label.append(0)
+                label.append(1)
 
                 new_scores_offset = scores_offset + scoring_outputs.shape[0]
                 score_shape.append((scores_offset, scoring_outputs.shape[0]))
