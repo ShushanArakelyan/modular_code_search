@@ -97,19 +97,19 @@ def sample_random(idx, data):
 
 def main(num_negatives, neg_sampling_strategy, shard_size, scoring_checkpoint):
     file_it = 0
-    data_dir = f'/home/shushan/train_v2_cosqa_neg_{num_negatives}_{neg_sampling_strategy}'
+    data_dir = f'/project/hauserc_374/shushan/train_v2_cosqa_neg_{num_negatives}_{neg_sampling_strategy}'
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    data_file = '/home/shushan/datasets/CoSQA/resources/ccg_parses_only/python/final/jsonl/train/ccg_cosqa_parsed.jsonl.gz'
+    data_file = '/project/hauserc_374/shushan/CoSQA/resources/ccg_parses_only/python/final/jsonl/train/ccg_cosqa_parsed.jsonl.gz'
     if neg_sampling_strategy == 'codebert':
         dataset = CoSQADataset_SavedOracle_NegOnly(data_file, device,
-                                                   oracle_idxs='/home/shushan/codebert_oracle_scores_cosqa',
+                                                   oracle_idxs='/project/hauserc_374/shushan/codebert_oracle_scores_cosqa',
                                                    neg_count=num_negatives)
     elif neg_sampling_strategy == 'random':
         dataset = CoSQADataset_SavedOracle_NegOnly(data_file, device, neg_count=num_negatives)
     elif neg_sampling_strategy == 'tfidf':
         dataset = CoSQADataset_SavedOracle_NegOnly(data_file, device,
-                                                   oracle_idxs='/home/shushan/tfidf_oracle_scores_cosqa',
+                                                   oracle_idxs='/project/hauserc_374/shushan/tfidf_oracle_scores_cosqa',
                                                    neg_count=num_negatives)
     scoring_module = ScoringModule(device, scoring_checkpoint)
     version = 1
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     parser.add_argument('--neg_sampling_strategy', dest='neg_sampling_strategy', type=str,
                         help='"random" or "tfidf" or "codebert"', required=True)
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
-    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=int, required=True)
+    parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str, required=True)
     args = parser.parse_args()
 
     main(num_negatives=args.num_negatives, neg_sampling_strategy=args.neg_sampling_strategy,
