@@ -227,7 +227,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
-                    torch.nn.utils.clip_grad_value_(model.parameters(), clip_grad_value)
+                    torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
