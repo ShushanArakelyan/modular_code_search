@@ -93,19 +93,15 @@ def eval_acc(data_loader, layout_net, count):
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
         i = 0
-        for samples in data_loader:
-            for j, sample in enumerate(samples):
-                if i == count:
-                    break
-                i += 1
-                pred = layout_net.forward(*transform_sample(sample))
-                if pred is None:
-                    continue
-                if j == 0:
-                    label = 1
-                else:
-                    label = 0
-                accs.append(int(torch.argmax(pred) == label))
+        for sample in data_loader:
+            sample, scores, verbs, label = datum
+            if i == count:
+                break
+            i += 1
+            pred = layout_net.forward(*transform_sample(sample))
+            if pred is None:
+                continue
+            accs.append(int(torch.argmax(pred) == label))
         layout_net.precomputed_scores_provided = True
     layout_net.set_train()
     return np.mean(accs)
@@ -129,7 +125,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
         valid_dataset, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)], 
                                               generator=torch.Generator().manual_seed(42))
         valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder
         embedder.init_embedder(device, load_finetuned_codebert)
