@@ -102,7 +102,8 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             return None  # todo: or return all zeros or something?
 
         inputs = embedder.get_feature_inputs_batch([" ".join(sample[0])], [" ".join(code)])
-        inputs['weights'] = output[1]
+        #inputs['weights'] = output[1]
+        inputs['weights'] = None
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
 

@@ -18,6 +18,7 @@ class RobertaClassificationHead_weighted(nn.Module):
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, x, **kwargs):
+        x = x[:, 0, :]
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
