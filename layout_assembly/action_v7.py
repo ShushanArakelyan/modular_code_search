@@ -9,9 +9,10 @@ from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init
 class ActionModule_v7_one_input(ActionModule_v5):
     def init_networks(self):
         # outputs a sequence of scores
-        self.input_dim = embedder.dim * 3 + 1
-        print("input_dim: ", self.input_dim)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.input_dim, nhead=5).to(self.device)
+        # self.input_dim = embedder.dim * 3 + 1
+        self.input_dim = 2312
+        self.padding_size = self.input_dim - (embedder.dim * 3 + 1)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.input_dim, nhead=8).to(self.device)
         hidden_input_dims = [self.input_dim, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
@@ -34,6 +35,8 @@ class ActionModule_v7_one_input(ActionModule_v5):
         tiled_prep_emb = prep_embedding.repeat(seq_len, 1)
         tiled_cls_emb = (torch.ones((1, self.input_dim)) * (embedder.cls_value)).to(self.device)
         tiled_sep_emb = (torch.ones((1, self.input_dim)) * (embedder.sep_value)).to(self.device)
+        padding_zeros = torch.zeros((seq_len, self.padding_size))
+        code_embeddings = torch.cat((code_embeddings, padding_zeros), dim=1)
         encoder_input = torch.cat((tiled_verb_emb, tiled_prep_emb, scores[:seq_len], code_embeddings), dim=1)
         encoder_input = torch.cat((tiled_cls_emb, encoder_input, tiled_sep_emb), dim=0).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
@@ -47,9 +50,10 @@ class ActionModule_v7_one_input(ActionModule_v5):
 
 class ActionModule_v7_two_inputs(ActionModule_v5):
     def init_networks(self):
-        self.input_dim = embedder.dim * 4 + 2
-        print("input_dim: ", self.input_dim)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.input_dim, nhead=2).to(self.device)
+        # self.input_dim = embedder.dim * 4 + 2
+        self.input_dim = 3080
+        self.padding_size = self.input_dim - (embedder.dim * 4 + 2)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.input_dim, nhead=8).to(self.device)
         hidden_input_dims = [self.input_dim, 512]
         hidden_output_dims = [512, 1]
         if self.normalized:
@@ -75,6 +79,8 @@ class ActionModule_v7_two_inputs(ActionModule_v5):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         seq_len = code_embeddings.shape[0]  # tile verb and prep embeddings to the same shape as code
+        padding_zeros = torch.zeros((seq_len, self.padding_size))
+        code_embeddings = torch.cat((code_embeddings, padding_zeros), dim=1)
         tiled_verb_emb = verb_embedding.repeat(seq_len, 1)
         tiled_prep1_emb = prep1_embedding.repeat(seq_len, 1)
         tiled_prep2_emb = prep2_embedding.repeat(seq_len, 1)
