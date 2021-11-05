@@ -13,7 +13,7 @@ class ActionModule_v8_one_input(ActionModule_v5):
         # outputs a sequence of scores
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=embedder.dim, nhead=8).to(self.device)
         hidden_input_dims = [embedder.dim, 512]
-        hidden_output_dims = [512, 1]
+        hidden_output_dims = [512, 512]
         if self.normalized:
             self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
@@ -35,8 +35,7 @@ class ActionModule_v8_one_input(ActionModule_v5):
         mlp_input = torch.index_select(mlp_input, 0,
                                        torch.LongTensor(range(4, len(encoder_input))).to(self.device)).squeeze()
         mlp_input = torch.mm(scores.T, mlp_input)
-        print(mlp_input.shape)
-        scores_out = self.mlp.forward(mlp_input)
+        scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
 
@@ -45,7 +44,7 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
     def init_networks(self):
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=embedder.dim, nhead=8).to(self.device)
         hidden_input_dims = [embedder.dim * 2, 512]
-        hidden_output_dims = [512, 1]
+        hidden_output_dims = [512, 512]
         if self.normalized:
             self.mlp = FC2_normalized(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
         else:
@@ -69,8 +68,6 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
             raise ProcessingException()
 
         verb_embedding, code_embeddings = precomputed_embeddings
-        # weighted_code_emb1 = torch.mm(scores1.T, code_embeddings[1:])
-        # weighted_code_emb2 = torch.mm(scores2.T, code_embeddings[1:])
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding,
                                    prep2_embedding, code_embeddings)).unsqueeze(dim=1)
         mlp_input = self.encoder_layer(encoder_input)
@@ -79,7 +76,6 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
         mlp_input_1 = torch.mm(scores1.T, mlp_input)
         mlp_input_2 = torch.mm(scores2.T, mlp_input)
         mlp_input = torch.cat((mlp_input_1, mlp_input_2), dim=1)
-        print(mlp_input.shape)
-        scores_out = self.mlp.forward(mlp_input)
+        scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
