@@ -124,7 +124,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     else:
         valid_dataset, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)], 
                                               generator=torch.Generator().manual_seed(42))
-        valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=True)
+        valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder

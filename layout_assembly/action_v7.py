@@ -35,7 +35,7 @@ class ActionModule_v7_one_input(ActionModule_v5):
         tiled_prep_emb = prep_embedding.repeat(seq_len, 1)
         tiled_cls_emb = (torch.ones((1, self.input_dim)) * (embedder.cls_value)).to(self.device)
         tiled_sep_emb = (torch.ones((1, self.input_dim)) * (embedder.sep_value)).to(self.device)
-        padding_zeros = torch.zeros((seq_len, self.padding_size))
+        padding_zeros = torch.zeros((seq_len, self.padding_size)).to(self.device)
         code_embeddings = torch.cat((code_embeddings, padding_zeros), dim=1)
         encoder_input = torch.cat((tiled_verb_emb, tiled_prep_emb, scores[:seq_len], code_embeddings), dim=1)
         encoder_input = torch.cat((tiled_cls_emb, encoder_input, tiled_sep_emb), dim=0).unsqueeze(dim=1)
@@ -79,7 +79,7 @@ class ActionModule_v7_two_inputs(ActionModule_v5):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         seq_len = code_embeddings.shape[0]  # tile verb and prep embeddings to the same shape as code
-        padding_zeros = torch.zeros((seq_len, self.padding_size))
+        padding_zeros = torch.zeros((seq_len, self.padding_size)).to(self.device)
         code_embeddings = torch.cat((code_embeddings, padding_zeros), dim=1)
         tiled_verb_emb = verb_embedding.repeat(seq_len, 1)
         tiled_prep1_emb = prep1_embedding.repeat(seq_len, 1)
