@@ -12,6 +12,7 @@ from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3
 from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
 from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
 from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
+from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
 from layout_assembly.utils import ProcessingException
 
 
@@ -53,6 +54,9 @@ class ActionModuleFacade:
         elif version == 7:
             self.one_input_module = ActionModule_v7_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v7_two_inputs(self.device, normalized, self.dropout)
+        elif version == 8:
+            self.one_input_module = ActionModule_v8_one_input(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs(self.device, normalized, self.dropout)
         elif version == 11:
             self.one_input_module = ActionModule_v11_weighted_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v11_weighted_two_inputs(self.device, normalized, self.dropout)
