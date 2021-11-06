@@ -10,6 +10,7 @@ from layout_assembly.action_v1_weighted_sum import ActionModule_v1_two_inputs as
 from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
 from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
 from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
+from layout_assembly.action_v5_1 import ActionModule_v5_1_one_input, ActionModule_v5_1_two_inputs
 from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
 from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
 from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
@@ -48,6 +49,9 @@ class ActionModuleFacade:
         elif version == 5:
             self.one_input_module = ActionModule_v5_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v5_two_inputs(self.device, normalized, self.dropout)
+        elif version == 51:
+            self.one_input_module = ActionModule_v5_1_one_input(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v5_1_two_inputs(self.device, normalized, self.dropout)
         elif version == 6:
             self.one_input_module = ActionModule_v6_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v6_two_inputs(self.device, normalized, self.dropout)
