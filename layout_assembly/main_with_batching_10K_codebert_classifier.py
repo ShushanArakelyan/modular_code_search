@@ -138,7 +138,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
             return_separators = True
         else:
             return_separators = False
-        if version == 7:
+        if version == 7 or version == 71 or version == 72:
             embed_in_list = True
         else:
             embed_in_list = False

@@ -13,6 +13,8 @@ from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5
 from layout_assembly.action_v5_1 import ActionModule_v5_1_one_input, ActionModule_v5_1_two_inputs
 from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
 from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
+from layout_assembly.action_v7_1 import ActionModule_v7_1_one_input, ActionModule_v7_1_two_inputs
+from layout_assembly.action_v7_2 import ActionModule_v7_2_one_input, ActionModule_v7_2_two_inputs
 from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
 from layout_assembly.utils import ProcessingException
 
@@ -58,6 +60,12 @@ class ActionModuleFacade:
         elif version == 7:
             self.one_input_module = ActionModule_v7_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v7_two_inputs(self.device, normalized, self.dropout)
+        elif version == 71:
+            self.one_input_module = ActionModule_v7_1_one_input(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v7_1_two_inputs(self.device, normalized, self.dropout)
+        elif version == 72:
+            self.one_input_module = ActionModule_v7_2_one_input(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v7_2_two_inputs(self.device, normalized, self.dropout)
         elif version == 8:
             self.one_input_module = ActionModule_v8_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v8_two_inputs(self.device, normalized, self.dropout)
