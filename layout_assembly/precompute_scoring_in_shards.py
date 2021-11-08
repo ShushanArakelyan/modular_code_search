@@ -42,7 +42,6 @@ class CodeSearchNetDataset_Random_NegOnly(Dataset):
         assert len(random_idxs) <= (9 + 1)
         if len(random_idxs) == 9 + 1:
             random_idxs = random_idxs[:-1]
-        print(f"for data sample: {idx}, sampled following negatives: {random_idxs}")
         for i in range(self.neg_count):
             neg_idx = random_idxs[i]
             sample = (self.data['docstring_tokens'][idx],
@@ -59,9 +58,10 @@ class CodeSearchNetDataset_Random_NegOnly(Dataset):
         for i in range(length):
             generated = []
             while len(generated) < self.neg_count:
-                random_idx = np.random.randint(0, len(self.neg_data), 1)[0]
+                random_idx = np.random.randint(1, len(self.neg_data), 1)[0]
                 if random_idx != i and random_idx not in generated:
                     generated.append(random_idx)
+            assert (len(generated) == self.neg_count)
             random_idxs.append(generated)
         return random_idxs
 
