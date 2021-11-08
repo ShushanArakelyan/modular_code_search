@@ -14,6 +14,58 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 
+class CoSQADataset_Random_NegOnly(Dataset):
+    def __init__(self, filename, device, neg_count, length=30000):
+        self.data = pd.read_json(filename, lines=True)
+        self.neg_data = self.data
+        self.device = device
+        self.neg_count = neg_count
+        self.positive_label = torch.FloatTensor([1]).to(device)
+        self.negative_label = torch.FloatTensor([0]).to(device)
+        self.random_idxs = self.create_random_idxs(length)
+        self.length = length
+
+    def __len__(self):
+        return min(len(self.data), self.length)  # TODO: currently we sometimes only have the part of all indexes processed and saved
+
+    def __getitem__(self, idx):
+        all_samples = []
+        all_samples.extend(self.get_random_idxs(idx, all_samples))
+        return all_samples
+
+    # TODO: remove random part when we have finished processing oracle
+    # indexes for all of the training data
+    def get_random_idxs(self, idx, samples):
+        random_idxs = np.asarray(self.random_idxs[idx])
+        random_idxs = random_idxs[random_idxs != 0]
+        # 9 is the max value for neg_count, but real neg_count can be different
+        assert len(random_idxs) <= (9 + 1)
+        if len(random_idxs) == 9 + 1:
+            random_idxs = random_idxs[:-1]
+        print(f"for data sample: {idx}, sampled following negatives: {random_idxs}")
+        for i in range(self.neg_count):
+            neg_idx = random_idxs[i]
+            sample = (self.data['docstring_tokens'][idx],
+                      self.neg_data['alt_code_tokens'][neg_idx],
+                      self.neg_data['static_tags'][neg_idx],
+                      self.neg_data['regex_tags'][neg_idx],
+                      self.data['ccg_parse'][idx])
+            samples.append(sample)
+        return samples
+
+    def create_random_idxs(self, length):
+        random_idxs = []
+        np.random.seed(124)
+        for i in range(length):
+            generated = []
+            while len(generated) < self.neg_count:
+                random_idx = np.random.randint(0, len(self.neg_data), 1)[0]
+                if random_idx != i and random_idx not in generated:
+                    generated.append(random_idx)
+            random_idxs.append(generated)
+        return random_idxs
+
+
 class CoSQADataset_SavedOracle_NegOnly(Dataset):
     def __init__(self, filename, device, neg_count, oracle_idxs):
         self.data = pd.read_json(filename, lines=True)
@@ -81,21 +133,7 @@ class CoSQADataset_SavedOracle_NegOnly(Dataset):
                 self.oracle_idxs[start + i] = (scores)
 
 
-device = 'cuda:0'
-
-
-def sample_hard(idx, distances):
-    neg_idx = np.argsort(distances[idx])[1]  # the zero-th element is idx itself
-    distances[idx, neg_idx] = np.inf
-    return neg_idx, distances
-
-
-def sample_random(idx, data):
-    random_idx = np.random.randint(0, len(data), 1)[0]
-    return random_idx
-
-
-def main(num_negatives, neg_sampling_strategy, shard_size, scoring_checkpoint):
+def main(device, num_negatives, neg_sampling_strategy, shard_size, scoring_checkpoint):
     file_it = 0
     data_dir = f'/project/hauserc_374/shushan/train_v2_cosqa_neg_{num_negatives}_{neg_sampling_strategy}'
     if not os.path.exists(data_dir):
@@ -106,7 +144,7 @@ def main(num_negatives, neg_sampling_strategy, shard_size, scoring_checkpoint):
                                                    oracle_idxs='/project/hauserc_374/shushan/codebert_oracle_scores_cosqa',
                                                    neg_count=num_negatives)
     elif neg_sampling_strategy == 'random':
-        dataset = CoSQADataset_SavedOracle_NegOnly(data_file, device, neg_count=num_negatives)
+        dataset = CoSQADataset_Random_NegOnly(data_file, device, neg_count=num_negatives, length=shard_size)
     elif neg_sampling_strategy == 'tfidf':
         dataset = CoSQADataset_SavedOracle_NegOnly(data_file, device,
                                                    oracle_idxs='/project/hauserc_374/shushan/tfidf_oracle_scores_cosqa',
@@ -217,5 +255,5 @@ if __name__ == "__main__":
     parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str, required=True)
     args = parser.parse_args()
 
-    main(num_negatives=args.num_negatives, neg_sampling_strategy=args.neg_sampling_strategy,
+    main(device=args.device, num_negatives=args.num_negatives, neg_sampling_strategy=args.neg_sampling_strategy,
          shard_size=args.shard_size, scoring_checkpoint=args.scoring_checkpoint)
