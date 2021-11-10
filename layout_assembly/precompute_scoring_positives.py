@@ -16,13 +16,13 @@ from layout_assembly.modules import ScoringModule, ActionModuleFacade
 device = 'cuda:0'
 scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
 
-def main(shard_size):
+def main(input_data_dir, shard_size):
     for file_it in range(1):
         data_dir = '/home/shushan/train_v3_positive'
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-        data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
-        data_file = f'{data_dir1}/ccg_train_{file_it}.jsonl.gz'
+#         data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
+        data_file = f'{input_data_dir}/ccg_train_{file_it}.jsonl.gz'
         data = pd.read_json(data_file, lines=True)
         scoring_module = ScoringModule(device, scoring_checkpoint)
         version = 1
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('--device', dest='device', type=str,
                         help='device to run on')
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
+    parser.add_argument('--input_data_dir', dest='input_data_dir', type=str, required=True)
     args = parser.parse_args()
 
-    main(args.shard_size)
+    main(shard_size=args.shard_size, input_data_dir=args.input_data_dir)

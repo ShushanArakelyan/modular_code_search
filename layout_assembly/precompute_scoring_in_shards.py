@@ -137,14 +137,14 @@ class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
                 self.oracle_idxs[start + i] = (scores)
 
 
-def main(device, num_negatives, neg_sampling_strategy, shard_size):
+def main(device, input_data_dir, num_negatives, neg_sampling_strategy, shard_size):
     scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
     for file_it in range(1):
         data_dir = f'/home/shushan/train_v3_neg_{num_negatives}_{neg_sampling_strategy}'
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-        data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
-        data_file = f'{data_dir1}/ccg_train_{file_it}.jsonl.gz'
+#         data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
+        data_file = f'{input_data_dir}/ccg_train_{file_it}.jsonl.gz'
         if neg_sampling_strategy == 'codebert':
             dataset = CodeSearchNetDataset_SavedOracle_NegOnly(data_file, device,
                                                                oracle_idxs='/home/shushan/codebert_oracle_scores',
@@ -259,7 +259,10 @@ if __name__ == "__main__":
     parser.add_argument('--neg_sampling_strategy', dest='neg_sampling_strategy', type=str,
                         help='"random" or "tfidf" or "codebert"', required=True)
     parser.add_argument('--shard_size', dest='shard_size', type=int, default=30000)
+    parser.add_argument('--input_data_dir', dest='input_data_dir', type=str, required=True)
     args = parser.parse_args()
 
-    main(device=args.device, num_negatives=args.num_negatives, 
-         neg_sampling_strategy=args.neg_sampling_strategy, shard_size=args.shard_size)
+    main(device=args.device, input_data_dir=args.input_data_dir, 
+         num_negatives=args.num_negatives, 
+         neg_sampling_strategy=args.neg_sampling_strategy,
+         shard_size=args.shard_size)
