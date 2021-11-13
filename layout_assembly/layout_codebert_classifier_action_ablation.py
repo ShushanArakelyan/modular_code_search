@@ -3,7 +3,7 @@ from itertools import chain
 import torch
 
 import codebert_embedder_v2 as embedder
-from layout_assembly.layout_codebert_classifer import LayoutNet_w_codebert_classifier
+from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
 from layout_assembly.utils import ProcessingException
 
 class LayoutNet_w_codebert_classifier_action_ablation(LayoutNet_w_codebert_classifier):
