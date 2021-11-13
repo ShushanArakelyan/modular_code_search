@@ -16,6 +16,10 @@ from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7
 from layout_assembly.action_v7_1 import ActionModule_v7_1_one_input, ActionModule_v7_1_two_inputs
 from layout_assembly.action_v7_2 import ActionModule_v7_2_one_input, ActionModule_v7_2_two_inputs
 from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
+from layout_assembly.action_v8_scoring_ablation import ActionModule_v8_one_input_scoring_ablation, ActionModule_v8_two_inputs_scoring_ablation
+from layout_assembly.action_v8_action_ablation import ActionModule_v8_one_input_action_ablation, ActionModule_v8_two_inputs_action_ablation
+from layout_assembly.action_v8_verb_ablation import ActionModule_v8_one_input_verb_ablation, ActionModule_v8_two_inputs_verb_ablation
+from layout_assembly.action_v8_preposition_ablation import ActionModule_v8_one_input_preposition_ablation, ActionModule_v8_two_inputs_preposition_ablation
 from layout_assembly.utils import ProcessingException
 
 
@@ -69,6 +73,18 @@ class ActionModuleFacade:
         elif version == 8:
             self.one_input_module = ActionModule_v8_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v8_two_inputs(self.device, normalized, self.dropout)
+        elif version == 81:
+            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+        elif version == 82:
+            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+        elif version == 83:
+            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+        elif version == 84:
+            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
         elif version == 11:
             self.one_input_module = ActionModule_v11_weighted_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v11_weighted_two_inputs(self.device, normalized, self.dropout)

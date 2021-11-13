@@ -134,7 +134,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action, dropout)
 
     if layout_net_version == 'classic':
-        if version == 5 or version == 6 or version == 8 or version == 51:
+        if version == 5 or version == 51 or version == 6 or version == 8 or version == 81 or version == 82 or version == 83 or version == 84:
             return_separators = True
         else:
             return_separators = False
