@@ -136,14 +136,13 @@ class CodeSearchNetDataset_SavedOracle_NegOnly(Dataset):
                 scores = [int(s) for s in scores if len(s) > 0]
                 self.oracle_idxs[start + i] = (scores)
 
-
-def main(device, input_data_dir, num_negatives, neg_sampling_strategy, shard_size):
-    scoring_checkpoint = "/home/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
+def main(device, num_negatives, neg_sampling_strategy, shard_size, input_data_dir):
+    scoring_checkpoint = "/project/hauserc_374/shushan/finetuned_scoring_models/06-09-2021 20:21:51/model_3_ep_5.tar"
     for file_it in range(1):
-        data_dir = f'/home/shushan/train_v3_neg_{num_negatives}_{neg_sampling_strategy}'
+        data_dir = f'/project/hauserc_374/shushan/train_10K_neg_{num_negatives}_{neg_sampling_strategy}'
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-#         data_dir1 = '/home/shushan/datasets/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
+        #data_dir1 = '/project/hauserc_374/shushan/CodeSearchNet/resources/ccg_parses_only/python/final/jsonl/train'
         data_file = f'{input_data_dir}/ccg_train_{file_it}.jsonl.gz'
         if neg_sampling_strategy == 'codebert':
             dataset = CodeSearchNetDataset_SavedOracle_NegOnly(data_file, device,
