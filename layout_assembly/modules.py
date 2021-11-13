@@ -77,14 +77,14 @@ class ActionModuleFacade:
             self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
         elif version == 82:
-            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
-            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+            self.one_input_module = ActionModule_v8_one_input_action_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_action_ablation(self.device, normalized, self.dropout)
         elif version == 83:
-            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
-            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+            self.one_input_module = ActionModule_v8_one_input_verb_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_verb_ablation(self.device, normalized, self.dropout)
         elif version == 84:
-            self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
-            self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
+            self.one_input_module = ActionModule_v8_one_input_preposition_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_preposition_ablation(self.device, normalized, self.dropout)
         elif version == 11:
             self.one_input_module = ActionModule_v11_weighted_one_input(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v11_weighted_two_inputs(self.device, normalized, self.dropout)
