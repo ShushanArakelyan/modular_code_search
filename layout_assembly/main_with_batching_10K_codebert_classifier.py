@@ -14,6 +14,7 @@ from eval.dataset import transform_sample
 from eval.utils import mrr
 from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
+from layout_assembly.layout_codebert_classifier_action_ablation import LayoutNet_w_codebert_classifier_action_ablation
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
