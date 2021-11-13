@@ -148,6 +148,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
+    if version == 82:
+        layout_net = LayoutNet_w_codebert_classifier_action_ablation(
+            scoring_module, action_module, device,
+            precomputed_scores_provided=precomputed_scores_provided,
+            return_separators=return_separators, embed_in_list=embed_in_list)
+
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
 
