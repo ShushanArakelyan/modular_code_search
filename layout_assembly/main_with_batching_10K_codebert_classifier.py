@@ -14,6 +14,7 @@ from eval.dataset import transform_sample
 from eval.utils import mrr
 from layout_assembly.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
+from layout_assembly.layout_codebert_classifier_action_ablation import LayoutNet_w_codebert_classifier_action_ablation
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
@@ -148,6 +149,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
+    if version == 82:
+        layout_net = LayoutNet_w_codebert_classifier_action_ablation(
+            scoring_module, action_module, device,
+            precomputed_scores_provided=precomputed_scores_provided,
+            return_separators=return_separators, embed_in_list=embed_in_list)
+
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
 
