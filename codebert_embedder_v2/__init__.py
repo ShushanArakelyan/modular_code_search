@@ -61,7 +61,7 @@ def get_feature_inputs(query, code):
             'token_type_ids': None}
 
 
-def get_feature_inputs_classifier(query, code, scores):
+def get_feature_inputs_classifier(queries, codes, scores):
     examples = [InputExample(0, text_a=q, text_b=c, label="0") for q, c in zip(queries, codes)]
     """Converts the input tokens into CodeBERT inputs."""
     features, scores = convert_examples_to_features_with_scores(examples, scores, ["0", "1"], max_seq_length, tokenizer,
@@ -82,7 +82,6 @@ def get_feature_inputs_classifier(query, code, scores):
 def get_feature_inputs_batch(queries, codes):
     examples = [InputExample(0, text_a=q, text_b=c, label="0") for q, c in zip(queries, codes)]
     """Converts the input tokens into CodeBERT inputs."""
-    print(tokenizer.encode(examples[0].text_a))
     features = convert_examples_to_features(examples, ["0", "1"], max_seq_length, tokenizer,
                                             "classification", cls_token_at_end=False,
                                             cls_token=tokenizer.cls_token,
