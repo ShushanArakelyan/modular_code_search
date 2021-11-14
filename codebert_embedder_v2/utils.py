@@ -152,7 +152,7 @@ class CodesearchProcessor(DataProcessor):
 def convert_examples_to_features_with_scores(examples, scores, label_list, max_seq_length,
                                  tokenizer, output_mode,
                                  cls_token_at_end=False, pad_on_left=False,
-                                 cls_token='<s>', sep_token='</s>', pad_token='<pad>',
+                                 cls_token='[CLS]', sep_token='[SEP]', pad_token=0,
                                  sequence_a_segment_id=0, sequence_b_segment_id=1,
                                  cls_token_segment_id=1, pad_token_segment_id=0,
                                  mask_padding_with_zero=True):
@@ -170,12 +170,12 @@ def convert_examples_to_features_with_scores(examples, scores, label_list, max_s
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
 
-        tokens_a = tokenizer.encode(example.text_a).ids[:50]
+        tokens_a = tokenizer.tokenize(example.text_a)[:50]
         scores = scores[:len(tokens_a)]
         scores = torch.nn.functional.pad(scores, (len(tokens_a), 0, 0, 0), 'constant', 0)
         tokens_b = None
         if example.text_b:
-            tokens_b = tokenizer.encode(example.text_b).ids
+            tokens_b = tokenizer.tokenize(example.text_b)
             # Modifies `tokens_a` and `tokens_b` in place so that the total
             # length is less than the specified length.
             # Account for [CLS], [SEP], [SEP] with "- 3"
@@ -184,6 +184,7 @@ def convert_examples_to_features_with_scores(examples, scores, label_list, max_s
             # Account for [CLS] and [SEP] with "- 2"
             if len(tokens_a) > max_seq_length - 2:
                 tokens_a = tokens_a[:(max_seq_length - 2)]
+
         # The convention in BERT is:
         # (a) For sequence pairs:
         #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
@@ -202,33 +203,37 @@ def convert_examples_to_features_with_scores(examples, scores, label_list, max_s
         # For classification tasks, the first vector (corresponding to [CLS]) is
         # used as as the "sentence vector". Note that this only makes sense because
         # the entire model is fine-tuned.
-        tokens = tokens_a + [tokenizer.encode(cls_token).ids]
+        tokens = tokens_a + [sep_token]
         segment_ids = [sequence_a_segment_id] * len(tokens)
+
         if tokens_b:
-            tokens += tokens_b + [tokenizer.encode(cls_token).ids]
+            tokens += tokens_b + [sep_token]
             segment_ids += [sequence_b_segment_id] * (len(tokens_b) + 1)
 
         if cls_token_at_end:
-            tokens = tokens + [tokenizer.encode(cls_token).ids]
+            tokens = tokens + [cls_token]
             segment_ids = segment_ids + [cls_token_segment_id]
         else:
-            tokens = [tokenizer.encode(cls_token).ids] + tokens
+            tokens = [cls_token] + tokens
             segment_ids = [cls_token_segment_id] + segment_ids
-        input_ids = tokens
+
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
         input_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+
         # Zero-pad up to the sequence length.
         padding_length = max_seq_length - len(input_ids)
         if pad_on_left:
-            input_ids = ([tokenizer.encode(pad_token).ids] * padding_length) + input_ids
+            input_ids = ([pad_token] * padding_length) + input_ids
             input_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + input_mask
             segment_ids = ([pad_token_segment_id] * padding_length) + segment_ids
         else:
-            input_ids = input_ids + ([tokenizer.encode(pad_token).ids] * padding_length)
+            input_ids = input_ids + ([pad_token] * padding_length)
             input_mask = input_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
             segment_ids = segment_ids + ([pad_token_segment_id] * padding_length)
+
         assert len(input_ids) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
@@ -261,7 +266,7 @@ def convert_examples_to_features_with_scores(examples, scores, label_list, max_s
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode,
                                  cls_token_at_end=False, pad_on_left=False,
-                                 cls_token='<s>', sep_token='</s>', pad_token='<pad>',
+                                 cls_token='[CLS]', sep_token='[SEP]', pad_token=0,
                                  sequence_a_segment_id=0, sequence_b_segment_id=1,
                                  cls_token_segment_id=1, pad_token_segment_id=0,
                                  mask_padding_with_zero=True):
@@ -279,11 +284,11 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
 
-        tokens_a = tokenizer.encode(example.text_a).ids[:50]
-        
+        tokens_a = tokenizer.tokenize(example.text_a)[:50]
+
         tokens_b = None
         if example.text_b:
-            tokens_b = tokenizer.encode(example.text_b).ids
+            tokens_b = tokenizer.tokenize(example.text_b)
             # Modifies `tokens_a` and `tokens_b` in place so that the total
             # length is less than the specified length.
             # Account for [CLS], [SEP], [SEP] with "- 3"
@@ -292,6 +297,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
             # Account for [CLS] and [SEP] with "- 2"
             if len(tokens_a) > max_seq_length - 2:
                 tokens_a = tokens_a[:(max_seq_length - 2)]
+
         # The convention in BERT is:
         # (a) For sequence pairs:
         #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
@@ -310,33 +316,37 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         # For classification tasks, the first vector (corresponding to [CLS]) is
         # used as as the "sentence vector". Note that this only makes sense because
         # the entire model is fine-tuned.
-        tokens = tokens_a + [tokenizer.encode(cls_token).ids]
+        tokens = tokens_a + [sep_token]
         segment_ids = [sequence_a_segment_id] * len(tokens)
+
         if tokens_b:
-            tokens += tokens_b + [tokenizer.encode(cls_token).ids]
+            tokens += tokens_b + [sep_token]
             segment_ids += [sequence_b_segment_id] * (len(tokens_b) + 1)
 
         if cls_token_at_end:
-            tokens = tokens + [tokenizer.encode(cls_token).ids]
+            tokens = tokens + [cls_token]
             segment_ids = segment_ids + [cls_token_segment_id]
         else:
-            tokens = [tokenizer.encode(cls_token).ids] + tokens
+            tokens = [cls_token] + tokens
             segment_ids = [cls_token_segment_id] + segment_ids
-        input_ids = tokens
+
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
         input_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+
         # Zero-pad up to the sequence length.
         padding_length = max_seq_length - len(input_ids)
         if pad_on_left:
-            input_ids = ([tokenizer.encode(pad_token).ids] * padding_length) + input_ids
+            input_ids = ([pad_token] * padding_length) + input_ids
             input_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + input_mask
             segment_ids = ([pad_token_segment_id] * padding_length) + segment_ids
         else:
-            input_ids = input_ids + ([tokenizer.encode(pad_token).ids] * padding_length)
+            input_ids = input_ids + ([pad_token] * padding_length)
             input_mask = input_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
             segment_ids = segment_ids + ([pad_token_segment_id] * padding_length)
+
         assert len(input_ids) == max_seq_length
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
@@ -364,8 +374,6 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
                           segment_ids=segment_ids,
                           label_id=label_id))
     return features
-
-
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
