@@ -24,6 +24,7 @@ import sys
 from io import open
 from sklearn.metrics import f1_score
 
+import torch
 csv.field_size_limit(sys.maxsize)
 logger = logging.getLogger(__name__)
 
@@ -171,8 +172,9 @@ def convert_examples_to_features_with_scores(examples, scores, label_list, max_s
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
 
         tokens_a = tokenizer.tokenize(example.text_a)[:50]
-        scores = scores[:len(tokens_a)]
-        scores = torch.nn.functional.pad(scores, (len(tokens_a), 0, 0, 0), 'constant', 0)
+        scores = scores[len(tokens_a):][:]
+        scores = torch.nn.functional.pad(scores, (0, 0, len(tokens_a), 0), 'constant', 0)
+
         tokens_b = None
         if example.text_b:
             tokens_b = tokenizer.tokenize(example.text_b)
