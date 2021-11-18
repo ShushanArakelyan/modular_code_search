@@ -3,7 +3,7 @@ from itertools import chain
 import torch
 
 import codebert_embedder_with_adapter as embedder
-from layout_assembly.action_v1 import ActionModule_v1
+from action.action_v1 import ActionModule_v1
 from layout_assembly.utils import ProcessingException
 
 

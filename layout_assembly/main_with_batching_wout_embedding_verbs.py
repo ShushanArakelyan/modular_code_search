@@ -19,7 +19,7 @@ from layout_assembly.modules import ScoringModule, ActionModuleFacade
 
 class ActionModuleFacadeWoutEmbeddingVerbs(ActionModuleFacade):
     def init_networks(self, version, normalized):
-        from layout_assembly.action_v1_wout_embedding_verbs import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+        from action.action_v1_wout_embedding_verbs import ActionModule_v1_one_input, ActionModule_v1_two_inputs
         if version == 1:
             self.one_input_module = ActionModule_v1_one_input(self.device, normalized, dropout=self.dropout)
             self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, dropout=self.dropout)

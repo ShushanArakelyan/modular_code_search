@@ -12,7 +12,7 @@ from eval.dataset import CodeSearchNetDataset_SavedOracle
 from eval.dataset import CodeSearchNetDataset_wShards
 from eval.dataset import transform_sample
 from eval.utils import mrr
-from layout_assembly.action_v1_w_entr_reg import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+from action.action_v1_w_entr_reg import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout import LayoutNet
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade

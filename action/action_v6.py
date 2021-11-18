@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 import codebert_embedder_v2 as embedder
-from layout_assembly.action_v5 import ActionModule_v5
+from action.action_v5 import ActionModule_v5
 from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init_weights
 
 

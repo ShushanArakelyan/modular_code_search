@@ -3,23 +3,23 @@ from itertools import chain
 import torch
 
 import scoring as embedder  # this instance of embedder is different than in the rest of the network, it remains frozen
-from layout_assembly.action_adapter_v2 import ActionModule_v2_1_one_input
-from layout_assembly.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
-from layout_assembly.action_v1_weighted_sum import ActionModule_v1_one_input as ActionModule_v11_weighted_one_input
-from layout_assembly.action_v1_weighted_sum import ActionModule_v1_two_inputs as ActionModule_v11_weighted_two_inputs
-from layout_assembly.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
-from layout_assembly.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
-from layout_assembly.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
-from layout_assembly.action_v5_1 import ActionModule_v5_1_one_input, ActionModule_v5_1_two_inputs
-from layout_assembly.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
-from layout_assembly.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
-from layout_assembly.action_v7_1 import ActionModule_v7_1_one_input, ActionModule_v7_1_two_inputs
-from layout_assembly.action_v7_2 import ActionModule_v7_2_one_input, ActionModule_v7_2_two_inputs
-from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
-from layout_assembly.action_v8_scoring_ablation import ActionModule_v8_one_input_scoring_ablation, ActionModule_v8_two_inputs_scoring_ablation
-from layout_assembly.action_v8_action_ablation import ActionModule_v8_one_input_action_ablation, ActionModule_v8_two_inputs_action_ablation
-from layout_assembly.action_v8_verb_ablation import ActionModule_v8_one_input_verb_ablation, ActionModule_v8_two_inputs_verb_ablation
-from layout_assembly.action_v8_preposition_ablation import ActionModule_v8_one_input_preposition_ablation, ActionModule_v8_two_inputs_preposition_ablation
+from action.action_adapter_v2 import ActionModule_v2_1_one_input
+from action.action_v1 import ActionModule_v1_one_input, ActionModule_v1_two_inputs
+from action.action_v1_weighted_sum import ActionModule_v1_one_input as ActionModule_v11_weighted_one_input
+from action.action_v1_weighted_sum import ActionModule_v1_two_inputs as ActionModule_v11_weighted_two_inputs
+from action.action_v2 import ActionModule_v2_one_input, ActionModule_v2_two_inputs
+from action.action_v3 import ActionModule_v3_one_input, ActionModule_v3_two_inputs
+from action.action_v5 import ActionModule_v5_one_input, ActionModule_v5_two_inputs
+from action.action_v5_1 import ActionModule_v5_1_one_input, ActionModule_v5_1_two_inputs
+from action.action_v6 import ActionModule_v6_one_input, ActionModule_v6_two_inputs
+from action.action_v7 import ActionModule_v7_one_input, ActionModule_v7_two_inputs
+from action.action_v7_1 import ActionModule_v7_1_one_input, ActionModule_v7_1_two_inputs
+from action.action_v7_2 import ActionModule_v7_2_one_input, ActionModule_v7_2_two_inputs
+from action.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
+from action.action_v8_scoring_ablation import ActionModule_v8_one_input_scoring_ablation, ActionModule_v8_two_inputs_scoring_ablation
+from action.action_v8_action_ablation import ActionModule_v8_one_input_action_ablation, ActionModule_v8_two_inputs_action_ablation
+from action.action_v8_verb_ablation import ActionModule_v8_one_input_verb_ablation, ActionModule_v8_two_inputs_verb_ablation
+from action.action_v8_preposition_ablation import ActionModule_v8_one_input_preposition_ablation, ActionModule_v8_two_inputs_preposition_ablation
 from layout_assembly.utils import ProcessingException
 
 
@@ -78,8 +78,8 @@ class ActionModuleFacade:
             self.one_input_module = ActionModule_v8_one_input_scoring_ablation(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v8_two_inputs_scoring_ablation(self.device, normalized, self.dropout)
         elif version == 82:
-            self.one_input_module = ActionModule_v8_one_input(self.device, normalized, self.dropout)
-            self.two_inputs_module = ActionModule_v8_two_inputs(self.device, normalized, self.dropout)
+            self.one_input_module = ActionModule_v8_one_input_action_ablation(self.device, normalized, self.dropout)
+            self.two_inputs_module = ActionModule_v8_two_inputs_action_ablation(self.device, normalized, self.dropout)
         elif version == 83:
             self.one_input_module = ActionModule_v8_one_input_verb_ablation(self.device, normalized, self.dropout)
             self.two_inputs_module = ActionModule_v8_two_inputs_verb_ablation(self.device, normalized, self.dropout)

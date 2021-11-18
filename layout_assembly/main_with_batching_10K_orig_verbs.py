@@ -46,6 +46,7 @@ def eval_mrr(data_loader, layout_net, count):
 
 def eval_acc(data_loader, layout_net, count):
     accs = []
+    layout_net.set_eval()
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
         i = 0
@@ -62,6 +63,7 @@ def eval_acc(data_loader, layout_net, count):
                         label = 0
                     accs.append(int(torch.sigmoid(pred).round() == label))
         layout_net.precomputed_scores_provided = True
+    layout_net.set_train()
     return np.mean(accs)
 
 
