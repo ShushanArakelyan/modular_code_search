@@ -19,7 +19,7 @@ sep_value = 0.1
 cls_value = -0.1
 
 
-def init_embedder(_device, load_finetuned=False):
+def init_embedder(_device, load_finetuned=False, checkpoint_dir=False):
     global device, initialized
     global tokenizer, model, classifier
     global sep_embedding, cls_embedding
@@ -30,9 +30,9 @@ def init_embedder(_device, load_finetuned=False):
     else:
         device = 'cpu'
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
-    model_dir = '/home/anna/CodeBERT/CodeBERT/codesearch/models/'
     if load_finetuned:
-        classifier = RobertaForSequenceClassification_weighted.from_pretrained(model_dir + "python_cosqa_codebert").to(device)
+#         model_dir = '/home/anna/CodeBERT/CodeBERT/codesearch/models/'
+        classifier = RobertaForSequenceClassification_weighted.from_pretrained(checkpoint_dir).to(device)
         model = classifier.roberta
     else:
         classifier = RobertaForSequenceClassification_weighted.from_pretrained("microsoft/codebert-base").to(device)
