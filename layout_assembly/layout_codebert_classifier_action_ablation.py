@@ -2,6 +2,7 @@ from itertools import chain
 
 import torch
 
+import numpy as np
 import codebert_embedder_v2 as embedder
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
 from layout_assembly.utils import ProcessingException
@@ -102,11 +103,12 @@ class LayoutNet_w_codebert_classifier_action_ablation(LayoutNet_w_codebert_class
             #print("self.scoring_outputs.shape: ", self.scoring_outputs.shape)
             #print("Shape of my output: ", output1.shape)
             #output = torch.mean(self.scoring_outputs, dim=0)
-            output = torch.ones((512, 1)).to(self.device) * 0.001
+            #output = torch.ones((512, 1)).to(self.device)
+            output = np.random.choice([0., 1.], 512, [0.25, 0.75]).reshape((512, 1))
+            output = torch.FloatTensor(output).to(self.device)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
-
-        inputs = embedder.get_feature_inputs_batch([" ".join(sample[0])], [" ".join(code)])
+        inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
