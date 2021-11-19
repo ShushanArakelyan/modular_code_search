@@ -150,7 +150,7 @@ class ScoringModule:
             raise Exception("Separate embedding not supported for processing in batch")
         with torch.no_grad():
             query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
-            query_embeddings = query_embeddings.repeat(1, embedder.max_seq_length, 1)
+            # query_embeddings = query_embeddings.repeat(1, embedder.max_seq_length, 1)
             assert len(query_embeddings) == len(code_embeddings)
             scorer_out = []
             for qe, ce in zip(query_embeddings, code_embeddings):
