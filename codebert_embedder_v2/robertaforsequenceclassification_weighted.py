@@ -59,7 +59,7 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
+        print("token type ids: ", token_type_ids.shape)
         outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
