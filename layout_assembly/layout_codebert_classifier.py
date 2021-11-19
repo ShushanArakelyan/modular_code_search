@@ -95,7 +95,8 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
-        inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output[1])
+        inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output[1],
+                                                                return_segment_ids=True)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']

@@ -43,7 +43,7 @@ def init_embedder(_device, load_finetuned=False, checkpoint_dir=False):
     cls_embedding = (torch.ones((1, dim)) * cls_value).to(device)
 
 
-def get_feature_inputs(query, code):
+def get_feature_inputs(query, code, return_segment_ids = False):
     examples = [InputExample(0, text_a=query, text_b=code, label="0")]
     """Converts the input tokens into CodeBERT inputs."""
     features = convert_examples_to_features(examples, ["0", "1"], max_seq_length, tokenizer,
@@ -53,16 +53,20 @@ def get_feature_inputs(query, code):
                                             cls_token_segment_id=1,
                                             pad_on_left=False,
                                             pad_token_segment_id=0)
-
+    if return_segment_ids:
+        token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
+        print("token type ids: ", token_type_ids)
+        print("token type ids.shape ", token_type_ids.shape)
+    else:
+        token_type_ids = None
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
-    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
             'token_type_ids': token_type_ids}
 
 
-def get_feature_inputs_classifier(queries, codes, scores):
+def get_feature_inputs_classifier(queries, codes, scores, return_segment_ids=False):
     examples = [InputExample(0, text_a=q, text_b=c, label="0") for q, c in zip(queries, codes)]
     """Converts the input tokens into CodeBERT inputs."""
     features, scores = convert_examples_to_features_with_scores(examples, scores, ["0", "1"], max_seq_length, tokenizer,
@@ -75,13 +79,18 @@ def get_feature_inputs_classifier(queries, codes, scores):
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
-    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
+    if return_segment_ids:
+        token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
+        print("token type ids: ", token_type_ids)
+        print("token type ids.shape ", token_type_ids.shape)
+    else:
+        token_type_ids = None
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
             'token_type_ids': token_type_ids}, scores
 
 
-def get_feature_inputs_batch(queries, codes):
+def get_feature_inputs_batch(queries, codes, return_segment_ids=False):
     examples = [InputExample(0, text_a=q, text_b=c, label="0") for q, c in zip(queries, codes)]
     """Converts the input tokens into CodeBERT inputs."""
     features = convert_examples_to_features(examples, ["0", "1"], max_seq_length, tokenizer,
@@ -94,9 +103,12 @@ def get_feature_inputs_batch(queries, codes):
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
-    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-    print("token type ids: ", token_type_ids)
-    print("token type ids.shape ", token_type_ids.shape)
+    if return_segment_ids:
+        token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
+        print("token type ids: ", token_type_ids)
+        print("token type ids.shape ", token_type_ids.shape)
+    else:
+        token_type_ids = None
     print("input mask .shape ", input_mask.shape)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
@@ -165,7 +177,7 @@ def filter_embedding_by_id(query_embedding, token_ids):
 
 
 def embed_in_list(docs, codes, return_cls_for_query=True):
-    inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
+    inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes], return_segment_ids=False)
     embedding = get_embeddings(inputs, True)
     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
     if return_cls_for_query:
