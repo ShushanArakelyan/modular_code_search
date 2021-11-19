@@ -44,7 +44,8 @@ class ActionModule_v8_one_input(ActionModule_v5):
         # print("scores shape: ", scores.shape)
         mlp_input = torch.mm(scores.T, mlp_input)
         scores_out = self.mlp.forward(mlp_input).T
-        scores_out = scores_out[:, code_embeddings.shape[0]]
+        print(scores_out.shape)
+        scores_out = scores_out[:code_embeddings.shape[0]]
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
 
