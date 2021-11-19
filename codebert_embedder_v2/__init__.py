@@ -55,10 +55,11 @@ def get_feature_inputs(query, code):
                                             pad_token_segment_id=0)
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
+    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
-            'token_type_ids': None}
+            'token_type_ids': token_type_ids}
 
 
 def get_feature_inputs_classifier(queries, codes, scores):
@@ -74,9 +75,10 @@ def get_feature_inputs_classifier(queries, codes, scores):
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
+    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
-            'token_type_ids': None}, scores
+            'token_type_ids': token_type_ids}, scores
 
 
 def get_feature_inputs_batch(queries, codes):
@@ -92,9 +94,10 @@ def get_feature_inputs_batch(queries, codes):
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
+    token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
-            'token_type_ids': None}
+            'token_type_ids': token_type_ids}
 
 
 def get_embeddings(inputs, batch=False):
