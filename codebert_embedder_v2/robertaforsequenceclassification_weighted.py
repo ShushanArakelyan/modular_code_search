@@ -73,6 +73,8 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
         )
         sequence_output = outputs[0]
         if weights is not None:
+            print("attention mask: ", attention_mask)
+            weights = torch.ones(512, 1).to('cuda:0')
             sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
             sequence_output = torch.mm(weights.T, sequence_output.squeeze())/torch.sum(attention_mask)
         logits = self.classifier(sequence_output)
