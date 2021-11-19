@@ -126,7 +126,8 @@ def embed_batch(docs, codes, return_cls_for_query=True):
     else:
         query_embeddings = [torch.mean(embedding[i, :sep_tokens[i, 1], :], dim=0).unsqueeze(dim=0) for i in range(embedding.shape[0])]
     print("are there fishy sep tokens? ", sep_tokens)
-    code_embeddings = [embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :] for i in range(embedding.shape[0])]
+    print("tokens we get: ", [ (sep_tokens[2*i, 1], sep_tokens[2*i + 1, 1]) for i in range(embedding.shape[0])])
+    code_embeddings = [embedding[i, sep_tokens[2*i, 1] + 1 : sep_tokens[2*i + 1, 1], :] for i in range(embedding.shape[0])]
     return query_embeddings, code_embeddings
 
 def embed(doc, code, fast=False):
