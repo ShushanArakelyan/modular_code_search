@@ -151,8 +151,12 @@ class ScoringModule:
         with torch.no_grad():
             query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
             query_embeddings = query_embeddings.repeat(1, embedder.max_seq_length, 1)
-            forward_input = torch.cat((query_embeddings, code_embeddings), dim=2)
-            scorer_out = torch.sigmoid(self.scorer.forward(forward_input))
+            assert len(query_embeddings) == len(code_embeddings)
+            scorer_out = []
+            for qe, ce in zip(query_embeddings, code_embeddings):
+                # forward_input = torch.cat((query_embeddings, code_embeddings), dim=2)
+                scorer_out.append(torch.sigmoid(self.scorer.forward(torch.cat((qe, ce), dim=2))))
+        scorer_out = torch.cat(scorer_out, dim=0)
         return scorer_out
 
     def forward(self, query, sample, separate_embedding=False):
