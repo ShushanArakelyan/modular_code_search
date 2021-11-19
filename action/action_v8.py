@@ -29,6 +29,10 @@ class ActionModule_v8_one_input(ActionModule_v5):
         verb_embedding, code_embeddings = precomputed_embeddings
         # here the code embeddings have 1 more sep symbol at the beginning
         print("code embeddings: ", code_embeddings.shape)
+        print("embedder.cls_embedding: ", embedder.cls_embedding.shape)
+        print("verb_embedding: ", verb_embedding.shape)
+        print("prep_embedding: ", prep_embedding.shape)
+        print("embedder.sep_embedding: ", embedder.sep_embedding.shape)
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding,
                                    prep_embedding, embedder.sep_embedding,
                                    code_embeddings, embedder.sep_embedding)).unsqueeze(dim=1)
@@ -73,6 +77,11 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
 
         verb_embedding, code_embeddings = precomputed_embeddings
         print("code embeddings: ", code_embeddings.shape)
+        print("embedder.cls_embedding: ", embedder.cls_embedding.shape)
+        print("verb_embedding: ", verb_embedding.shape)
+        print("prep1_embedding: ", prep1_embedding.shape)
+        print("prep2_embedding: ", prep2_embedding.shape)
+        print("embedder.sep_embedding: ", embedder.sep_embedding.shape)
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding,
                                    prep2_embedding, embedder.sep_embedding, code_embeddings,
                                    embedder.sep_embedding)).unsqueeze(dim=1)
