@@ -189,8 +189,8 @@ class ScoringModule:
             if word_token_id_mapping.size == 0 or code_token_id_mapping.size == 0:
                 raise ProcessingException()
 
-            padding_size = embedder.max_seq_length - len(code_embedding)
-            code_embedding = torch.nn.functional.pad(code_embedding, (0, 0, 0, padding_size), 'constant', 0)
+            # padding_size = embedder.max_seq_length - len(code_embedding)
+            # code_embedding = torch.nn.functional.pad(code_embedding, (0, 0, 0, padding_size), 'constant', 0)
             cls_token_embedding = cls_token_embedding.repeat(embedder.max_seq_length, 1)
             forward_input = torch.cat((cls_token_embedding, code_embedding), dim=1)
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
