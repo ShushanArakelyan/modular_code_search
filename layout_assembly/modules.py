@@ -157,7 +157,7 @@ class ScoringModule:
                 qe = qe.repeat(ce.shape[0], 1)
                 # print(qe.shape, ce.shape)
                 scorer_out.append(torch.sigmoid(self.scorer.forward(torch.cat((qe, ce), dim=1).unsqueeze(dim=0))))
-        scorer_out = torch.cat(scorer_out, dim=0)
+        # scorer_out = torch.cat(scorer_out, dim=0)
         return scorer_out
 
     def forward(self, query, sample, separate_embedding=False):
