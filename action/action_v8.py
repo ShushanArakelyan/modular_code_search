@@ -44,6 +44,7 @@ class ActionModule_v8_one_input(ActionModule_v5):
         # print("scores shape: ", scores.shape)
         mlp_input = torch.mm(scores.T, mlp_input)
         scores_out = self.mlp.forward(mlp_input).T
+        scores_out = scores_out[:, code_embeddings.shape[0]]
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
 
@@ -89,9 +90,9 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
         mlp_input = self.encoder_layer(encoder_input)
         mlp_input = torch.index_select(mlp_input, 0,
                                        torch.LongTensor(range(5, len(encoder_input)-1)).to(self.device)).squeeze()
-        # print("mlp_input.shape: ", mlp_input.shape)
-        # print("scores1.shape: ", scores1.shape)
-        # print("scores2.shape: ", scores2.shape)
+        print("mlp_input.shape: ", mlp_input.shape)
+        print("scores1.shape: ", scores1.shape)
+        print("scores2.shape: ", scores2.shape)
         mlp_input_1 = torch.mm(scores1.T, mlp_input)
         mlp_input_2 = torch.mm(scores2.T, mlp_input)
         # print("mlp_input1.shape: ", mlp_input_1.shape)
@@ -100,5 +101,6 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
         # print("scores2 shape: ", scores2.shape)
         mlp_input = torch.cat((mlp_input_1, mlp_input_2), dim=1)
         scores_out = self.mlp.forward(mlp_input).T
+        scores_out = scores_out[:, code_embeddings.shape[0]]
         l1_reg_loss = torch.norm(scores_out, 1)
         return None, scores_out, l1_reg_loss
