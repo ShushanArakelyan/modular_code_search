@@ -88,7 +88,8 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
         print("encoder input: ", encoder_input.shape)
         mlp_input = self.encoder_layer(encoder_input)
         mlp_input = torch.index_select(mlp_input, 0,
-                                       torch.LongTensor(range(5, len(encoder_input))).to(self.device)).squeeze()
+                                       torch.LongTensor(range(5, len(encoder_input)-1)).to(self.device)).squeeze()
+        print("mlp_input.shape: ", mlp_input.shape)
         print("scores1.shape: ", scores1.shape)
         print("scores2.shape: ", scores2.shape)
         mlp_input_1 = torch.mm(scores1.T, mlp_input)
