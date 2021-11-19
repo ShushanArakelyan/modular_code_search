@@ -74,9 +74,13 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
         sequence_output = outputs[0]
         if weights is not None:
             print("attention mask: ", attention_mask)
-            weights = torch.ones(512, 1).to('cuda:0')
-            sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
-            sequence_output = torch.mm(weights.T, sequence_output.squeeze())/torch.sum(attention_mask)
+            print("token type ids: ", token_type_ids)
+            print(token_type_ids[0].nonzero()[1:-1])
+            sequence_output = torch.index_select(sequence_output, token_type_ids[0].nonzero()[1:-1])
+            print("sequence_output.shape: ", sequence_output.shape)
+            print("weights.shape: ", weights.shape)
+            # sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
+            # sequence_output = torch.mm(weights.T, sequence_output.squeeze())
         logits = self.classifier(sequence_output)
 
         loss = None
