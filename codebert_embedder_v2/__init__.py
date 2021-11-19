@@ -88,7 +88,7 @@ def get_feature_inputs_batch(queries, codes):
                                             "classification", cls_token_at_end=False,
                                             cls_token=tokenizer.cls_token,
                                             sep_token=tokenizer.sep_token,
-                                            cls_token_segment_id=1,
+                                            cls_token_segment_id=0,
                                             pad_on_left=False,
                                             pad_token_segment_id=0)
 
@@ -97,6 +97,7 @@ def get_feature_inputs_batch(queries, codes):
     token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
     print("token type ids: ", token_type_ids)
     print("token type ids.shape ", token_type_ids.shape)
+    print("input mask .shape ", input_mask.shape)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
             'token_type_ids': token_type_ids}
