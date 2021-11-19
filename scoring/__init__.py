@@ -103,19 +103,31 @@ def filter_embedding_by_id(query_embedding, token_ids):
     return token_embeddings
 
 
-def embed_batch(docs, codes):
+# def embed_batch(docs, codes):
+#     inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
+#     embedding = get_embeddings(inputs, True)
+#     cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
+#     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
+#     counts = torch.unique(sep_tokens[:, 0], return_counts=True)[1]
+#     index = [sum(counts[:i]) for i in range(len(counts))]
+#     separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(index).to(device))[:, 1]
+#     # code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
+#                                                          # (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
+#                                  # for i in range(separator.shape[0])], dim=0)
+#     code_embeddings = [embedding[i, separator[i] + 1:, :] for i in range(separator.shape[0])]
+#     return cls_embeddings, code_embeddings
+
+def embed_batch(docs, codes, return_cls_for_query=True):
     inputs = get_feature_inputs_batch(docs, [' '.join(c) for c in codes])
     embedding = get_embeddings(inputs, True)
-    cls_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     sep_tokens = (inputs['input_ids'] == tokenizer.sep_token_id).nonzero(as_tuple=False)
-    counts = torch.unique(sep_tokens[:, 0], return_counts=True)[1]
-    index = [sum(counts[:i]) for i in range(len(counts))]
-    separator = sep_tokens.index_select(dim=0, index=torch.LongTensor(index).to(device))[:, 1]
-    code_embeddings = torch.cat([torch.nn.functional.pad(embedding[i, separator[i] + 1:, :],
-                                                         (0, 0, 0, separator[i] + 1), 'constant', 0).unsqueeze(dim=0)
-                                 for i in range(separator.shape[0])], dim=0)
-    return cls_embeddings, code_embeddings
-
+    if return_cls_for_query:
+        query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
+    else:
+        query_embeddings = [torch.mean(embedding[i, :sep_tokens[i, 1], :], dim=0).unsqueeze(dim=0) for i in range(embedding.shape[0])]
+    print("are there fishy sep tokens? ", sep_tokens)
+    code_embeddings = [embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :] for i in range(embedding.shape[0])]
+    return query_embeddings, code_embeddings
 
 def embed(doc, code, fast=False):
     # embed query and code, and get embeddings of tokens_of_interest from query, and max_len tokens from code.
