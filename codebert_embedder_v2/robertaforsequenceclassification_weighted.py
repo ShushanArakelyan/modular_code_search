@@ -83,7 +83,8 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             print("new sequence_output.shape: ", sequence_output.shape)
             print("weights.shape: ", weights.shape)
             # sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
-            # sequence_output = torch.mm(weights.T, sequence_output.squeeze())
+            sequence_output = torch.mm(weights.T, sequence_output.squeeze())
+            print("new sequence :", sequence_output.shape)
         logits = self.classifier(sequence_output)
 
         loss = None
