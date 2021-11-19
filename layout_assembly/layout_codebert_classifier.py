@@ -44,18 +44,18 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNet_w_codebert_classifier(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, return_separators=False,
-                 precomputed_scores_provided=False, embed_in_list=False):
+    def __init__(self, scoring_module, action_module_facade, device, use_cls_for_verb_emb=True, precomputed_scores_provided=False):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
         self.device = device
         self.precomputed_scores_provided = precomputed_scores_provided
-        self.return_separators = return_separators
         self.classifier = embedder.classifier
-        self.embed_in_list = embed_in_list
+        self.use_cls_for_verb_emb = use_cls_for_verb_emb
         self.scoring_outputs = None
         self.accumulated_loss = None
+        self.verb_embeddings = None
+        self.code_embeddings = None
 
     def parameters(self):
         return chain(self.classifier.parameters(), self.action_module_facade.parameters())
@@ -72,8 +72,7 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module_facade.save_to_checkpoint(checkpoint + '.action_module')
-        model_dict = {'classifier': self.classifier.state_dict()}
-        model_dict['codebert.model'] = embedder.model.state_dict()
+        model_dict = {'classifier': self.classifier.state_dict(), 'codebert.model': embedder.model.state_dict()}
         torch.save(model_dict, checkpoint)
 
     def state_dict(self):
@@ -89,20 +88,14 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-            if not self.embed_in_list:
-                self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0],
-                                                                                  verb_embeddings[1],
-                                                                                  return_separators=self.return_separators)
-            else:
-                self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0],
-                                                                                    verb_embeddings[1])
+            self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0],
+                                                                                verb_embeddings[1],
+                                                                                return_cls_for_query=self.use_cls_for_verb_emb)
             self.accumulated_loss = []
             _, output, _, _ = self.process_node(tree, code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
-        #print("Scores: ", output[1])
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output[1])
-        #print("Scores: ", output)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']

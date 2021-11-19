@@ -28,10 +28,16 @@ class ActionModule_v8_one_input(ActionModule_v5):
             raise ProcessingException()
         verb_embedding, code_embeddings = precomputed_embeddings
         # here the code embeddings have 1 more sep symbol at the beginning
-        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep_embedding, code_embeddings)).unsqueeze(dim=1)
+        print("code embeddings: ", code_embeddings.shape)
+        encoder_input = torch.cat((embedder.cls_embedding, verb_embedding,
+                                   prep_embedding, embedder.sep_embedding,
+                                   code_embeddings, embedder.sep_embedding)).unsqueeze(dim=1)
+        print("encoder input: ", encoder_input.shape)
         mlp_input = self.encoder_layer(encoder_input)
         mlp_input = torch.index_select(mlp_input, 0,
-                                       torch.LongTensor(range(4, len(encoder_input))).to(self.device)).squeeze()
+                                       torch.LongTensor(range(5, len(encoder_input) - 1)).to(self.device)).squeeze()
+        print("mlp_input.shape: ", mlp_input.shape)
+        print("scores shape: ", scores.shape)
         mlp_input = torch.mm(scores.T, mlp_input)
         scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)
@@ -66,13 +72,20 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
             raise ProcessingException()
 
         verb_embedding, code_embeddings = precomputed_embeddings
+        print("code embeddings: ", code_embeddings.shape)
         encoder_input = torch.cat((embedder.cls_embedding, verb_embedding, prep1_embedding,
-                                   prep2_embedding, code_embeddings)).unsqueeze(dim=1)
+                                   prep2_embedding, embedder.sep_embedding, code_embeddings,
+                                   embedder.sep_embedding)).unsqueeze(dim=1)
+        print("encoder input: ", encoder_input.shape)
         mlp_input = self.encoder_layer(encoder_input)
         mlp_input = torch.index_select(mlp_input, 0,
                                        torch.LongTensor(range(5, len(encoder_input))).to(self.device)).squeeze()
         mlp_input_1 = torch.mm(scores1.T, mlp_input)
         mlp_input_2 = torch.mm(scores2.T, mlp_input)
+        print("mlp_input1.shape: ", mlp_input_1.shape)
+        # am I assuming that scores1 and scores2 will always have the same shape?
+        print("scores1 shape: ", scores1.shape)
+        print("scores2 shape: ", scores2.shape)
         mlp_input = torch.cat((mlp_input_1, mlp_input_2), dim=1)
         scores_out = self.mlp.forward(mlp_input).T
         l1_reg_loss = torch.norm(scores_out, 1)

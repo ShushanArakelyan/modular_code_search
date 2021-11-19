@@ -111,7 +111,7 @@ def eval_acc(data_loader, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, layout_checkpoint=None):
+         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -135,25 +135,16 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action, dropout)
 
     if layout_net_version == 'classic':
-        if version == 5 or version == 51 or version == 6 or version == 8 or version == 81 or version == 83 or version == 84:
-            return_separators = True
-        else:
-            return_separators = False
-        if version == 7 or version == 71 or version == 72:
-            embed_in_list = True
-        else:
-            embed_in_list = False
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided,
-                               return_separators=return_separators, embed_in_list=embed_in_list)
+                               use_cls_for_verb_emb=use_cls_for_verb_emb)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
     if version == 82:
         layout_net = LayoutNet_w_codebert_classifier_action_ablation(
             scoring_module, action_module, device,
-            precomputed_scores_provided=precomputed_scores_provided,
-            return_separators=return_separators, embed_in_list=embed_in_list)
+            precomputed_scores_provided=precomputed_scores_provided, use_cls_for_verb_emb=use_cls_for_verb_emb)
 
     if layout_checkpoint:
         layout_net.load_from_checkpoint(layout_checkpoint)
@@ -282,6 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
+    parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -306,5 +298,6 @@ if __name__ == '__main__':
          summary_writer_dir=args.summary_writer_dir,
          codebert_valid_results_dir=args.codebert_valid_results_dir,
          use_lr_scheduler=args.use_lr_scheduler,
+         use_cls_for_verb_emb=args.use_cls_for_verb_emb,
          clip_grad_value=args.clip_grad_value,
          layout_checkpoint=args.layout_checkpoint_file)
