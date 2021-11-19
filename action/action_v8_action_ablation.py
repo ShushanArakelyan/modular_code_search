@@ -5,7 +5,7 @@ import torch.nn as nn
 
 import codebert_embedder_v2 as embedder
 from layout_assembly.utils import ProcessingException, FC2, FC2_normalized, init_weights
-from layout_assembly.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
+from action.action_v8 import ActionModule_v8_one_input, ActionModule_v8_two_inputs
 
 
 class ActionModule_v8_one_input_action_ablation(ActionModule_v8_one_input):
