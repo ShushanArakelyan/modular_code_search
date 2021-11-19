@@ -165,7 +165,7 @@ def embed_in_list(docs, codes, return_cls_for_query=True):
     if return_cls_for_query:
         query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     else:
-        query_embeddings = torch.mean([embedding[i, :sep_tokens[i, 1], :] for i in range(embedding.shape[0])], dim=1)
+        query_embeddings = [torch.mean(embedding[i, :sep_tokens[i, 1], :], dim=0) for i in range(embedding.shape[0])]
     code_embeddings = [embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :] for i in range(embedding.shape[0])]
     return query_embeddings, code_embeddings
 
