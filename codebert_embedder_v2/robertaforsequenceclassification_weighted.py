@@ -59,7 +59,7 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        print("token type ids: ", token_type_ids.shape)
+        # print("token type ids: ", token_type_ids.shape)
         outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
@@ -73,21 +73,21 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
         )
         sequence_output = outputs[0]
         if weights is not None:
-            print("attention mask: ", attention_mask)
-            print("token type ids: ", token_type_ids)
-            print('what we will attempt to select: ', token_type_ids[0].nonzero()[1:-1].squeeze())
-            print("sequence_output.shape: ", sequence_output.shape)
+            # print("attention mask: ", attention_mask)
+            # print("token type ids: ", token_type_ids)
+            # print('what we will attempt to select: ', token_type_ids[0].nonzero()[1:-1].squeeze())
+            # print("sequence_output.shape: ", sequence_output.shape)
             sequence_output = torch.index_select(input=sequence_output,
                                                  dim=1,
                                                  index=token_type_ids[0].nonzero()[1:-1].squeeze())
-            print("new sequence_output.shape: ", sequence_output.shape)
-            print("weights.shape: ", weights.shape)
+            # print("new sequence_output.shape: ", sequence_output.shape)
+            # print("weights.shape: ", weights.shape)
             N = min(weights.shape[0], sequence_output.shape[1])
             weights = weights[:N, :]
             sequence_output = sequence_output[:, :N, :]
             # sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
             sequence_output = torch.mm(weights.T, sequence_output.squeeze())
-            print("new sequence :", sequence_output.shape)
+            # print("new sequence :", sequence_output.shape)
         logits = self.classifier(sequence_output)
 
         loss = None

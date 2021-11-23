@@ -55,8 +55,8 @@ def get_feature_inputs(query, code, return_segment_ids = False):
                                             pad_token_segment_id=0)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        print("token type ids: ", token_type_ids)
-        print("token type ids.shape ", token_type_ids.shape)
+        # print("token type ids: ", token_type_ids)
+        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
@@ -81,8 +81,8 @@ def get_feature_inputs_classifier(queries, codes, scores, return_segment_ids=Fal
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        print("token type ids: ", token_type_ids)
-        print("token type ids.shape ", token_type_ids.shape)
+        # print("token type ids: ", token_type_ids)
+        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
     return {'input_ids': input_ids,
@@ -105,11 +105,11 @@ def get_feature_inputs_batch(queries, codes, return_segment_ids=False):
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        print("token type ids: ", token_type_ids)
-        print("token type ids.shape ", token_type_ids.shape)
+        # print("token type ids: ", token_type_ids)
+        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
-    print("input mask .shape ", input_mask.shape)
+    # print("input mask .shape ", input_mask.shape)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
             'token_type_ids': token_type_ids}
