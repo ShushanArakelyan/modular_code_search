@@ -84,7 +84,7 @@ def eval_mrr(data, data_dir_name, data_map, layout_net):
                             modular_mrr.append(out)
                     else:
                         modular_mrr.append(codebert_mrr[-1])
-                    if (j + 1) % 50 == 0:
+                    if (j + 1) % 500 == 0:
                         return np.mean(modular_mrr)
 
 
