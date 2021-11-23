@@ -26,8 +26,10 @@ def transform_sample(sample):
 
 def filter_neg_samples(dataset):
     class FilteredDataset(CodeSearchNetDataset):
-        def __init__(self, data):
+        def __init__(self, device, data):
             self.data = data
+            self.positive_label = torch.FloatTensor([1]).to(device)
+            self.negative_label = torch.FloatTensor([0]).to(device)
 
         def __getitem__(self, item):
             sample, scores, verbs, label = self.data[item]
@@ -39,7 +41,7 @@ def filter_neg_samples(dataset):
         sample, _, _, label = dataset[i]
         if label == 1:
             new_data.append((sample, None, None, label))
-    return FilteredDataset(new_data)
+    return FilteredDataset(new_data, dataset.device)
 
 
 class CodeSearchNetDataset(Dataset):
