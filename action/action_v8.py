@@ -42,6 +42,12 @@ class ActionModule_v8_one_input(ActionModule_v5):
                                        torch.LongTensor(range(4, len(encoder_input) - 1)).to(self.device)).squeeze()
         print("mlp_input.shape: ", mlp_input.shape)
         print("scores shape: ", scores.shape)
+        # a problem can arise if the code is longer - given queries of different lengths,
+        # the code will be snipped at different lengths too.
+        # take the minimum length of mlp_input and scores_out.
+        N = min(mlp_input.shape[0], scores.shape[0])
+        mlp_input = mlp_input[:N, :]
+        scores = scores[:N, :]
         mlp_input = torch.mm(scores.T, mlp_input)
         scores_out = self.mlp.forward(mlp_input).T
         print("Scores out shape: ", scores_out.shape)
@@ -94,10 +100,18 @@ class ActionModule_v8_two_inputs(ActionModule_v5):
         print("mlp_input.shape: ", mlp_input.shape)
         print("scores1.shape: ", scores1.shape)
         print("scores2.shape: ", scores2.shape)
+
+        # am I assuming that scores1 and scores2 will always have the same shape, but they won't
+        # a problem can arise if the code is longer - given queries of different lengths,
+        # the code will be snipped at different lengths too.
+        # take the minimum length of mlp_input and scores.
+        N = min(mlp_input.shape[0], scores1.shape[0], scores2.shape[0])
+        mlp_input = mlp_input[:N, :]
+        scores1 = scores1[:N, :]
+        scores2 = scores2[:N, :]
         mlp_input_1 = torch.mm(scores1.T, mlp_input)
         mlp_input_2 = torch.mm(scores2.T, mlp_input)
         # print("mlp_input1.shape: ", mlp_input_1.shape)
-        # am I assuming that scores1 and scores2 will always have the same shape?
         # print("scores1 shape: ", scores1.shape)
         # print("scores2 shape: ", scores2.shape)
         mlp_input = torch.cat((mlp_input_1, mlp_input_2), dim=1)
