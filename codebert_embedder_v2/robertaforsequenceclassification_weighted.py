@@ -82,6 +82,9 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
                                                  index=token_type_ids[0].nonzero()[1:-1].squeeze())
             print("new sequence_output.shape: ", sequence_output.shape)
             print("weights.shape: ", weights.shape)
+            N = min(weights.shape[0], sequence_output.shape[1])
+            weights = weights[:N, :]
+            sequence_output = sequence_output[:, :N, :]
             # sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
             sequence_output = torch.mm(weights.T, sequence_output.squeeze())
             print("new sequence :", sequence_output.shape)
