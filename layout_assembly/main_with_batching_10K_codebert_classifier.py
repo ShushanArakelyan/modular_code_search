@@ -10,7 +10,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from eval.dataset import CodeSearchNetDataset_wShards
-from eval.dataset import transform_sample
+from eval.dataset import transform_sample, filter_neg_samples
 from eval.utils import mrr, p_at_k
 from action.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
@@ -27,25 +27,22 @@ class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
             self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.dropout)
 
 
-def eval_modular(data, idx, idxs_to_eval, layout_net, k):
+def create_neg_sample(orig, distr):
+    return (orig[0], distr[1], distr[2], distr[3], orig[4])
+
+
+def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
     ranks = []
-    sample = (data['docstring_tokens'][idx],
-              data['alt_code_tokens'][idx],
-              data['static_tags'][idx],
-              data['regex_tags'][idx],
-              data['ccg_parse'][idx])
+    sample, _, _, _ = dataset[idx]
     pred = layout_net.forward(sample[-1][1:-1], sample)
     if pred is None:
         return None
     else:
         ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
         for neg_idx in idxs_to_eval:
-            sample = (data['docstring_tokens'][idx],
-                      data['alt_code_tokens'][neg_idx],
-                      data['static_tags'][neg_idx],
-                      data['regex_tags'][neg_idx],
-                      data['ccg_parse'][idx])
-            pred = layout_net.forward(sample[-1][1:-1], sample)
+            distractor = dataset[neg_idx]
+            neg_sample = create_neg_sample(sample, distractor)
+            pred = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
             if pred is not None:
                 ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
             else:
@@ -54,35 +51,45 @@ def eval_modular(data, idx, idxs_to_eval, layout_net, k):
     return mrr(ranks), p_at_k(ranks, k)
 
 
-def eval_mrr_and_p_at_k(data, layout_net, k=1):
+def eval_mrr_and_p_at_k(dataset, layout_net, k=1):
     mrrs = []
     precisions = []
     with torch.no_grad():
-        examples = np.random.choice(range(len(data)), 500, replace=False)
+        examples = np.random.choice(range(len(dataset)), 500, replace=False)
         for ex in examples:
             np.random.seed(ex)
-            idxs = np.random.choice(range(len(data)), 10, replace=False)
-            mrr, pre = eval_modular(data, ex, idxs, layout_net, k)
-            mrrs.append(mrr)
-            precisions.append(pre)
+            idxs = np.random.choice(range(len(dataset)), 10, replace=False)
+            cur_mrr, cur_pre = eval_modular(dataset, ex, idxs, layout_net, k)
+            mrrs.append(cur_mrr)
+            precisions.append(cur_pre)
             return np.mean(mrrs), np.mean(precisions)
 
 
-def eval_acc(data_loader, layout_net, count):
+def eval_acc(dataset, layout_net, count):
     accs = []
     layout_net.set_eval()
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
         i = 0
-        for sample in data_loader:
-            sample, scores, verbs, label = sample
-            if i == count:
-                break
-            i += 1
+        for sample in range(len(dataset)):
+            sample, _, _, label = dataset[i]
+            assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             pred = layout_net.forward(*transform_sample(sample))
             if pred is None:
                 continue
             accs.append(int(torch.argmax(pred) == label))
+
+            np.random.seed(10000 + i)
+            neg_idx = np.random.choice(range(len(dataset)), 1)
+            neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
+            label = 0
+            pred = layout_net.forward(*transform_sample(neg_sample))
+            if pred is None:
+                continue
+            accs.append(int(torch.argmax(pred) == label))
+            if i >= count:
+                break
+            i += 1
         layout_net.precomputed_scores_provided = True
     layout_net.set_train()
     return np.mean(accs)
@@ -90,9 +97,8 @@ def eval_acc(data_loader, layout_net, count):
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
-         example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, patience, k,
-         layout_checkpoint=None):
+         example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
+         clip_grad_value, use_cls_for_verb_emb, patience, k, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -100,13 +106,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
 
     if valid_file_name != "None":
         valid_data = pd.read_json(valid_file_name, lines=True)
-        validation_data_map = {}
-        for i in range(len(valid_data)):
-            validation_data_map[valid_data['url'][i]] = i
     else:
-        valid_dataset, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)], 
+        valid_data, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)],
                                               generator=torch.Generator().manual_seed(42))
-        valid_data_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False)
+        print("Len of validation dataset before filtering: ", len(valid_data))
+        valid_data = filter_neg_samples(valid_data)
+        print("Len of validation dataset after filtering: ", len(valid_data))
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     if load_finetuned_codebert:
         import codebert_embedder_v2 as embedder
@@ -167,7 +172,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
                 mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k)
-                acc = eval_acc(valid_data_loader, layout_net, count=100)
+                acc = eval_acc(valid_data, layout_net, count=100)
                 writer.add_scalar("MRR/valid", mrr, writer_it)
                 writer.add_scalar(f"P@{k}/valid", pre, writer_it)
                 writer.add_scalar("Acc/valid", acc, writer_it)
@@ -273,7 +278,6 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', dest='dropout', type=float, default=0)
     parser.add_argument('--checkpoint_dir', dest='checkpoint_dir', type=str)
     parser.add_argument('--summary_writer_dir', dest='summary_writer_dir', type=str)
-    parser.add_argument('--codebert_valid_results_dir', dest='codebert_valid_results_dir', type=str)
     parser.add_argument('--load_finetuned_codebert', dest='load_finetuned_codebert', default=False, action='store_true')
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
@@ -301,7 +305,6 @@ if __name__ == '__main__':
          dropout=args.dropout,
          checkpoint_dir=args.checkpoint_dir,
          summary_writer_dir=args.summary_writer_dir,
-         codebert_valid_results_dir=args.codebert_valid_results_dir,
          use_lr_scheduler=args.use_lr_scheduler,
          use_cls_for_verb_emb=args.use_cls_for_verb_emb,
          clip_grad_value=args.clip_grad_value,

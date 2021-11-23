@@ -24,6 +24,24 @@ def transform_sample(sample):
     return ccg_parse, nsample
 
 
+def filter_neg_samples(dataset):
+    class FilteredDataset(CodeSearchNetDataset):
+        def __init__(self, data):
+            self.data = data
+
+        def __getitem__(self, item):
+            sample, scores, verbs, label = self.data[item]
+            label = self.positive_label if (self.data['label'][item] == 1) else self.negative_label
+            return sample, scores, verbs, label
+
+    new_data = []
+    for i in range(len(dataset)):
+        sample, _, _, label = dataset[i]
+        if label == 1:
+            new_data.append((sample, None, None, label))
+    return FilteredDataset(new_data)
+
+
 class CodeSearchNetDataset(Dataset):
     def __init__(self, data_dir, file_it, device):
         self.device = device
@@ -49,8 +67,7 @@ class CodeSearchNetDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = (self.data['docstring_tokens'][idx],
-                  self.data['code_tokens'][idx],
-                  # todo - replace to alt_code_tokens after the preprocessing has been redone
+                  self.data['alt_code_tokens'][idx],
                   self.data['static_tags'][idx],
                   self.data['regex_tags'][idx],
                   self.data['ccg_parse'][idx])
