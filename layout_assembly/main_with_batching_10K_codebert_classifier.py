@@ -108,10 +108,10 @@ def eval_acc(data_loader, layout_net, count):
     return np.mean(accs)
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save_every, version, layout_net_version,
+def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, layout_checkpoint=None):
+         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, patience, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -168,6 +168,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
     positive_label = torch.FloatTensor([[0, 1]]).to(device)
     negative_label = torch.FloatTensor([[1, 0]]).to(device)
     batch_size = 20
+    best_accuracy = -1.0
+    stop_training = False
+    wait_step = 0
+
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
@@ -182,19 +186,28 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
                 if valid_file_name != "None":
-                    writer.add_scalar("MRR/valid",
-                                      eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net),
-                                      writer_it)
+                    metric = 'mrr'
+                    cur_perf = eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net)
+                    writer.add_scalar("MRR/valid", cur_perf, writer_it)
                 else:
-                    writer.add_scalar("Acc/valid", eval_acc(valid_data_loader, layout_net, count=100), writer_it)
+                    metric = 'accuracy'
+                    cur_perf = eval_acc(valid_data_loader, layout_net, count=100)
+                    writer.add_scalar("Acc/valid", cur_perf, writer_it)
+                if best_accuracy < cur_perf:
+                    layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+                    print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
+                          (metric, best_accuracy, cur_perf, epoch, steps))
+                    best_accuracy = cur_perf
+                    wait_step = 0
+                    stop_training = False
+                else:
+                    wait_step += 1
+                    if wait_step >= patience:
+                        stop_training = True
+                        break
                 layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
-
-            if (steps + 1) % save_every == 0:
-                print("saving to checkpoint: ")
-                layout_net.save_to_checkpoint(checkpoint_prefix + f'_{i + 1}.tar')
-                print("saved successfully")
 
             for param in layout_net.parameters():
                 param.grad = None
@@ -213,8 +226,17 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 continue
             if loss is None:
                 loss = loss_func(pred, label)
+                if torch.isnan(loss).data:
+                    print("Stop training because loss=%s" % (loss.data))
+                    stop_training = True
+                    break
             else:
-                loss += loss_func(pred, label)
+                l = loss_func(pred, label)
+                if torch.isnan(l).data:
+                    print("Stop training because loss=%s" % (l.data))
+                    stop_training = True
+                    break
+                loss += l
             if l1_reg_coef > 0:
                 for al in layout_net.accumulated_loss:
                     loss += l1_reg_coef * al
@@ -231,7 +253,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, save
                 for x in layout_net.parameters():
                     x.grad = None
             if steps >= example_count:
-                break
+                print(f"Stop training because maximum number of steps {steps} has been performed")
+                stop_training = True
+        if stop_training:
+            break
         print("saving to checkpoint: ")
         layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
         print("saved successfully")
@@ -274,6 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
     parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
+    parser.add_argument('--patience', dest='patience', type=int, default=10000)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -282,7 +308,6 @@ if __name__ == '__main__':
          num_epochs=args.num_epochs,
          lr=args.lr,
          print_every=args.print_every,
-         save_every=args.save_every,
          version=args.version,
          layout_net_version=args.layout_net_version,
          valid_file_name=args.valid_file_name,
@@ -300,4 +325,5 @@ if __name__ == '__main__':
          use_lr_scheduler=args.use_lr_scheduler,
          use_cls_for_verb_emb=args.use_cls_for_verb_emb,
          clip_grad_value=args.clip_grad_value,
-         layout_checkpoint=args.layout_checkpoint_file)
+         layout_checkpoint=args.layout_checkpoint_file,
+         patience=args.patience)
