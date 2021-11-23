@@ -54,38 +54,16 @@ def eval_modular(data, idx, idxs_to_eval, layout_net):
     return mrr(ranks)
 
 
-def eval_mrr(data, data_dir_name, data_map, layout_net):
-    codebert_mrr = []
-    modular_mrr = []
+def eval_mrr(data, layout_net):
+    mrrs = []
     with torch.no_grad():
-        for file_i in range(8):
-            filename = data_dir_name + f"{file_i}_batch_result.txt"
-            offset = file_i * 1000
-            with open(filename, 'r') as f:
-                for j in range(1000):
-                    scores = []
-                    sample_idxs = []
-                    for i in range(1000):
-                        line = f.readline()
-                        parts = line.split('<CODESPLIT>')
-                        score = float(parts[-1].strip('\n'))
-                        scores.append(score)
-                        sample_idxs.append(data_map[parts[2]])
-                    scores = np.asarray(scores)
-                    codebert_mrr.append(1. / (np.sum(scores >= scores[j])))
-                    idxs = np.argsort(scores)[::-1][:10]
-                    if j in idxs:
-                        idxs = idxs[idxs != j]
-                        idxs += offset
-                        out = eval_modular(data, j, idxs[:9], layout_net)
-                        if out is None:
-                            modular_mrr.append(codebert_mrr[-1])
-                        else:
-                            modular_mrr.append(out)
-                    else:
-                        modular_mrr.append(codebert_mrr[-1])
-                    if (j + 1) % 500 == 0:
-                        return np.mean(modular_mrr)
+        examples = np.random.choice(range(len(data)), 500, replace=False)
+        for ex in examples:
+            np.random.seed(ex)
+            idxs = np.random.choice(range(len(data)), 10, replace=False)
+            mrr, p_at_k = eval_modular(data, ex, idxs, layout_net)
+            mrrs.append(mrr)
+            return np.mean(mrrs)
 
 
 def eval_acc(data_loader, layout_net, count):
