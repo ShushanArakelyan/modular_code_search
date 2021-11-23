@@ -120,6 +120,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action, dropout)
 
+    precomputed_scores_provided = False
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided,
