@@ -41,7 +41,7 @@ def filter_neg_samples(dataset):
         sample, _, _, label = dataset[i]
         if label == 1:
             new_data.append((sample, None, None, label))
-    return FilteredDataset(new_data, dataset.device)
+    return FilteredDataset(new_data, dataset.dataset.device)
 
 
 class CodeSearchNetDataset(Dataset):
