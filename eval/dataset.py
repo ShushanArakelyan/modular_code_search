@@ -24,7 +24,7 @@ def transform_sample(sample):
     return ccg_parse, nsample
 
 
-def filter_neg_samples(dataset):
+def filter_neg_samples(dataset, device):
     class FilteredDataset(CodeSearchNetDataset):
         def __init__(self, device, data):
             self.data = data
@@ -41,7 +41,7 @@ def filter_neg_samples(dataset):
         sample, _, _, label = dataset[i]
         if label == 1:
             new_data.append((sample, None, None, label))
-    return FilteredDataset(new_data, dataset.dataset.device)
+    return FilteredDataset(device, new_data)
 
 
 class CodeSearchNetDataset(Dataset):

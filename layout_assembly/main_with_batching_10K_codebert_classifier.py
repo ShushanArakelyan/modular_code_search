@@ -110,7 +110,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
         valid_data, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)],
                                               generator=torch.Generator().manual_seed(42))
         print("Len of validation dataset before filtering: ", len(valid_data))
-        valid_data = filter_neg_samples(valid_data)
+        valid_data = filter_neg_samples(valid_data, device)
         print("Len of validation dataset after filtering: ", len(valid_data))
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     if load_finetuned_codebert:
