@@ -31,7 +31,7 @@ def filter_neg_samples(dataset):
 
         def __getitem__(self, item):
             sample, scores, verbs, label = self.data[item]
-            label = self.positive_label if (self.data['label'][item] == 1) else self.negative_label
+            label = self.positive_label if (label == 1) else self.negative_label
             return sample, scores, verbs, label
 
     new_data = []
