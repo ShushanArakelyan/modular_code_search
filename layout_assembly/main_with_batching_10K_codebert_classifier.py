@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from eval.dataset import CodeSearchNetDataset_wShards
 from eval.dataset import transform_sample
-from eval.utils import mrr
+from eval.utils import mrr, p_at_k
 from action.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
 from layout_assembly.layout_codebert_classifier_action_ablation import LayoutNet_w_codebert_classifier_action_ablation
@@ -27,7 +27,7 @@ class ActionModuleFacade_w_codebert_classifier(ActionModuleFacade):
             self.two_inputs_module = ActionModule_v1_two_inputs(self.device, normalized, self.dropout)
 
 
-def eval_modular(data, idx, idxs_to_eval, layout_net):
+def eval_modular(data, idx, idxs_to_eval, layout_net, k):
     ranks = []
     sample = (data['docstring_tokens'][idx],
               data['alt_code_tokens'][idx],
@@ -38,7 +38,7 @@ def eval_modular(data, idx, idxs_to_eval, layout_net):
     if pred is None:
         return None
     else:
-        ranks.append(float(pred[0][1].cpu().numpy()))
+        ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
         for neg_idx in idxs_to_eval:
             sample = (data['docstring_tokens'][idx],
                       data['alt_code_tokens'][neg_idx],
@@ -47,23 +47,25 @@ def eval_modular(data, idx, idxs_to_eval, layout_net):
                       data['ccg_parse'][idx])
             pred = layout_net.forward(sample[-1][1:-1], sample)
             if pred is not None:
-                ranks.append(float(pred[0][1].cpu().numpy()))
+                ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
             else:
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
-    return mrr(ranks)
+    return mrr(ranks), p_at_k(ranks, k)
 
 
-def eval_mrr(data, layout_net):
+def eval_mrr_and_p_at_k(data, layout_net, k=1):
     mrrs = []
+    precisions = []
     with torch.no_grad():
         examples = np.random.choice(range(len(data)), 500, replace=False)
         for ex in examples:
             np.random.seed(ex)
             idxs = np.random.choice(range(len(data)), 10, replace=False)
-            mrr, p_at_k = eval_modular(data, ex, idxs, layout_net)
+            mrr, pre = eval_modular(data, ex, idxs, layout_net, k)
             mrrs.append(mrr)
-            return np.mean(mrrs)
+            precisions.append(pre)
+            return np.mean(mrrs), np.mean(precisions)
 
 
 def eval_acc(data_loader, layout_net, count):
@@ -89,7 +91,8 @@ def eval_acc(data_loader, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir,
-         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, patience, layout_checkpoint=None):
+         codebert_valid_results_dir, use_lr_scheduler, clip_grad_value, use_cls_for_verb_emb, patience, k,
+         layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -146,7 +149,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
     positive_label = torch.FloatTensor([[0, 1]]).to(device)
     negative_label = torch.FloatTensor([[1, 0]]).to(device)
     batch_size = 20
-    best_accuracy = -1.0
+    best_accuracy = (-1.0, -1.0, -1.0)
     stop_training = False
     wait_step = 0
 
@@ -163,18 +166,16 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                if valid_file_name != "None":
-                    metric = 'mrr'
-                    cur_perf = eval_mrr(valid_data, codebert_valid_results_dir, validation_data_map, layout_net)
-                    writer.add_scalar("MRR/valid", cur_perf, writer_it)
-                else:
-                    metric = 'accuracy'
-                    cur_perf = eval_acc(valid_data_loader, layout_net, count=100)
-                    writer.add_scalar("Acc/valid", cur_perf, writer_it)
+                mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k)
+                acc = eval_acc(valid_data_loader, layout_net, count=100)
+                writer.add_scalar("MRR/valid", mrr, writer_it)
+                writer.add_scalar(f"P@{k}/valid", pre, writer_it)
+                writer.add_scalar("Acc/valid", acc, writer_it)
+                cur_perf = (mrr, acc, pre)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
-                          (metric, best_accuracy, cur_perf, epoch, steps))
+                          ("(mrr, acc, p@k)", best_accuracy, cur_perf, epoch, steps))
                     best_accuracy = cur_perf
                     wait_step = 0
                     stop_training = False
@@ -278,6 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
     parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
     parser.add_argument('--patience', dest='patience', type=int, default=10000)
+    parser.add_argument('--p_at_k', dest='p_at_k', type=int, default=1)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -304,4 +306,5 @@ if __name__ == '__main__':
          use_cls_for_verb_emb=args.use_cls_for_verb_emb,
          clip_grad_value=args.clip_grad_value,
          layout_checkpoint=args.layout_checkpoint_file,
-         patience=args.patience)
+         patience=args.patience,
+         k=args.p_at_k)
