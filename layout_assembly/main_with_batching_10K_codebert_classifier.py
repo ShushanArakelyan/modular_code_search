@@ -66,7 +66,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=1, distractor_set_size=1000):
                 continue
             mrrs.append(cur_mrr)
             precisions.append(cur_pre)
-            return np.mean(mrrs), np.mean(precisions)
+    return np.mean(mrrs), np.mean(precisions)
 
 
 def eval_acc(dataset, layout_net, count):
@@ -75,7 +75,7 @@ def eval_acc(dataset, layout_net, count):
     with torch.no_grad():
         layout_net.precomputed_scores_provided = False
         i = 0
-        for sample in range(len(dataset)):
+        for sample in range(min(len(dataset), 500)):
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             pred = layout_net.forward(sample[-1][1:-1], sample)
