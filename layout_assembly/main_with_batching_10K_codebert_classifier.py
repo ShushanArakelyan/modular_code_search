@@ -48,7 +48,6 @@ def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
             else:
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
-    print(mrr(ranks), p_at_k(ranks, k))
     return mrr(ranks), p_at_k(ranks, k)
 
 
@@ -73,6 +72,7 @@ def eval_acc(dataset, layout_net, count):
     accs = []
     layout_net.set_eval()
     with torch.no_grad():
+        precomputed_scores_provided = layout_net.precomputed_scores_provided
         layout_net.precomputed_scores_provided = False
         i = 0
         for sample in range(min(len(dataset), 500)):
@@ -94,7 +94,7 @@ def eval_acc(dataset, layout_net, count):
             if i >= count:
                 break
             i += 1
-        layout_net.precomputed_scores_provided = True
+        layout_net.precomputed_scores_provided = precomputed_scores_provided
     layout_net.set_train()
     return np.mean(accs)
 
