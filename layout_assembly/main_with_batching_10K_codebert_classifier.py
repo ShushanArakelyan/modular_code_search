@@ -3,13 +3,12 @@ import os
 from datetime import datetime
 
 import numpy as np
-import pandas as pd
 import torch
 import tqdm
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from eval.dataset import CodeSearchNetDataset_wShards
+from eval.dataset import CodeSearchNetDataset_wShards, CodeSearchNetDataset_NotPrecomputed
 from eval.dataset import transform_sample, filter_neg_samples
 from eval.utils import mrr, p_at_k
 from action.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
@@ -107,7 +106,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
          range(shard_range + 1)])
 
     if valid_file_name != "None":
-        valid_data = pd.read_json(valid_file_name, lines=True)
+        valid_data = CodeSearchNetDataset_NotPrecomputed(filename=valid_file_name, device=device)
     else:
         valid_data, dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.3), int(len(dataset)*0.7)],
                                               generator=torch.Generator().manual_seed(42))
