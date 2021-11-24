@@ -194,6 +194,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                 else:
                     wait_step += 1
                     if wait_step >= patience:
+                        print("Stopping training because wait steps exceeded: ", wait_step)
                         stop_training = True
                         break
                 layout_net.set_train()
