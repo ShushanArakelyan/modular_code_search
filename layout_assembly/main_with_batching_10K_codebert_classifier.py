@@ -81,7 +81,7 @@ def eval_acc(dataset, layout_net, count):
             accs.append(int(torch.argmax(pred) == label))
 
             np.random.seed(10000 + i)
-            neg_idx = np.random.choice(range(len(dataset)), 1)
+            neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
             label = 0
             pred = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
