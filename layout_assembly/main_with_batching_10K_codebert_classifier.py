@@ -52,14 +52,14 @@ def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
     return mrr(ranks), p_at_k(ranks, k)
 
 
-def eval_mrr_and_p_at_k(dataset, layout_net, k=1):
+def eval_mrr_and_p_at_k(dataset, layout_net, k=1, distractor_set_size=1000):
     mrrs = []
     precisions = []
     with torch.no_grad():
         examples = np.random.choice(range(len(dataset)), 500, replace=False)
         for ex in examples:
             np.random.seed(ex)
-            idxs = np.random.choice(range(len(dataset)), 100, replace=False)
+            idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
             cur_mrr, cur_pre = eval_modular(dataset, ex, idxs, layout_net, k)
             mrrs.append(cur_mrr)
             precisions.append(cur_pre)
@@ -99,7 +99,8 @@ def eval_acc(dataset, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
-         clip_grad_value, use_cls_for_verb_emb, patience, k, use_constant_for_weights, layout_checkpoint=None):
+         clip_grad_value, use_cls_for_verb_emb, patience, k, use_constant_for_weights, distractor_set_size,
+         layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -174,7 +175,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                 writer.add_scalar("Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k)
+                mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size)
                 acc = eval_acc(valid_data, layout_net, count=100)
                 writer.add_scalar("MRR/valid", mrr, writer_it)
                 writer.add_scalar(f"P@{k}/valid", pre, writer_it)
@@ -287,6 +288,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
     parser.add_argument('--patience', dest='patience', type=int, default=10000)
     parser.add_argument('--p_at_k', dest='p_at_k', type=int, default=1)
+    parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--use_constant_for_weights', dest='use_constant_for_weights', default=False,
                         action='store_true')
 
@@ -316,4 +318,5 @@ if __name__ == '__main__':
          layout_checkpoint=args.layout_checkpoint_file,
          patience=args.patience,
          k=args.p_at_k,
+         distractor_set_size=args.distractor_set_size,
          use_constant_for_weights=args.use_constant_for_weights)
