@@ -40,7 +40,7 @@ def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
     else:
         ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
         for neg_idx in idxs_to_eval:
-            distractor = dataset[neg_idx]
+            distractor, _, _, _ = dataset[neg_idx]
             neg_sample = create_neg_sample(sample, distractor)
             print("Neg sample: ", neg_sample)
             pred = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
