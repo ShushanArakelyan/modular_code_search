@@ -99,7 +99,7 @@ def eval_acc(dataset, layout_net, count):
 def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, version, layout_net_version,
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
-         clip_grad_value, use_cls_for_verb_emb, patience, k, layout_checkpoint=None):
+         clip_grad_value, use_cls_for_verb_emb, patience, k, use_constant_for_weights, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -125,7 +125,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
     if layout_net_version == 'classic':
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided,
-                               use_cls_for_verb_emb=use_cls_for_verb_emb)
+                               use_cls_for_verb_emb=use_cls_for_verb_emb,
+                               use_constant_for_weights=use_constant_for_weights)
     elif layout_net_version == 'with_adapters':
         layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
                                            precomputed_scores_provided=precomputed_scores_provided)
@@ -286,6 +287,8 @@ if __name__ == '__main__':
     parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
     parser.add_argument('--patience', dest='patience', type=int, default=10000)
     parser.add_argument('--p_at_k', dest='p_at_k', type=int, default=1)
+    parser.add_argument('--use_constant_for_weights', dest='use_constant_for_weights', default=False,
+                        action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -312,4 +315,5 @@ if __name__ == '__main__':
          clip_grad_value=args.clip_grad_value,
          layout_checkpoint=args.layout_checkpoint_file,
          patience=args.patience,
-         k=args.p_at_k)
+         k=args.p_at_k,
+         use_constant_for_weights=args.use_constant_for_weights)

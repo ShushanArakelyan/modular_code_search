@@ -44,7 +44,8 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNet_w_codebert_classifier(LayoutNet):
-    def __init__(self, scoring_module, action_module_facade, device, use_cls_for_verb_emb=True, precomputed_scores_provided=False):
+    def __init__(self, scoring_module, action_module_facade, device, use_cls_for_verb_emb=True,
+                 precomputed_scores_provided=False, use_constant_for_weights=False):
         print(device)
         self.scoring_module = scoring_module
         self.action_module_facade = action_module_facade
@@ -56,6 +57,7 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
         self.accumulated_loss = None
         self.verb_embeddings = None
         self.code_embeddings = None
+        self.use_constant_for_weights = use_constant_for_weights
 
     def parameters(self):
         return chain(self.classifier.parameters(), self.action_module_facade.parameters())
@@ -98,6 +100,8 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             return None  # todo: or return all zeros or something?
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output[1],
                                                                 return_segment_ids=True)
+        if self.use_constant_for_weights:
+            output = torch.ones_like(output).to(self.device)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
         return pred['logits']
