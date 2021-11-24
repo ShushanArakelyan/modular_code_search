@@ -184,6 +184,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                 writer.add_scalar(f"P@{k}/valid", pre, writer_it)
                 writer.add_scalar("Acc/valid", acc, writer_it)
                 cur_perf = (mrr, acc, pre)
+                print("Best performance: ", best_accuracy)
+                print("Current performance: ", cur_perf)
+                print("best < current: ", best_accuracy < cur_perf)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
