@@ -42,7 +42,7 @@ def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
         for neg_idx in idxs_to_eval:
             distractor, _, _, _ = dataset[neg_idx]
             neg_sample = create_neg_sample(sample, distractor)
-            print("Neg sample: ", neg_sample)
+            # print("Neg sample: ", neg_sample)
             pred = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
             if pred is not None:
                 ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
@@ -59,7 +59,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=1):
         examples = np.random.choice(range(len(dataset)), 500, replace=False)
         for ex in examples:
             np.random.seed(ex)
-            idxs = np.random.choice(range(len(dataset)), 10, replace=False)
+            idxs = np.random.choice(range(len(dataset)), 100, replace=False)
             cur_mrr, cur_pre = eval_modular(dataset, ex, idxs, layout_net, k)
             mrrs.append(cur_mrr)
             precisions.append(cur_pre)
