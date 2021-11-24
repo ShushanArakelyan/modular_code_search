@@ -56,6 +56,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=1, distractor_set_size=1000):
     mrrs = []
     precisions = []
     with torch.no_grad():
+        np.random.seed(123)
         examples = np.random.choice(range(len(dataset)), 500, replace=False)
         for ex in examples:
             np.random.seed(ex)
@@ -82,7 +83,7 @@ def eval_acc(dataset, layout_net, count):
                 continue
             accs.append(int(torch.argmax(pred) == label))
 
-            np.random.seed(10000 + i)
+            np.random.seed(22222 + i)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
             label = 0
