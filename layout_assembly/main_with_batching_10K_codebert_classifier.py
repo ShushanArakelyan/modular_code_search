@@ -75,7 +75,7 @@ def eval_acc(dataset, layout_net, count):
         for sample in range(len(dataset)):
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
-            pred = layout_net.forward(*transform_sample(sample))
+            pred = layout_net.forward(sample[-1][1:-1], sample)
             if pred is None:
                 continue
             accs.append(int(torch.argmax(pred) == label))
@@ -84,7 +84,7 @@ def eval_acc(dataset, layout_net, count):
             neg_idx = np.random.choice(range(len(dataset)), 1)
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
             label = 0
-            pred = layout_net.forward(*transform_sample(neg_sample))
+            pred = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
             if pred is None:
                 continue
             accs.append(int(torch.argmax(pred) == label))
