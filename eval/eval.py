@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import torch
+import tqdm
 
 
 def compute_mrr(ranks):
@@ -77,7 +78,7 @@ def eval(dataset, model, make_prediction, distractor_generator, distractor_count
         k = [k]
     results = {f"P@{ki}": [] for ki in k}
     results["mrr"] = []
-    for i in range(len(dataset)):
+    for i in tqdm.tqdm(range(len(dataset))):
         distr_set = distractor_generator(dataset, i, distractor_count)
         ranks = eval_against_distractors(dataset, i, distr_set, model, make_prediction)
         mrr = compute_mrr(ranks)
@@ -96,7 +97,7 @@ def staged_eval(dataset, model_st1, model_st2, make_prediction_st1, make_predict
     results_st1["mrr"] = []
     results_st2 = {f"P@{ki}": [] for ki in k}
     results_st2["mrr"] = []
-    for i in range(len(dataset)):
+    for i in tqdm.tqdm(range(len(dataset))):
         distr_set = distractor_generator(dataset, i, distractor_count_st1)
         ranks = eval_against_distractors(dataset, i, distr_set, model_st1, make_prediction_st1)
         top_distractors = np.argsort(ranks)[::-1][:distractor_count_st2] - 1
