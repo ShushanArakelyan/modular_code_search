@@ -130,7 +130,7 @@ def main(args):
 
     models = []
     make_prediction_funcs = []
-    for model_type in args.model_type:
+    for i, model_type in enumerate(args.model_type):
         if model_type == 'layout_net':
             scoring_module = ScoringModule(args.device, args.scoring_checkpoint)
             action_module = ActionModuleFacade(args.device, version=args.version, normalized=True, dropout=0.2)
@@ -138,7 +138,7 @@ def main(args):
                               precomputed_scores_provided=False,
                               use_cls_for_verb_emb=args.use_cls_for_verb_emb,
                               use_constant_for_weights=args.use_constants_for_weights)
-            model.load_from_checkpoint(args.model_checkpoint)
+            model.load_from_checkpoint(args.model_checkpoint[i])
             model.set_eval()
             make_prediction = make_prediction_layout_net
             models.append(model)
@@ -147,7 +147,7 @@ def main(args):
             import codebert_embedder as model
             from transformers import RobertaForSequenceClassification
             model.init_embedder(args.device)
-            model.classifier = RobertaForSequenceClassification.from_pretrained(args.model_checkpoint).to(args.device)
+            model.classifier = RobertaForSequenceClassification.from_pretrained(args.model_checkpoint[i]).to(args.device)
             make_prediction = make_prediction_codebert
             models.append(model)
             make_prediction_funcs.append(make_prediction)
