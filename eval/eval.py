@@ -161,7 +161,7 @@ def main(args):
         with torch.no_grad():
             if args.distractor_type != 'staged':
                 eval(dataset, models[0], make_prediction_funcs[0],
-                     get_distractors, args.distractor_count, args.k, out_file)
+                     get_distractors, args.distractor_count[0], args.k, out_file)
             else:
                 staged_eval(dataset, models[0], models[1], make_prediction_funcs[0], make_prediction_funcs[1],
                             get_distractors, args.distractor_count[0], args.distractor_count[1], args.k, out_file)
