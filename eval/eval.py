@@ -60,7 +60,7 @@ def eval_against_distractors(dataset, orig_idx, distr_set, model, make_predictio
 
 
 def write_to_file(results, output_file):
-    output_file.write(' '.join([f"{key}: {np.mean(values)}, " for key, values in results.iteritems()]))
+    output_file.write(' '.join([f"{key}: {np.mean(values)}, " for key, values in results.items()]))
     output_file.write('\n')
     output_file.flush()
 
