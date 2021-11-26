@@ -32,8 +32,10 @@ def make_prediction_layout_net(layout_net, dataset, orig_idx, distractor_idx=Non
 def make_prediction_codebert(codebert, dataset, orig_idx, distractor_idx=None):
     if distractor_idx is None:
         distractor_idx = orig_idx
-    inputs = codebert.get_feature_inputs(' '.join(dataset[orig_idx][0]),
-                                         ' '.join(dataset[distractor_idx][1]))
+    sample, _, _, _ = dataset[orig_idx]
+    distractor_sample, _, _, _ = dataset[distractor_idx]
+    inputs = codebert.get_feature_inputs(' '.join(sample[0]),
+                                         ' '.join(distractor_sample[1]))
     output = codebert.classifier(**inputs)
     return float(torch.sigmoid(output['logits'])[0][1].cpu().numpy())
 
