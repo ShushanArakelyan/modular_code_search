@@ -18,11 +18,18 @@ class RobertaClassificationHead_weighted(nn.Module):
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, x, **kwargs):
+        #print('forward: ')
+        #print(x[0])
         x = self.dropout(x)
+        #print(x[0])
         x = self.dense(x)
+        #print(x[0])
         x = torch.tanh(x)
+        #print(x[0])
         x = self.dropout(x)
+        #print(x[0])
         x = self.out_proj(x)
+        #print(x[0])
         return x
     
 
@@ -32,7 +39,7 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
         super().__init__(config)
         self.num_labels = config.num_labels
         self.config = config
-
+        self.use_cls = True
         self.roberta = RobertaModel(config, add_pooling_layer=False)
         self.classifier = RobertaClassificationHead_weighted(config)
 
@@ -59,7 +66,6 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        # print("token type ids: ", token_type_ids.shape)
         outputs = self.roberta(
             input_ids,
             attention_mask=attention_mask,
@@ -72,24 +78,26 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
-        if weights is not None:
-            # print("attention mask: ", attention_mask)
-            # print("token type ids: ", token_type_ids)
-            # print('what we will attempt to select: ', token_type_ids[0].nonzero()[1:-1].squeeze())
-            # print("sequence_output.shape: ", sequence_output.shape)
-            sequence_output = torch.index_select(input=sequence_output,
-                                                 dim=1,
-                                                 index=token_type_ids[0].nonzero()[1:-1].squeeze())
-            # print("new sequence_output.shape: ", sequence_output.shape)
-            # print("weights.shape: ", weights.shape)
-            N = min(weights.shape[0], sequence_output.shape[1])
-            weights = weights[:N, :]
-            sequence_output = sequence_output[:, :N, :]
-            # sequence_output = sequence_output * attention_mask.unsqueeze(dim=2)
-            sequence_output = torch.mm(weights.T, sequence_output.squeeze())
-            # print("new sequence :", sequence_output.shape)
+        #if self.use_cls:
+        #    sequence_output = sequence_output[:, 0, :]
+        #else:
+        mask = token_type_ids * attention_mask
+        if not self.use_cls:
+            sequence_output = sequence_output[:, 1:, :]
+            mask = mask[:, 1:]
+        sequence_output = torch.bmm(mask.float().unsqueeze(dim=1), sequence_output)
+        s = torch.sum(mask, dim=1)
+        if 0 in s:
+            #print("before: ", s)
+            s[s==0] = 1
+            #print("after: ", s)
+        s = s.unsqueeze(dim=1).unsqueeze(dim=2)
+        s = s.repeat(1, 1, sequence_output.shape[-1])
+        sequence_output = sequence_output / s 
+        sequence_output = sequence_output.squeeze()
+        #print("sequence_output: ", sequence_output)
         logits = self.classifier(sequence_output)
-
+        #print("logits: ", logits)
         loss = None
         if labels is not None:
             if self.config.problem_type is None:
@@ -116,7 +124,7 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
         if not return_dict:
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
-
+        #print("loss: ", loss)
         return SequenceClassifierOutput(
             loss=loss,
             logits=logits,
