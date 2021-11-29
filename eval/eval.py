@@ -202,7 +202,7 @@ if __name__ == "__main__":
                         help='Can be "layout_net" or "codebert"')
     parser.add_argument('--distractor_type', dest='distractor_type', type=str,
                         help='Can be "random","staged", "read_from_file" or "top-codebert"')
-    parser.add_argument('--distractor_file', dest='distractor_file', type=str,
+    parser.add_argument('--distractors_file', dest='distractors_file', type=str,
                         help='batch_{}.txt file that contains 1000 distractors for each of 1000 samples')
     parser.add_argument('--distractor_count', dest='distractor_count', type=int, action='append',
                         help='Number of distractors')
