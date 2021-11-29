@@ -18,21 +18,13 @@ class RobertaClassificationHead_weighted(nn.Module):
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, x, **kwargs):
-        #print('forward: ')
-        #print(x[0])
         x = self.dropout(x)
-        #print(x[0])
         x = self.dense(x)
-        #print(x[0])
         x = torch.tanh(x)
-        #print(x[0])
         x = self.dropout(x)
-        #print(x[0])
         x = self.out_proj(x)
-        #print(x[0])
         return x
     
-
 
 class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification):
     def __init__(self, config):
@@ -78,26 +70,16 @@ class RobertaForSequenceClassification_weighted(RobertaForSequenceClassification
             return_dict=return_dict,
         )
         sequence_output = outputs[0]
-        #if self.use_cls:
-        #    sequence_output = sequence_output[:, 0, :]
-        #else:
-        mask = token_type_ids * attention_mask
-        if not self.use_cls:
-            sequence_output = sequence_output[:, 1:, :]
-            mask = mask[:, 1:]
-        sequence_output = torch.bmm(mask.float().unsqueeze(dim=1), sequence_output)
-        s = torch.sum(mask, dim=1)
-        if 0 in s:
-            #print("before: ", s)
-            s[s==0] = 1
-            #print("after: ", s)
-        s = s.unsqueeze(dim=1).unsqueeze(dim=2)
-        s = s.repeat(1, 1, sequence_output.shape[-1])
-        sequence_output = sequence_output / s 
-        sequence_output = sequence_output.squeeze()
-        #print("sequence_output: ", sequence_output)
+        if weights is not None:
+            sequence_output = torch.index_select(input=sequence_output,
+                                                 dim=1,
+                                                 index=token_type_ids[0].nonzero()[1:-1].squeeze())
+            N = min(weights.shape[0], sequence_output.shape[1])
+            weights = weights[:N, :]
+            sequence_output = sequence_output[:, :N, :]
+            sequence_output = torch.mm(weights.T, sequence_output.squeeze())
+            sequence_output /= N
         logits = self.classifier(sequence_output)
-        #print("logits: ", logits)
         loss = None
         if labels is not None:
             if self.config.problem_type is None:
