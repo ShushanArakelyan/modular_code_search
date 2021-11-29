@@ -1,7 +1,9 @@
 import argparse
 import sys
 
+from functools import partial
 import numpy as np
+import pandas as pd
 import torch
 import tqdm
 
@@ -41,15 +43,29 @@ def make_prediction_codebert(codebert, dataset, orig_idx, distractor_idx=None):
     return float(torch.sigmoid(output['logits'])[0][1].cpu().numpy())
 
 
-def read_distractors_from_file(orig_idx):
-    raise NotImplementedError()
-
-
 def generate_random_distractors(dataset, orig_idx, n=1000):
     np.random.seed(orig_idx * 3 + 5)
     distractors = np.random.choice(range(len(dataset)), min(n, len(dataset)), replace=False)
     distractors = distractors[distractors != orig_idx][:n - 1]
     return distractors
+
+
+def read_distractors_from_file(filename, data, orig_idx, n=1000, offset=0):
+    read_distractors_from_file.all_distractors = []
+    assert orig_idx < 1000
+    if len(read_distractors_from_file.all_distractors) == 0:
+        validation_data_map = {}
+        for i in range(len(data)):
+            validation_data_map[data['url'][i]] = i
+        with open(filename, 'r') as f:
+            for j in range(1000):
+                distractors = []
+                for i in range(1000):
+                    line = f.readline()
+                    parts = line.split('<CODESPLIT>')
+                    distractors.append(validation_data_map[parts[2]])
+            read_distractors_from_file.all_distractors.append(distractors)
+    return read_distractors_from_file.all_distractors[orig_idx]
 
 
 def eval_against_distractors(dataset, orig_idx, distr_set, model, make_prediction):
@@ -121,6 +137,7 @@ def main(args):
     from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
     from layout_assembly.modules import ActionModuleFacade, ScoringModule
 
+    data = pd.read_json(args.valid_file_name, lines=True)
     dataset = CodeSearchNetDataset_NotPrecomputed(args.valid_file_name, device=args.device)
 
     if args.distractor_type == 'staged':
@@ -159,7 +176,13 @@ def main(args):
 
     if args.distractor_type == "codebert":
         raise NotImplementedError("Using top 10 distractors from codebert is not implemented")
-    get_distractors = generate_random_distractors
+    if args.distractor_type == "read_from_file":
+        dataset.data = dataset.data[:1000]
+        read_from_file = partial(read_distractors_from_file, args.distractors_file, data)
+        get_distractors = read_from_file
+    else:
+        generate_distractors = partial(generate_random_distractors, dataset)
+        get_distractors =  generate_distractors
     with open(args.output_file, 'w') as out_file:
         with torch.no_grad():
             if args.distractor_type != 'staged':
@@ -178,7 +201,9 @@ if __name__ == "__main__":
     parser.add_argument('--model_type', dest='model_type', type=str, action='append',
                         help='Can be "layout_net" or "codebert"')
     parser.add_argument('--distractor_type', dest='distractor_type', type=str,
-                        help='Can be "random","staged", or "top-codebert"')
+                        help='Can be "random","staged", "read_from_file" or "top-codebert"')
+    parser.add_argument('--distractor_file', dest='distractor_file', type=str,
+                        help='batch_{}.txt file that contains 1000 distractors for each of 1000 samples')
     parser.add_argument('--distractor_count', dest='distractor_count', type=int, action='append',
                         help='Number of distractors')
     parser.add_argument('--version', dest='version', type=int,
