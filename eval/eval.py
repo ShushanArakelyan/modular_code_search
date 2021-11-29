@@ -49,7 +49,6 @@ def generate_random_distractors(dataset, orig_idx, n=1000):
     distractors = distractors[distractors != orig_idx][:n - 1]
     return distractors
 
-
 def read_distractors_from_file(filename, data, orig_idx, n=1000, offset=0):
     read_distractors_from_file.all_distractors = []
     assert orig_idx < 1000
@@ -95,7 +94,7 @@ def eval(dataset, model, make_prediction, distractor_generator, distractor_count
     results = {f"P@{ki}": [] for ki in k}
     results["mrr"] = []
     for i in tqdm.tqdm(range(len(dataset))):
-        distr_set = distractor_generator(dataset, i, distractor_count)
+        distr_set = distractor_generator(i, distractor_count)
         ranks = eval_against_distractors(dataset, i, distr_set, model, make_prediction)
         mrr = compute_mrr(ranks)
         p_at_k = tuple(compute_p_at_k(ranks, ki) for ki in k)
@@ -114,7 +113,7 @@ def staged_eval(dataset, model_st1, model_st2, make_prediction_st1, make_predict
     results_st2 = {f"P@{ki}": [] for ki in k}
     results_st2["mrr"] = []
     for i in tqdm.tqdm(range(len(dataset))):
-        distr_set = distractor_generator(dataset, i, distractor_count_st1)
+        distr_set = distractor_generator(i, distractor_count_st1)
         ranks = eval_against_distractors(dataset, i, distr_set, model_st1, make_prediction_st1)
         top_distractors = np.argsort(ranks)[::-1][:distractor_count_st2] - 1
         if -1 in top_distractors:
