@@ -1,14 +1,19 @@
 REGEX_DICT = {
     "remove": [
-        "strip\(",
-        "pop\(",
-        "sub\(",
+        "pop",
+        "sub",
+        "split",
+        "clean",
         "delete",
         "del ",
         "trim",
+        "strip",
         "remove",
-        "split\(",
+        "wipe",
         "^(?!.*\s+else\s+.*).*\[.*\s+if\s+.*\]", # filter list comprehension
+        "^(?!.*\s+else\s+.*).*\{.*\s+if\s+.*\}", # filter dict comprehension
+        "return.*\[.*\:\s+]&", # filter indexes
+        "return.*\[\s+\:.*]&", # filter indexes
     ],
 
 }

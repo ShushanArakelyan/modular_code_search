@@ -15,8 +15,8 @@ def supervision_scores(sample, scores, verb):
 
 
 def regex_supervision(code, verb):
-    scores_per_line = []
-    for line in code:
+    scores_per_line = [0]
+    for line in code[1:]:
         matched = False
         for r in REGEX_DICT[verb]:
             matches = re.search(r, line)
