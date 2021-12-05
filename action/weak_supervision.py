@@ -29,6 +29,9 @@ def regex_supervision(code, verb):
     return scores_per_line
 
 
-def scores_per_line_to_scores_per_token(scores_per_line):
-    scores_per_token = np.zeros(100)
+def scores_per_line_to_scores_per_token(embedder, loc, scores_per_line):
+    scores_per_token = []
+    for score, line in zip(loc, scores_per_line):
+        tokens_per_line = embedder.tokenizer.tokenize(line)
+        scores_per_token.extend([score] * len(tokens_per_line))
     return scores_per_token
