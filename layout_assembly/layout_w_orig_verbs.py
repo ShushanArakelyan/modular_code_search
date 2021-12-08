@@ -110,16 +110,12 @@ class LayoutNetWOrigVerbs(LayoutNet):
             return verb
         orig_tokens = POS_TAGGER([orig_sentence]).sentences[0].words
         all_verbs = self.reverse_string2predicate[verb]
-#         print("all verbs for verb: ", verb, ' ', all_verbs)                                                  
         for token in orig_tokens:
-#             print(token.text.lower())
             if token.text.lower() in all_verbs:
-#                 print(f"replacing verb {verb} with {token.text.lower()}")
                 return token.text.lower()
             else:
                 lemma_form = self.lemmatizer.lemmatize(token.text.lower(), get_wordnet_pos(token.xpos)) 
                 if lemma_form in all_verbs:
-#                     print(f"replacing verb {verb} with {lemma_form}")
                     return lemma_form
         return 'load' # in some sentences we cannot identify the verb, and replace it with a 'load'
     

@@ -31,7 +31,10 @@ def regex_supervision(code, verb):
 
 def scores_per_line_to_scores_per_token(embedder, loc, scores_per_line):
     scores_per_token = []
-    for score, line in zip(loc, scores_per_line):
+    N = len(loc)
+    for i, (score, line) in enumerate(zip(scores_per_line, loc)):
+        if i != N - 1:
+            line += '\n'
         tokens_per_line = embedder.tokenizer.tokenize(line)
         scores_per_token.extend([score] * len(tokens_per_line))
     return scores_per_token
