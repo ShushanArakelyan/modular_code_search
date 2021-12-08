@@ -1,3 +1,5 @@
+import torch
+
 import codebert_embedder_v2 as embedder
 from action.weak_supervision import weak_supervision_scores
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
@@ -40,6 +42,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                 output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0].lower(),
                                                  attend_scores=scoring_labels,
                                                  matching_func=self.supervision_func)
+                output = torch.FloatTensor(output).to(self.device)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output,
