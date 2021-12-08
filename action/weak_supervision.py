@@ -55,5 +55,7 @@ def scores_per_line_to_scores_per_token(embedder, loc, scores_per_line):
         if i != N - 1:
             line += '\n'
         tokens_per_line = embedder.tokenizer.tokenize(line)
+        print("ws tokens: ", tokens_per_line)
+        print("len of tokens in line: ", len(tokens_per_line))
         scores_per_token.extend([score] * len(tokens_per_line))
     return scores_per_token
