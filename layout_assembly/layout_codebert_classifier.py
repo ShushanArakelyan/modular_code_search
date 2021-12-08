@@ -90,7 +90,6 @@ class LayoutNet_w_codebert_classifier(LayoutNet):
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if not self.precomputed_scores_provided:
                 self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-                # print(self.scoring_outputs)
             self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0],
                                                                                 verb_embeddings[1],
                                                                                 return_cls_for_query=self.use_cls_for_verb_emb)
