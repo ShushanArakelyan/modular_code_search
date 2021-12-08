@@ -37,7 +37,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                 _, output, _, _ = self.process_node(tree, code)
                 output = output[1]
             else:
-                output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0],
+                output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0].lower(),
                                                  attend_scores=scoring_labels,
                                                  matching_func=self.supervision_func)
         except ProcessingException:
