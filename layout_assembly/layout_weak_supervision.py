@@ -3,22 +3,18 @@ from action.weak_supervision import weak_supervision_scores
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
 from layout_assembly.utils import ProcessingException
 
-from nltk.stem import WordNetLemmatizer
-
 
 class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
     def __init__(self, filter_func, scoring_module, action_module_facade, device, supervision_func=None,
                  is_sanity_check=False, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
                  use_constant_for_weights=False):
         super().__init__(scoring_module, action_module_facade, device,
-                         precomputed_scores_provided)
+                         precomputed_scores_provided=precomputed_scores_provided,
+                         use_cls_for_verb_emb=use_cls_for_verb_emb,
+                         use_constant_for_weights=use_constant_for_weights)
         self.filter = filter_func
         self.supervision_func = supervision_func
         self.is_sanity_check = is_sanity_check
-        self.reverse_string2predicate = self.construct_reverse_string2predicate()
-        self.lemmatizer = WordNetLemmatizer()
-        self.use_cls_for_verb_emb = use_cls_for_verb_emb
-        self.use_constant_for_weights = use_constant_for_weights
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
