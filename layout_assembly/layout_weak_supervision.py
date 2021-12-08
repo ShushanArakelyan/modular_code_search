@@ -43,6 +43,11 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                                                  attend_scores=scoring_labels,
                                                  matching_func=self.supervision_func)
                 output = torch.FloatTensor(output).to(self.device)
+                print("new output shape:", output.shape)
+
+                _, output, _, _ = self.process_node(tree, code)
+                output = output[1]
+                print("original output shape: ", output.shape)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output,
