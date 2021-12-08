@@ -2,6 +2,7 @@ import argparse
 import os
 from datetime import datetime
 
+import functools
 import numpy as np
 import torch
 import tqdm
@@ -13,6 +14,7 @@ from eval.dataset import transform_sample, filter_neg_samples
 from eval.utils import mrr, p_at_k
 from action.action_v1_codebert_classifier import ActionModule_v1_one_input, ActionModule_v1_two_inputs
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier as LayoutNet
+from layout_assembly.layout_weak_supervision import LayoutNet_weak_supervision
 from layout_assembly.layout_codebert_classifier_action_ablation import LayoutNet_w_codebert_classifier_action_ablation
 from layout_assembly.layout_with_adapter import LayoutNetWithAdapters
 from layout_assembly.modules import ScoringModule, ActionModuleFacade
@@ -103,7 +105,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, use_cls_for_verb_emb, patience, k, use_constant_for_weights, distractor_set_size,
-         layout_checkpoint=None):
+         ws_scoring="", ws_sanity_check=False, filter_condition="", layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -125,15 +127,35 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModuleFacade_w_codebert_classifier(device, version, normalized_action, dropout)
 
+    print("Precomputed scores are NOT being used, precomputed_scores_provided is set to False!")
     precomputed_scores_provided = False
-    if layout_net_version == 'classic':
+    if layout_net_version == 'with_adapters':
+        raise NotImplementedError()
+    assert layout_net_version == 'classic'
+    if ws_scoring and filter_condition:
+        print("Performing weak supervision on examples that satisfy filter {filter_func} with noisy supervision method {ws_scoring_func}")
+        from action.weak_supervision import regex_matching, random, uniform, propagate
+        from action.ws_regex_dict import filter_func
+        if ws_scoring == 'regex':
+            ws_scoring_func = regex_matching
+        elif ws_scoring == 'random':
+            ws_scoring_func = random
+        elif ws_scoring == 'uniform':
+            ws_scoring_func = uniform
+        elif ws_scoring == 'propagate':
+            ws_scoring_func = propagate
+        filter_f = functools.partial(filter_func, filter_condition)
+        layout_net = LayoutNet_weak_supervision(filter_f, scoring_module, action_module, device,
+                                                supervision_func=ws_scoring_func,
+                                                is_sanity_check=ws_sanity_check,
+                                                precomputed_scores_provided=precomputed_scores_provided,
+                                                use_cls_for_verb_emb=use_cls_for_verb_emb,
+                                                use_constant_for_weights=use_constant_for_weights)
+    else:
         layout_net = LayoutNet(scoring_module, action_module, device,
                                precomputed_scores_provided=precomputed_scores_provided,
                                use_cls_for_verb_emb=use_cls_for_verb_emb,
                                use_constant_for_weights=use_constant_for_weights)
-    elif layout_net_version == 'with_adapters':
-        layout_net = LayoutNetWithAdapters(scoring_module, action_module, device,
-                                           precomputed_scores_provided=precomputed_scores_provided)
     if version == 82:
         layout_net = LayoutNet_w_codebert_classifier_action_ablation(
             scoring_module, action_module, device,
@@ -298,6 +320,9 @@ if __name__ == '__main__':
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--use_constant_for_weights', dest='use_constant_for_weights', default=False,
                         action='store_true')
+    parser.add_argument('--ws_scoring_func', dest='ws_scoring_func', type='str')
+    parser.add_argument('--ws_filter_func', dest='ws_filter_func', type='str')
+    parser.add_argument('--ws_sanity_check', dest='ws_sanity_check', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -326,4 +351,7 @@ if __name__ == '__main__':
          patience=args.patience,
          k=args.p_at_k,
          distractor_set_size=args.distractor_set_size,
-         use_constant_for_weights=args.use_constant_for_weights)
+         use_constant_for_weights=args.use_constant_for_weights,
+         ws_scoring=args.ws_scoring_func,
+         ws_filter_func=args.ws_filter_func,
+         ws_sanity_check=args.ws_sanity_check)

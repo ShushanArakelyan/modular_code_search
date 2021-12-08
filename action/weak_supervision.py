@@ -14,19 +14,38 @@ def supervision_scores(sample, scores, verb):
     return new_scores
 
 
-def regex_supervision(code, verb):
+def regex_matching(verb, line, scores):
+    matched = False
+    for r in REGEX_DICT[verb]:
+        matches = re.search(r, line)
+        if matches is not None:
+            matched = True
+    if matched:
+        return 1
+    return 0
+
+
+def random(verb, line, scores):
+    if np.random.rand(1) > 0.5:
+        return 1
+    return 0
+
+
+def uniform(verb, line, scores):
+    return 1
+
+
+def propagate(verb, line, scores):
+    # pooling
+    # return pooled scores
+    raise NotImplementedError()
+
+
+def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func):
     scores_per_line = [0]
     for line in code[1:]:
-        matched = False
-        for r in REGEX_DICT[verb]:
-            matches = re.search(r, line)
-            if matches is not None:
-                matched = True
-        if matched:
-            scores_per_line.append(1)
-        else:
-            scores_per_line.append(0)
-    return scores_per_line
+        scores_per_line.append(matching_func(verb, line, attend_scores))
+    return scores_per_line_to_scores_per_token(embedder, code, scores_per_line)
 
 
 def scores_per_line_to_scores_per_token(embedder, loc, scores_per_line):

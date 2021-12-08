@@ -4,13 +4,16 @@ from layout_assembly.utils import ProcessingException
 
 
 class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
-    def __init__(self, filter_func, scoring_module, action_module_facade, device, use_cls_for_verb_emb=True,
-                 precomputed_scores_provided=False, use_constant_for_weights=False):
+    def __init__(self, filter_func, scoring_module, action_module_facade, device, supervision_func=None,
+                 is_sanity_check=False, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
+                 use_constant_for_weights=False):
         super().__init__(scoring_module, action_module_facade, device, use_cls_for_verb_emb,
                          precomputed_scores_provided, use_constant_for_weights)
         self.filter = filter_func
+        self.supervision_func = supervision_func
+        self.is_sanity_check = is_sanity_check
 
-    def forward_with_sup_labels(self, ccg_parse, sample, supervision_func=None):
+    def forward_with_sup_labels(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
@@ -27,11 +30,11 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
             self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verbs[0],
                                                                                 verbs[1],
                                                                                 return_cls_for_query=self.use_cls_for_verb_emb)
-            if supervision_func is None:
+            if not self.is_sanity_check:
                 _, output, _, _ = self.process_node(tree, code)
                 output = output[1]
             else:
-                output = supervision_func(code)
+                output = self.supervision_func(code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output,

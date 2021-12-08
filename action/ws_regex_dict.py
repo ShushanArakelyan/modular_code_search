@@ -17,3 +17,8 @@ REGEX_DICT = {
     ],
 
 }
+
+def filter_func(verb, condition='remove'):
+    if verb == condition:
+        return True
+    return False
