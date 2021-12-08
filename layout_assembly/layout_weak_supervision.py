@@ -1,4 +1,5 @@
 import codebert_embedder_v2 as embedder
+from action.weak_supervision import weak_supervision_scores
 from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
 from layout_assembly.utils import ProcessingException
 
@@ -13,7 +14,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
         self.supervision_func = supervision_func
         self.is_sanity_check = is_sanity_check
 
-    def forward_with_sup_labels(self, ccg_parse, sample):
+    def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
@@ -34,11 +35,13 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                 _, output, _, _ = self.process_node(tree, code)
                 output = output[1]
             else:
-                output = self.supervision_func(code)
+                output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0],
+                                                 attend_scores=scoring_labels,
+                                                 matching_func=self.supervision_func)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
         inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output,
                                                                 return_segment_ids=True)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
-        return scoring_labels, pred['logits']
+        return pred['logits']

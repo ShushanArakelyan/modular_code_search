@@ -145,7 +145,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
         elif ws_scoring == 'propagate':
             ws_scoring_func = propagate
         else:
-            raise Exception("Unknown weak supervision method name provided")
+            raise Exception(f"Unknown weak supervision method name provided: {ws_scoring}")
         filter_f = functools.partial(filter_func, filter_condition)
         layout_net = LayoutNet_weak_supervision(filter_f, scoring_module, action_module, device,
                                                 supervision_func=ws_scoring_func,
