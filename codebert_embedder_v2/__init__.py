@@ -55,8 +55,6 @@ def get_feature_inputs(query, code, return_segment_ids = False):
                                             pad_token_segment_id=0)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        # print("token type ids: ", token_type_ids)
-        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
@@ -81,8 +79,6 @@ def get_feature_inputs_classifier(queries, codes, scores, return_segment_ids=Fal
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        # print("token type ids: ", token_type_ids)
-        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
     return {'input_ids': input_ids,
@@ -102,15 +98,11 @@ def get_feature_inputs_batch(queries, codes, return_segment_ids=False):
                                             pad_token_segment_id=0)
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
-    print("input ids shape: ", input_ids.shape)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
-        # print("token type ids: ", token_type_ids)
-        # print("token type ids.shape ", token_type_ids.shape)
     else:
         token_type_ids = None
-    # print("input mask .shape ", input_mask.shape)
     return {'input_ids': input_ids,
             'attention_mask': input_mask,
             'token_type_ids': token_type_ids}
@@ -185,9 +177,6 @@ def embed_in_list(docs, codes, return_cls_for_query=True):
         query_embeddings = embedding.index_select(dim=1, index=torch.LongTensor([0]).to(device))
     else:
         query_embeddings = [torch.mean(embedding[i, :sep_tokens[i, 1], :], dim=0).unsqueeze(dim=0) for i in range(embedding.shape[0])]
-
-    # print("are there fishy sep tokens codebertv2? ", sep_tokens)
-    # print("tokens we get: codebertv2 ", [(sep_tokens[2 * i, 1], sep_tokens[2 * i + 1, 1]) for i in range(embedding.shape[0])])
     code_embeddings = [embedding[i, sep_tokens[i, 1] + 1 : sep_tokens[i + 1, 1], :] for i in range(embedding.shape[0])]
     return query_embeddings, code_embeddings
 

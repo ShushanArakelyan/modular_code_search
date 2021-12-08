@@ -291,8 +291,6 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         tokens_b = None
         if example.text_b:
             tokens_b = tokenizer.tokenize(example.text_b)
-            # print("len of tokens in converting examples: ", len(tokens_b))
-            # print("tokens: ", tokens_b)
             # Modifies `tokens_a` and `tokens_b` in place so that the total
             # length is less than the specified length.
             # Account for [CLS], [SEP], [SEP] with "- 3"
