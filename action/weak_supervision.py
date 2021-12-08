@@ -42,6 +42,7 @@ def propagate(verb, line, scores):
 
 
 def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func):
+    code = ' '.join(code).split('\n')
     scores_per_line = [0]
     for line in code[1:]:
         scores_per_line.append(matching_func(verb, line, attend_scores))
