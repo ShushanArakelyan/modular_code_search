@@ -10,7 +10,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                          precomputed_scores_provided, use_constant_for_weights)
         self.filter = filter_func
 
-    def forward_with_sup_labels(self, ccg_parse, sample):
+    def forward_with_sup_labels(self, ccg_parse, sample, supervision_func=None):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
@@ -27,10 +27,14 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
             self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verbs[0],
                                                                                 verbs[1],
                                                                                 return_cls_for_query=self.use_cls_for_verb_emb)
-            _, output, _, _ = self.process_node(tree, code)
+            if supervision_func is None:
+                _, output, _, _ = self.process_node(tree, code)
+                output = output[1]
+            else:
+                output = supervision_func(code)
         except ProcessingException:
             return None  # todo: or return all zeros or something?
-        inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output[1],
+        inputs, output = embedder.get_feature_inputs_classifier([" ".join(sample[0])], [" ".join(code)], output,
                                                                 return_segment_ids=True)
         inputs['weights'] = output
         pred = self.classifier(**inputs, output_hidden_states=True)
