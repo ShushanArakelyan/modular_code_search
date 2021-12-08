@@ -1,22 +1,6 @@
 import re
 
 import numpy as np
-# import spacy
-
-# nlp = spacy.load("en_core_web_md")
-
-
-# def extract_noun_tokens(doc):
-#     """Having the docstring, the function returns only the word that are nouns."""
-#     tokens = nlp(doc)
-#     pos_tags = [token.tag_ for token in tokens]
-#     # checks whether the word has expected pos tag
-#     noun_tokens = []
-#     for i, pos in enumerate(pos_tags):
-#         if pos.startswith('NN') and tokens[i].text.isalnum():
-#             # we lower the word, as many words are recognized by tokenizer when they are lowered
-#             noun_tokens.append(tokens[i].text.lower())
-#     return noun_tokens
 
 
 def get_noun_phrases(ccg_parse):
@@ -78,24 +62,11 @@ def embed_pair(embedder, phrase, code, embed_separately):
     return embedder_out
 
 
-# def get_matched_labels_binary(code_token_id_mapping, query_token, nlp_cache):
-#     from spacy.matcher import Matcher
-#     matcher = Matcher(nlp.vocab)
-#     matcher.add(query_token, [[{"TEXT": {"REGEX": query_token}}]])
-#
-#     matches = [matcher(nlp_t) for nlp_t in nlp_cache]
-#     tags = [1 if match else 0 for i, match in enumerate(matches) for _ in code_token_id_mapping[i]]
-#     return np.asarray(tags)
-
-
 def get_matched_labels_binary_v2(tokens, code_token_id_mapping, query_token):
-    #     lemmatizer = WordNetLemmatizer()
     tags = np.zeros(max(code_token_id_mapping[-1]) + 1)
     for i, t in enumerate(tokens):
         if re.search(query_token.lower(), t.lower()):
             tags[code_token_id_mapping[i]] = 1
-    #         elif re.search(lemmatizer.lemmatize(query_token.lower()), t.lower()):
-    #             tags[code_token_id_mapping[i]] = 1
     return np.asarray(tags)
 
 
