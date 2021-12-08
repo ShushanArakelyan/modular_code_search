@@ -1,12 +1,12 @@
 import codebert_embedder_v2 as embedder
 from action.weak_supervision import weak_supervision_scores
-from layout_assembly.layout_w_orig_verbs import LayoutNetWOrigVerbs
+from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
 from layout_assembly.utils import ProcessingException
 
 from nltk.stem import WordNetLemmatizer
 
 
-class LayoutNet_weak_supervision(LayoutNetWOrigVerbs):
+class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
     def __init__(self, filter_func, scoring_module, action_module_facade, device, supervision_func=None,
                  is_sanity_check=False, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
                  use_constant_for_weights=False):
@@ -20,7 +20,7 @@ class LayoutNet_weak_supervision(LayoutNetWOrigVerbs):
         self.use_cls_for_verb_emb = use_cls_for_verb_emb
         self.use_constant_for_weights = use_constant_for_weights
 
-    def forward(self, ccg_parse, sample, orig_verbs=True):
+    def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
