@@ -36,6 +36,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                                                                                 verbs[1],
                                                                                 return_cls_for_query=self.use_cls_for_verb_emb)
             if not self.is_sanity_check:
+                self.accumulated_loss = []
                 _, output, _, _ = self.process_node(tree, code)
                 output = output[1]
             else:
@@ -44,7 +45,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                                                  matching_func=self.supervision_func)
                 output = torch.FloatTensor(output).to(self.device)
                 print("new output shape:", output.shape)
-
+                self.accumulated_loss = []
                 _, output, _, _ = self.process_node(tree, code)
                 output = output[1]
                 print("original output shape: ", output.shape)
