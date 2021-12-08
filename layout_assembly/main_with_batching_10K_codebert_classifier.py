@@ -196,37 +196,37 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
         loss = None
         steps = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
-            if (steps + 1) % print_every == 0:
-                writer.add_scalar("Loss/train",
-                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
-                writer.add_scalar("Acc/train",
-                                  np.mean(accuracy[-print_every:]), writer_it)
-                layout_net.set_eval()
-                mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size)
-                acc = eval_acc(valid_data, layout_net, count=100)
-                writer.add_scalar("MRR/valid", mrr, writer_it)
-                writer.add_scalar(f"P@{k}/valid", pre, writer_it)
-                writer.add_scalar("Acc/valid", acc, writer_it)
-                cur_perf = (mrr, acc, pre)
-                print("Best performance: ", best_accuracy)
-                print("Current performance: ", cur_perf)
-                print("best < current: ", best_accuracy < cur_perf)
-                if best_accuracy < cur_perf:
-                    layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
-                    print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
-                          ("(mrr, acc, p@k)", best_accuracy, cur_perf, epoch, steps))
-                    best_accuracy = cur_perf
-                    wait_step = 0
-                    stop_training = False
-                else:
-                    wait_step += 1
-                    if wait_step >= patience:
-                        print("Stopping training because wait steps exceeded: ", wait_step)
-                        stop_training = True
-                        break
-                layout_net.set_train()
-                if use_lr_scheduler:
-                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
+            # if (steps + 1) % print_every == 0:
+            #     writer.add_scalar("Loss/train",
+            #                       np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
+            #     writer.add_scalar("Acc/train",
+            #                       np.mean(accuracy[-print_every:]), writer_it)
+            #     layout_net.set_eval()
+            #     mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size)
+            #     acc = eval_acc(valid_data, layout_net, count=100)
+            #     writer.add_scalar("MRR/valid", mrr, writer_it)
+            #     writer.add_scalar(f"P@{k}/valid", pre, writer_it)
+            #     writer.add_scalar("Acc/valid", acc, writer_it)
+            #     cur_perf = (mrr, acc, pre)
+            #     print("Best performance: ", best_accuracy)
+            #     print("Current performance: ", cur_perf)
+            #     print("best < current: ", best_accuracy < cur_perf)
+            #     if best_accuracy < cur_perf:
+            #         layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+            #         print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
+            #               ("(mrr, acc, p@k)", best_accuracy, cur_perf, epoch, steps))
+            #         best_accuracy = cur_perf
+            #         wait_step = 0
+            #         stop_training = False
+            #     else:
+            #         wait_step += 1
+            #         if wait_step >= patience:
+            #             print("Stopping training because wait steps exceeded: ", wait_step)
+            #             stop_training = True
+            #             break
+            #     layout_net.set_train()
+            #     if use_lr_scheduler:
+            #         scheduler.step(np.mean(cumulative_loss[-print_every:]))
 
             for param in layout_net.parameters():
                 param.grad = None
@@ -274,11 +274,41 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
+        writer.add_scalar("Loss/train",
+                          np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
+        writer.add_scalar("Acc/train",
+                          np.mean(accuracy[-print_every:]), writer_it)
+        layout_net.set_eval()
+        mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size)
+        acc = eval_acc(valid_data, layout_net, count=100)
+        writer.add_scalar("MRR/valid", mrr, writer_it)
+        writer.add_scalar(f"P@{k}/valid", pre, writer_it)
+        writer.add_scalar("Acc/valid", acc, writer_it)
+        cur_perf = (mrr, acc, pre)
+        print("Best performance: ", best_accuracy)
+        print("Current performance: ", cur_perf)
+        print("best < current: ", best_accuracy < cur_perf)
+        if best_accuracy < cur_perf:
+            layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+            print("Saving model with best %s: %s -> %s on epoch=%d, global_step=%d" %
+                  ("(mrr, acc, p@k)", best_accuracy, cur_perf, epoch, steps))
+            best_accuracy = cur_perf
+            wait_step = 0
+            stop_training = False
+        else:
+            wait_step += 1
+            if wait_step >= patience:
+                print("Stopping training because wait steps exceeded: ", wait_step)
+                stop_training = True
+                break
+        layout_net.set_train()
+        if use_lr_scheduler:
+            scheduler.step(np.mean(cumulative_loss[-print_every:]))
+        # print("saving to checkpoint: ")
+        # layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
+        # print("saved successfully")
         if stop_training:
             break
-        print("saving to checkpoint: ")
-        layout_net.save_to_checkpoint(checkpoint_prefix + '.tar')
-        print("saved successfully")
 
 
 if __name__ == '__main__':
