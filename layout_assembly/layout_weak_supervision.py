@@ -44,6 +44,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                                                  attend_scores=scoring_labels,
                                                  matching_func=self.supervision_func)
                 output = torch.FloatTensor(output).to(self.device)
+                print("code embeddings shape: ", self.code_embeddings.shape)
                 print("new output shape:", output.shape)
                 self.accumulated_loss = []
                 _, output, _, _ = self.process_node(tree, code)

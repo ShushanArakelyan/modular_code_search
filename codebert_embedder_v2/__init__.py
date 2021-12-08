@@ -102,6 +102,7 @@ def get_feature_inputs_batch(queries, codes, return_segment_ids=False):
                                             pad_token_segment_id=0)
 
     input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long).to(device)
+    print("input ids shape: ", input_ids.shape)
     input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long).to(device)
     if return_segment_ids:
         token_type_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long).to(device)
