@@ -1,10 +1,12 @@
 import codebert_embedder_v2 as embedder
 from action.weak_supervision import weak_supervision_scores
-from layout_assembly.layout_codebert_classifier import LayoutNet_w_codebert_classifier
+from layout_assembly.layout_w_orig_verbs import LayoutNetWOrigVerbs
 from layout_assembly.utils import ProcessingException
 
+from nltk.stem import WordNetLemmatizer
 
-class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
+
+class LayoutNet_weak_supervision(LayoutNetWOrigVerbs):
     def __init__(self, filter_func, scoring_module, action_module_facade, device, supervision_func=None,
                  is_sanity_check=False, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
                  use_constant_for_weights=False):
@@ -13,8 +15,10 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
         self.filter = filter_func
         self.supervision_func = supervision_func
         self.is_sanity_check = is_sanity_check
+        self.reverse_string2predicate = self.construct_reverse_string2predicate()
+        self.lemmatizer = WordNetLemmatizer()
 
-    def forward(self, ccg_parse, sample):
+    def forward(self, ccg_parse, sample, orig_verbs=True):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
@@ -24,7 +28,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
         if len(verbs[0]) > 1:
             # too many actions
             return None
-        if not self.filter(verbs[0][0]):
+        if not self.filter(verbs[0][0].lower()):
             return None
         scoring_labels = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         try:
