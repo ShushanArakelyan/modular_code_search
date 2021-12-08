@@ -320,8 +320,8 @@ if __name__ == '__main__':
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--use_constant_for_weights', dest='use_constant_for_weights', default=False,
                         action='store_true')
-    parser.add_argument('--ws_scoring_func', dest='ws_scoring_func', type='str')
-    parser.add_argument('--ws_filter_func', dest='ws_filter_func', type='str')
+    parser.add_argument('--ws_scoring_func', dest='ws_scoring_func', type=str)
+    parser.add_argument('--ws_filter_func', dest='ws_filter_func', type=str)
     parser.add_argument('--ws_sanity_check', dest='ws_sanity_check', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -353,5 +353,5 @@ if __name__ == '__main__':
          distractor_set_size=args.distractor_set_size,
          use_constant_for_weights=args.use_constant_for_weights,
          ws_scoring=args.ws_scoring_func,
-         ws_filter_func=args.ws_filter_func,
+         filter_condition=args.ws_filter_func,
          ws_sanity_check=args.ws_sanity_check)
