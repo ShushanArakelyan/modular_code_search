@@ -53,12 +53,12 @@ def eval_modular(dataset, idx, idxs_to_eval, layout_net, k):
     return mrr(ranks), p_at_k(ranks, k)
 
 
-def eval_mrr_and_p_at_k(dataset, layout_net, k=1, distractor_set_size=1000):
+def eval_mrr_and_p_at_k(dataset, layout_net, k=1, distractor_set_size=100):
     mrrs = []
     precisions = []
     with torch.no_grad():
         np.random.seed(123)
-        examples = np.random.choice(range(len(dataset)), 500, replace=False)
+        examples = np.random.choice(range(len(dataset)), 250, replace=False)
         for ex in examples:
             np.random.seed(ex)
             idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
