@@ -36,9 +36,7 @@ def uniform(verb, line, scores):
 
 
 def propagate(verb, line, scores):
-    # pooling
-    # return pooled scores
-    raise NotImplementedError()
+    return 1
 
 
 def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func, propagate_scores):
