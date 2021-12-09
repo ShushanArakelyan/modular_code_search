@@ -8,7 +8,7 @@ from layout_assembly.utils import ProcessingException
 
 class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
     def __init__(self, filter_func, scoring_module, action_module_facade, device, supervision_func=None,
-                 is_sanity_check=False, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
+                 is_sanity_check=False, ws_propagate_attend_scores=True, use_cls_for_verb_emb=True, precomputed_scores_provided=False,
                  use_constant_for_weights=False):
         super().__init__(scoring_module, action_module_facade, device,
                          precomputed_scores_provided=precomputed_scores_provided,
@@ -17,6 +17,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
         self.filter = filter_func
         self.supervision_func = supervision_func
         self.is_sanity_check = is_sanity_check
+        self.ws_propagate_attend_scores = ws_propagate_attend_scores
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
@@ -42,6 +43,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
             else:
                 output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0].lower(),
                                                  attend_scores=scoring_labels,
+                                                 propagate_attend_scores=self.ws_propagate_attend_scores,
                                                  matching_func=self.supervision_func)
                 output = torch.FloatTensor(output).to(self.device).unsqueeze(dim=1)
         except ProcessingException:

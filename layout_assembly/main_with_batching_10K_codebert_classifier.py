@@ -106,7 +106,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
          valid_file_name, num_negatives, precomputed_scores_provided, normalized_action, l1_reg_coef, adamw,
          example_count, dropout, load_finetuned_codebert, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, use_cls_for_verb_emb, patience, k, use_constant_for_weights, distractor_set_size,
-         ws_scoring="", ws_sanity_check=False, filter_condition="", layout_checkpoint=None):
+         ws_scoring="", ws_sanity_check=False, filter_condition="", ws_propagate_attend_scores=False, layout_checkpoint=None):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -139,12 +139,16 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
         from action.ws_regex_dict import filter_func
         if ws_scoring == 'regex':
             ws_scoring_func = regex_matching
+            if ws_propagate_attend_scores is False:
+                ws_propagate_attend_scores = True
         elif ws_scoring == 'random':
             ws_scoring_func = random
         elif ws_scoring == 'uniform':
             ws_scoring_func = uniform
         elif ws_scoring == 'propagate':
             ws_scoring_func = propagate
+            if ws_propagate_attend_scores is False:
+                ws_propagate_attend_scores = True
         else:
             raise Exception(f"Unknown weak supervision method name provided: {ws_scoring}")
         filter_f = functools.partial(filter_func, filter_condition)
@@ -153,6 +157,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                                                 is_sanity_check=ws_sanity_check,
                                                 precomputed_scores_provided=precomputed_scores_provided,
                                                 use_cls_for_verb_emb=use_cls_for_verb_emb,
+                                                ws_propagate_attend_scores=ws_propagate_attend_scores,
                                                 use_constant_for_weights=use_constant_for_weights)
     else:
         layout_net = LayoutNet(scoring_module, action_module, device,
@@ -356,6 +361,7 @@ if __name__ == '__main__':
     parser.add_argument('--ws_scoring_func', dest='ws_scoring_func', type=str)
     parser.add_argument('--ws_filter_func', dest='ws_filter_func', type=str)
     parser.add_argument('--ws_sanity_check', dest='ws_sanity_check', default=False, action='store_true')
+    parser.add_argument('--ws_propagate_scores', dest='ws_propagate_scores', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -387,4 +393,5 @@ if __name__ == '__main__':
          use_constant_for_weights=args.use_constant_for_weights,
          ws_scoring=args.ws_scoring_func,
          filter_condition=args.ws_filter_func,
-         ws_sanity_check=args.ws_sanity_check)
+         ws_sanity_check=args.ws_sanity_check,
+         ws_propagate_attend_scores=args.ws_propagate_scores)

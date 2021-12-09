@@ -41,12 +41,16 @@ def propagate(verb, line, scores):
     raise NotImplementedError()
 
 
-def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func):
+def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func, propagate_scores):
     code = ' '.join(code).split('\n')
     scores_per_line = [0]
     for line in code[1:]:
         scores_per_line.append(matching_func(verb, line, attend_scores))
-    return scores_per_line_to_scores_per_token(embedder, code, scores_per_line)
+    scores_per_token = scores_per_line_to_scores_per_token(embedder, code, scores_per_line)
+    if propagate_scores:
+        assert len(attend_scores) == len(scores_per_token)
+        scores_per_token *= attend_scores.squeeze()
+    return scores_per_token
 
 
 def scores_per_line_to_scores_per_token(embedder, loc, scores_per_line):
