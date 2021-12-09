@@ -77,7 +77,7 @@ def eval_acc(dataset, layout_net, count):
         precomputed_scores_provided = layout_net.precomputed_scores_provided
         layout_net.precomputed_scores_provided = False
         i = 0
-        for sample in range(min(len(dataset), 500)):
+        for sample in range(len(dataset)):
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             pred = layout_net.forward(sample[-1][1:-1], sample)
@@ -85,6 +85,7 @@ def eval_acc(dataset, layout_net, count):
                 continue
             accs.append(int(torch.argmax(pred) == label))
 
+            # Create a negative example
             np.random.seed(22222 + i)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
@@ -280,7 +281,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
                           np.mean(accuracy[-print_every:]), writer_it)
         layout_net.set_eval()
         mrr, pre = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size)
-        acc = eval_acc(valid_data, layout_net, count=100)
+        acc = eval_acc(valid_data, layout_net, count=1000)
         writer.add_scalar("MRR/valid", mrr, writer_it)
         writer.add_scalar(f"P@{k}/valid", pre, writer_it)
         writer.add_scalar("Acc/valid", acc, writer_it)
