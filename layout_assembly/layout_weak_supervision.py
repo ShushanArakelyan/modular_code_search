@@ -42,7 +42,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
                 output = output[1]
             else:
                 output = weak_supervision_scores(embedder=embedder, code=code, verb=verbs[0][0].lower(),
-                                                 attend_scores=scoring_labels,
+                                                 attend_scores=scoring_labels[0],
                                                  propagate_scores=self.ws_propagate_attend_scores,
                                                  matching_func=self.supervision_func)
                 output = torch.FloatTensor(output).to(self.device).unsqueeze(dim=1)
