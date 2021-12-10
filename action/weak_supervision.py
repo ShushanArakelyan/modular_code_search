@@ -49,7 +49,8 @@ def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func, 
         print("scores: ", attend_scores.shape)
         print("ws: ", len(scores_per_token))
         assert len(attend_scores) == len(scores_per_token)
-        scores_per_token *= attend_scores.squeeze()
+        scores_per_token *= attend_scores.squeeze().cpu().numpy()
+        print("updated ws: ", len(scores_per_token))
     return scores_per_token
 
 
