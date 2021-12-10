@@ -46,9 +46,9 @@ def weak_supervision_scores(embedder, code, verb, attend_scores, matching_func, 
         scores_per_line.append(matching_func(verb, line, attend_scores))
     scores_per_token = scores_per_line_to_scores_per_token(embedder, code, scores_per_line)
     if propagate_scores:
-        print("scores: ", attend_scores.shape)
-        print("weak sup.: ", len(scores_per_token))
-        assert len(attend_scores) == len(scores_per_token)
+        # attend scores may be truncated to a shorter length
+        N = min(len(attend_scores), len(scores_per_token))
+        scores_per_token = scores_per_token[:N]
         scores_per_token *= attend_scores.squeeze().cpu().numpy()
     return scores_per_token
 
