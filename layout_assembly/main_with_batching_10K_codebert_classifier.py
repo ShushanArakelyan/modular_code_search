@@ -97,8 +97,11 @@ def eval_acc(dataset, layout_net, count):
             if i >= count:
                 break
             i += 1
+            print("i += 1")
         layout_net.precomputed_scores_provided = precomputed_scores_provided
     layout_net.set_train()
+    print("Accuracies: ", len(accs))
+    print(np.mean(accs))
     return np.mean(accs)
 
 
