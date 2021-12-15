@@ -348,7 +348,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
     writer = SummaryWriter(summary_writer_dir + f'/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
-    print("layout net params: ", layout_net.parameters())
     checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 

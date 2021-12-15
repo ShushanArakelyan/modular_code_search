@@ -56,7 +56,8 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        return chain([self.modules[i].parameters() for i in self.modules.keys()])
+        print(self.modules[0].parameters())
+        return chain([{"params": self.modules[i].parameters()} for i in self.modules.keys()])
 
     def named_parameters(self):
         return chain([self.modules[i].named_parameters() for i in self.modules.keys()])
