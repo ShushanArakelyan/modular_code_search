@@ -27,7 +27,7 @@ class ActionModuleWrapper(object):
             self.inputs[-1].append(input)
         else:
             if ActionModuleWrapper.empty_emb is None:
-                ActionModuleWrapper.empty_emb = torch.zeros(1, embedder.dim).to(self.device)
+                ActionModuleWrapper.empty_emb = torch.zeros(1, embedder.dim, requires_grad=False).to(self.device)
             self.inputs.append([ActionModuleWrapper.empty_emb, input])
 
     def add_preposition(self, prep):
