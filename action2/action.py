@@ -39,6 +39,10 @@ class ActionModule(object):
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
         for indx, i in enumerate(inputs):
+            if len(i) < 2:
+                # we are skipping some arguments, e.g. action-s, so it is possible
+                # to have a preposition without its corresponding scores
+                continue
             prep_embedding, scores = i
             if isinstance(scores, tuple):
                 _, scores = scores
