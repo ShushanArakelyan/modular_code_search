@@ -57,8 +57,13 @@ class ActionModule(object):
             updated_i = torch.cat((repl_out, scores), dim=1)
             print('updated_i', updated_i.shape)
             updated_inputs.append(updated_i)
+        N = min([u.shape[0] for u in updated_inputs])
+        print('min shared len', N)
+        # scores might be of different sizes depending on the query they were embedded with.
+        updated_inputs = [u[:N, :] for u in updated_inputs]
         updated_inputs = torch.cat(updated_inputs, dim=1)
         print('updated_inputs', updated_inputs.shape)
+        print("code embedding:", code_embedding.shape)
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1)
         print('final_fwd_input', final_fwd_input.shape)
         out_scores = module.forward(final_fwd_input)
