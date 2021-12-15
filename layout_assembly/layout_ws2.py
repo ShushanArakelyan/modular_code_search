@@ -17,6 +17,7 @@ class LayoutNetWS2(LayoutNet):
         self.device = device
         self.scoring_outputs = None
         self.finetune_codebert = True
+        embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample, process_method):
         tree = self.construct_layout(ccg_parse)
