@@ -1,4 +1,7 @@
+from itertools import chain
+
 import numpy as np
+import torch
 
 import codebert_embedder as embedder
 from layout_assembly.layout import LayoutNet
@@ -63,3 +66,34 @@ class LayoutNetWS2(LayoutNet):
             for child in node.children:
                 self.process_node(child, code, orig_sentence, scoring_it, action_it, output_list, parent_module)
             return parent_module, scoring_it, action_it, output_list
+
+    def set_eval(self):
+        self.action_module.set_eval()
+
+    def set_train(self):
+        self.action_module.set_train()
+
+    def parameters(self):
+        if self.finetune_codebert:
+            return chain(self.action_module.parameters(), embedder.model.parameters())
+        else:
+            return chain(self.action_module.parameters())
+
+    def load_from_checkpoint(self, checkpoint):
+        # self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
+        #
+        # models = torch.load(checkpoint, map_location=self.device)
+        # self.classifier.load_state_dict(models['classifier'])
+        # self.classifier = self.classifier.to(self.device)
+        # if 'codebert.model' in models:
+        #     print("Loading CodeBERT weights from the checkpoint")
+        #     embedder.model.load_state_dict(models['codebert.model'])
+        pass
+
+    def save_to_checkpoint(self, checkpoint):
+        self.action_module.save_to_checkpoint(checkpoint + '.action_module')
+        model_dict = {'codebert.model': embedder.model.state_dict()}
+        torch.save(model_dict, checkpoint)
+
+    def state_dict(self):
+        return {'action_module': self.action_module.state_dict()}
