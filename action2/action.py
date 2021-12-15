@@ -70,13 +70,16 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        return chain.from_iterable([self.modules[i].parameters() for i in self.modules.keys()])
+        return chain.from_iterable([self.modules[i].parameters() for i in self.modules.keys()] +
+                                   [self.verb_embedder.parameters()])
 
     def named_parameters(self):
-        return chain.from_iterable([self.modules[i].named_parameters() for i in self.modules.keys()])
+        return chain.from_iterable([self.modules[i].named_parameters() for i in self.modules.keys()] +
+                                   [self.verb_embedder.named_parameters()])
 
     def state_dict(self):
         state_dict = {f'{i}_input': self.modules[i].state_dict() for i in self.modules.keys()}
+        state_dict['verb_embedder'] = self.verb_embedder.state_dict()
         return state_dict
 
     def save_to_checkpoint(self, checkpoint):

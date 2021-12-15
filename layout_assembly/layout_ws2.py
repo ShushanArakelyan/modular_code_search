@@ -7,6 +7,7 @@ import codebert_embedder_v2 as embedder
 from layout_assembly.layout import LayoutNet
 from layout_assembly.utils import ProcessingException
 
+
 class ActionModuleWrapper(object):
     empty_emb = None
     prep_emb_cache = {}
@@ -40,7 +41,6 @@ class ActionModuleWrapper(object):
 
     def set_train(self):
         self.module.set_train()
-
 
 
 class LayoutNetWS2(LayoutNet):

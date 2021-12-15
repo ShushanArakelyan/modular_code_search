@@ -172,6 +172,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
+                print('running loss backward: ')
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
