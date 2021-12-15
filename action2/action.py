@@ -31,15 +31,13 @@ class ActionModule(object):
     def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
         num_inputs = len(inputs) - 1
-        if num_inputs > 2:
+        if num_inputs > 2 or precomputed_embeddings is None:
             raise ProcessingException()
-        module = self.modules[num_inputs]
 
-        if precomputed_embeddings is None:
-            raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
         for indx, i in enumerate(inputs):
             if len(i) < 2:
+                num_inputs -= 1
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
@@ -57,6 +55,7 @@ class ActionModule(object):
             repl_out = out.repeat(len(scores), 1)
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
+        module = self.modules[num_inputs]
         N = min([u.shape[0] for u in updated_inputs])
         N = min(N, code_embedding.shape[0])
         # scores might be of different sizes depending on the query they were embedded with.
