@@ -56,6 +56,7 @@ class ActionModule(object):
             print('repl_out', repl_out.shape)
             updated_i = torch.cat((repl_out, scores), dim=1)
             print('updated_i', updated_i.shape)
+            updated_inputs.append(updated_i)
         updated_inputs = torch.cat(updated_inputs, dim=1)
         print('updated_inputs', updated_inputs.shape)
         final_fwd_input = torch.cat((updated_inputs, code_embedding))
