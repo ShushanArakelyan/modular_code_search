@@ -54,6 +54,7 @@ class ActionModule(object):
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
         N = min([u.shape[0] for u in updated_inputs])
+        N = min(N, code_embedding.shape[0])
         # scores might be of different sizes depending on the query they were embedded with.
         updated_inputs = [u[:N, :] for u in updated_inputs]
         updated_inputs = torch.cat(updated_inputs, dim=1)
