@@ -59,7 +59,7 @@ class ActionModule(object):
             updated_inputs.append(updated_i)
         updated_inputs = torch.cat(updated_inputs, dim=1)
         print('updated_inputs', updated_inputs.shape)
-        final_fwd_input = torch.cat((updated_inputs, code_embedding))
+        final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1)
         print('final_fwd_input', final_fwd_input.shape)
         out_scores = module.forward(final_fwd_input)
         print("out_scores:", out_scores.shape)
