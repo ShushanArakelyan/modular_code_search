@@ -10,7 +10,7 @@ class ActionModule(object):
         self.device = device
         hidden_input_dims = [dim_size * 2, 512]
         hidden_output_dims = [512, 7]
-        self.verb_embedder = FC2(hidden_input_dims, hidden_output_dims, dropout=self.dropout).to(self.device)
+        self.verb_embedder = FC2(hidden_input_dims, hidden_output_dims, dropout=dropout).to(self.device)
         self.cos = torch.nn.CosineSimilarity()
         self.modules = None
         self.max_inputs_allowed = max_inputs_allowed
