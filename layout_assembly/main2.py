@@ -164,8 +164,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                     loss += l
 
                 binarized_preds = binarize(torch.sigmoid(pred_out))
-                acc = sum(binarized_preds == labels) * 1. / labels.shape[0]
-                print(acc)  # make sure this is not a pytorch object
+                acc = sum(int(binarized_preds == labels)) * 1. / labels.shape[0]
+                print(acc)
                 accuracy.append(acc)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
