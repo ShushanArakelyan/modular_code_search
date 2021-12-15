@@ -67,7 +67,7 @@ class ActionModule(object):
         print("code embedding:", code_embedding.shape)
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1).unsqueeze(dim=1)
         print('final_fwd_input', final_fwd_input.shape)
-        out_scores = module.forward(final_fwd_input).squeeze()
+        out_scores = module.forward(final_fwd_input).squeeze(dim=1)
         print("out_scores:", out_scores.shape)
         return true_scores, out_scores
 
