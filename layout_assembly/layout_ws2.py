@@ -111,6 +111,12 @@ class LayoutNetWS2(LayoutNet):
         else:
             return chain(self.action_module.parameters())
 
+    def named_parameters(self):
+        if self.finetune_codebert:
+            return chain(self.action_module.named_parameters(), embedder.model.named_parameters())
+        else:
+            return chain(self.action_module.named_parameters())
+
     def load_from_checkpoint(self, checkpoint):
         # self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
         #
