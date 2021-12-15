@@ -342,6 +342,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
+    print("Creating action module: ", action_module)
     layout_net = LayoutNet(scoring_module, action_module, device)
 
     now = datetime.now()
