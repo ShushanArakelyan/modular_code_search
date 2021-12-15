@@ -29,6 +29,7 @@ def init_embedder(_device, load_finetuned=False, checkpoint_dir=False):
         device = _device
     else:
         device = 'cpu'
+    print("\n\n\n\nInit tokenizer\n\n\n\n")
     tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
     if load_finetuned:
 #         model_dir = '/home/anna/CodeBERT/CodeBERT/codesearch/models/'
