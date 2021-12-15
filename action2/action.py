@@ -48,9 +48,9 @@ class ActionModule(object):
                 # mask this index
                 true_scores = scores
                 scores = torch.zeros_like(scores).to(self.device)
-            fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1)
+            fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1).unsqueeze(dim=1)
             print('fwd input: ', fwd_input.shape)
-            out = self.verb_embedder(fwd_input)
+            out = self.verb_embedder(fwd_input).squeeze()
             print('out', out.shape)
             repl_out = out.repeat(len(scores), 1)
             print('repl_out', repl_out.shape)
