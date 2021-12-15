@@ -387,8 +387,6 @@ if __name__ == '__main__':
     parser.add_argument('--lr', dest='lr', type=float, help='learning rate', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
                         help='Validation data file', required=True)
-    parser.add_argument('--layout_checkpoint_file', dest='layout_checkpoint_file', type=str,
-                        help='Continue training from this checkpoint, not implemented')
     parser.add_argument('--num_negatives', dest='num_negatives', type=int,
                         help='Number of distractors to use in training')
     parser.add_argument('--adamw', dest='adamw', type=float, default=0)
@@ -422,7 +420,6 @@ if __name__ == '__main__':
          summary_writer_dir=args.summary_writer_dir,
          use_lr_scheduler=args.use_lr_scheduler,
          clip_grad_value=args.clip_grad_value,
-         layout_checkpoint=args.layout_checkpoint_file,
          patience=args.patience,
          k=args.p_at_k,
          distractor_set_size=args.distractor_set_size,
