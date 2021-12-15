@@ -29,19 +29,18 @@ class LayoutNetWS2(LayoutNet):
             raise ProcessingException()
         self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
-        outs = self.process_node(tree, code, sample[0])
+        outs = self.process_node(tree, code)
         return outs[-1]
 
     def get_masking_idx(self):
         return 1
 
-    def process_node(self, node, code, orig_sentence, scoring_it=0, action_it=0, output_list=[], parent_module=None):
+    def process_node(self, node, code, scoring_it=0, action_it=0, output_list=[], parent_module=None):
         if node.node_type == 'action':
             action_module_wrapper = ActionModuleWrapper(self.action_module)
-            action_module_wrapper.param = self.get_orig_verb(node.node_value, orig_sentence)
+            action_module_wrapper.param = node.node_value
             for child in node.children:
                 action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child, code,
-                                                                                              orig_sentence,
                                                                                               scoring_it, action_it,
                                                                                               output_list,
                                                                                               action_module_wrapper)
@@ -63,7 +62,7 @@ class LayoutNetWS2(LayoutNet):
         elif node.node_type == 'preposition':
             parent_module.add_preposition(node.node_value)
             for child in node.children:
-                self.process_node(child, code, orig_sentence, scoring_it, action_it, output_list, parent_module)
+                self.process_node(child, code, scoring_it, action_it, output_list, parent_module)
             return parent_module, scoring_it, action_it, output_list
 
     def set_eval(self):
