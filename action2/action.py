@@ -56,11 +56,10 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        print(self.modules[0].parameters())
-        return chain([{"params": self.modules[i].parameters()} for i in self.modules.keys()])
+        return chain.from_iterable([self.modules[i].parameters() for i in self.modules.keys()])
 
     def named_parameters(self):
-        return chain([self.modules[i].named_parameters() for i in self.modules.keys()])
+        return chain.from_iterable([self.modules[i].named_parameters() for i in self.modules.keys()])
 
     def state_dict(self):
         state_dict = {f'{i}_input': self.modules[i].state_dict() for i in self.modules.keys()}
