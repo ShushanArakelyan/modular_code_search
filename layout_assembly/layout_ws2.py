@@ -51,7 +51,6 @@ class LayoutNetWS2(LayoutNet):
         self.device = device
         self.scoring_outputs = None
         self.finetune_codebert = True
-        print("calling init embedder")
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
@@ -69,7 +68,7 @@ class LayoutNetWS2(LayoutNet):
         return outs[-1]
 
     def get_masking_idx(self):
-        return 1
+        return 0
 
     def process_node(self, node, code, scoring_it=0, action_it=0, output_list=[], parent_module=None):
         if node.node_type == 'action':
@@ -84,7 +83,7 @@ class LayoutNetWS2(LayoutNet):
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
-            outputs = self.action_module.forward(action_module_wrapper.inputs, code, self.get_masking_idx(),
+            outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
             output_list.append(outputs)
             return parent_module, scoring_it, action_it, output_list

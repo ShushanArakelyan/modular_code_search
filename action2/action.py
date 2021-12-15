@@ -21,14 +21,14 @@ class ActionModule(object):
         for i in range(self.max_inputs_allowed):
             dim = dim_size + (i + 1) * 8
             self.modules[i] = torch.nn.Sequential(
-                # torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
+                torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
                 torch.nn.Linear(dim, int(dim / 2)),
                 torch.nn.Dropout(dropout),
                 torch.nn.ReLU(),
                 torch.nn.Linear(int(dim / 2), 2)
             ).to(self.device)
 
-    def forward(self, inputs, masking_indx, code, precomputed_embeddings):
+    def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
         num_inputs = len(inputs) - 1
         if num_inputs > 2:
@@ -63,6 +63,7 @@ class ActionModule(object):
         updated_inputs = [u[:N, :] for u in updated_inputs]
         updated_inputs = torch.cat(updated_inputs, dim=1)
         print('updated_inputs', updated_inputs.shape)
+        code_embedding = code_embedding[:N, :]
         print("code embedding:", code_embedding.shape)
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1)
         print('final_fwd_input', final_fwd_input.shape)
