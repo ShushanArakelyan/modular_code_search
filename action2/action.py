@@ -28,13 +28,16 @@ class ActionModule(object):
                 torch.nn.Linear(int(dim / 2), 2)
             ).to(self.device)
 
-    def forward(self, inputs, masking_indx, code, verb_embedding):
+    def forward(self, inputs, masking_indx, code, precomputed_embeddings):
         updated_inputs = []
         num_inputs = len(inputs) - 1
         if num_inputs > 2:
             raise ProcessingException()
         module = self.modules[num_inputs]
 
+        if precomputed_embeddings is None:
+            raise ProcessingException()
+        verb_embedding, code_embedding = precomputed_embeddings
         for indx, i in enumerate(inputs):
             prep_embedding, scores = i
             if isinstance(scores, tuple):
@@ -51,7 +54,7 @@ class ActionModule(object):
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
         updated_inputs = torch.cat(updated_inputs)
-        out_scores = module.forward(updated_inputs, code)
+        out_scores = module.forward(torch.cat(updated_inputs, code_embedding))
 
         return true_scores, out_scores
 
