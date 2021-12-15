@@ -3,7 +3,7 @@ from itertools import chain
 import numpy as np
 import torch
 
-import codebert_embedder as embedder
+import codebert_embedder_v2 as embedder
 from layout_assembly.layout import LayoutNet
 from layout_assembly.utils import ActionModuleWrapper, ProcessingException
 

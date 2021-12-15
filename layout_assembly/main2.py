@@ -8,7 +8,7 @@ import tqdm
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-import codebert_embedder as embedder
+import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
 from eval.dataset import CodeSearchNetDataset_wShards, CodeSearchNetDataset_NotPrecomputed
 from eval.dataset import transform_sample, filter_neg_samples
