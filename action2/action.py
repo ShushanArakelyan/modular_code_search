@@ -49,13 +49,19 @@ class ActionModule(object):
                 true_scores = scores
                 scores = torch.zeros_like(scores).to(self.device)
             fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1)
+            print('fwd input: ', fwd_input.shape)
             out = self.verb_embedder(fwd_input)
+            print('out', out.shape)
             repl_out = out.repeat(len(scores), 0)
+            print('repl_out', repl_out.shape)
             updated_i = torch.cat((repl_out, scores), dim=1)
-            updated_inputs.append(updated_i)
+            print('updated_i', updated_i.shape)
         updated_inputs = torch.cat(updated_inputs)
-        out_scores = module.forward(torch.cat(updated_inputs, code_embedding))
-
+        print('updated_inputs', updated_inputs.shape)
+        final_fwd_input = torch.cat((updated_inputs, code_embedding))
+        print('final_fwd_input', final_fwd_input.shape)
+        out_scores = module.forward(final_fwd_input)
+        print("out_scores:", out_scores.shape)
         return true_scores, out_scores
 
     def parameters(self):
