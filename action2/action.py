@@ -60,6 +60,9 @@ class ActionModule(object):
         code_embedding = code_embedding[:N, :]
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1).unsqueeze(dim=1)
         out_scores = module.forward(final_fwd_input).squeeze(dim=1)
+        N = min(len(true_scores), len(out_scores))
+        true_scores = true_scores[:N, :]
+        out_scores = out_scores[:N, :]
         return true_scores, out_scores
 
     def parameters(self):
