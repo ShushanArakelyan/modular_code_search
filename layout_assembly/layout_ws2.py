@@ -18,6 +18,7 @@ class ActionModuleWrapper(object):
         self.module = action_module_facade
 
     def forward(self, code, verb_embedding):
+        print([len(i) for i in self.inputs])
         return self.module.forward(self.param, self.inputs, code, verb_embedding)
 
     def add_input(self, input):
@@ -64,18 +65,18 @@ class LayoutNetWS2(LayoutNet):
             raise ProcessingException()
         self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
-        outs = self.process_node(tree, code)
+        outs = self.process_node(tree)
         return outs[-1]
 
     def get_masking_idx(self):
         return 0
 
-    def process_node(self, node, code, scoring_it=0, action_it=0, output_list=[], parent_module=None):
+    def process_node(self, node, scoring_it=0, action_it=0, output_list=[], parent_module=None):
         if node.node_type == 'action':
             action_module_wrapper = ActionModuleWrapper(self.action_module)
             action_module_wrapper.param = node.node_value
             for child in node.children:
-                action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child, code,
+                action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child,
                                                                                               scoring_it, action_it,
                                                                                               output_list,
                                                                                               action_module_wrapper)
@@ -97,7 +98,7 @@ class LayoutNetWS2(LayoutNet):
         elif node.node_type == 'preposition':
             parent_module.add_preposition(node.node_value)
             for child in node.children:
-                self.process_node(child, code, scoring_it, action_it, output_list, parent_module)
+                self.process_node(child, scoring_it, action_it, output_list, parent_module)
             return parent_module, scoring_it, action_it, output_list
 
     def set_eval(self):
