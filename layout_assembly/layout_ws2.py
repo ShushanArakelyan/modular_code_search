@@ -12,10 +12,11 @@ class ActionModuleWrapper(object):
     empty_emb = None
     prep_emb_cache = {}
 
-    def __init__(self, action_module_facade):
+    def __init__(self, action_module_facade, device):
         self.param = None
         self.inputs = []
         self.input_count = 0
+        self.device = device
         self.module = action_module_facade
 
     def forward(self, code, verb_embedding):
@@ -26,14 +27,12 @@ class ActionModuleWrapper(object):
             self.inputs[-1].append(input)
         else:
             if ActionModuleWrapper.empty_emb is None:
-                with torch.no_grad():
-                    ActionModuleWrapper.empty_emb = embedder.embed([' '], [' '])[1]
+                ActionModuleWrapper.empty_emb = torch.zeros(embedder.dim, 1).to(self.device)
             self.inputs.append([ActionModuleWrapper.empty_emb, input])
 
     def add_preposition(self, prep):
         if prep not in ActionModuleWrapper.prep_emb_cache:
-            with torch.no_grad():
-                ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
+            ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
         self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
 
     def set_eval(self):
@@ -72,7 +71,7 @@ class LayoutNetWS2(LayoutNet):
 
     def process_node(self, node, scoring_it=0, action_it=0, output_list=[], parent_module=None):
         if node.node_type == 'action':
-            action_module_wrapper = ActionModuleWrapper(self.action_module)
+            action_module_wrapper = ActionModuleWrapper(self.action_module, self.device)
             action_module_wrapper.param = node.node_value
             for child in node.children:
                 action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child,

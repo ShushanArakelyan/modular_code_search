@@ -136,7 +136,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if stop_training:
                 break
-            for param in layout_net.parameters():
+            for name, param in layout_net.named_parameters():
+                print(name)
                 param.grad = None
             sample, scores, verbs, label = datum
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
