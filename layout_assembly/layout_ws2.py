@@ -13,7 +13,6 @@ class LayoutNetWS2(LayoutNet):
         print(device)
         self.scoring_module = scoring_module
         self.action_module = action_module
-        print(self.action_module)
         self.device = device
         self.scoring_outputs = None
         self.finetune_codebert = True

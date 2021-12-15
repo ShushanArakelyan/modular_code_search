@@ -342,15 +342,13 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
-    print("Creating action module: ", action_module)
     layout_net = LayoutNet(scoring_module, action_module, device)
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
     writer = SummaryWriter(summary_writer_dir + f'/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
-    writer_it = 0
-
+    print("layout net params: ", layout_net.parameters())
     checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
