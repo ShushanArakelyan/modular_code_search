@@ -5,7 +5,42 @@ import torch
 
 import codebert_embedder_v2 as embedder
 from layout_assembly.layout import LayoutNet
-from layout_assembly.utils import ActionModuleWrapper, ProcessingException
+from layout_assembly.utils import ProcessingException
+
+class ActionModuleWrapper(object):
+    empty_emb = None
+    prep_emb_cache = {}
+
+    def __init__(self, action_module_facade):
+        self.param = None
+        self.inputs = []
+        self.input_count = 0
+        self.module = action_module_facade
+
+    def forward(self, code, verb_embedding):
+        return self.module.forward(self.param, self.inputs, code, verb_embedding)
+
+    def add_input(self, input):
+        if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
+            self.inputs[-1].append(input)
+        else:
+            if ActionModuleWrapper.empty_emb is None:
+                with torch.no_grad():
+                    ActionModuleWrapper.empty_emb = embedder.embed([' '], [' '])[1]
+            self.inputs.append([ActionModuleWrapper.empty_emb, input])
+
+    def add_preposition(self, prep):
+        if prep not in ActionModuleWrapper.prep_emb_cache:
+            with torch.no_grad():
+                ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
+        self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
+
+    def set_eval(self):
+        self.module.set_eval()
+
+    def set_train(self):
+        self.module.set_train()
+
 
 
 class LayoutNetWS2(LayoutNet):
@@ -16,6 +51,7 @@ class LayoutNetWS2(LayoutNet):
         self.device = device
         self.scoring_outputs = None
         self.finetune_codebert = True
+        print("calling init embedder")
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
