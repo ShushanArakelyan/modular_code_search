@@ -398,7 +398,6 @@ if __name__ == '__main__':
     parser.add_argument('--summary_writer_dir', dest='summary_writer_dir', type=str)
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
-    parser.add_argument('--use_cls_for_verb_emb', dest='use_cls_for_verb_emb', default=False, action='store_true')
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--p_at_k', dest='p_at_k', type=int, action='append')
     parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
@@ -422,7 +421,6 @@ if __name__ == '__main__':
          checkpoint_dir=args.checkpoint_dir,
          summary_writer_dir=args.summary_writer_dir,
          use_lr_scheduler=args.use_lr_scheduler,
-         use_cls_for_verb_emb=args.use_cls_for_verb_emb,
          clip_grad_value=args.clip_grad_value,
          layout_checkpoint=args.layout_checkpoint_file,
          patience=args.patience,
