@@ -137,7 +137,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             if stop_training:
                 break
             for name, param in layout_net.named_parameters():
-                print(name)
+                # print(name)
                 param.grad = None
             sample, scores, verbs, label = datum
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
