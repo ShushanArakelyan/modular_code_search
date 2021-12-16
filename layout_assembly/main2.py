@@ -164,9 +164,9 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                # binarized_preds = binarize(torch.sigmoid(pred_out))
-                # acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
-                # accuracy.append(acc)
+                binarized_preds = binarize(torch.sigmoid(pred_out))
+                acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
+                accuracy.append(acc)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
 
@@ -175,13 +175,19 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             if steps % batch_size == 0:
                 print('running loss backward: ')
                 loss.backward()
-                cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
+                # cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+                    
+                scoring_module = ScoringModule(device)
+                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
+                layout_net = LayoutNet(scoring_module, action_module, device)
+                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
