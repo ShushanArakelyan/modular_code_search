@@ -164,6 +164,12 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 binarized_preds = binarize(torch.sigmoid(pred_out))
                 acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
                 accuracy.append(acc)
+
+                device='cpu'
+                scoring_module = ScoringModule(device)
+                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
+                layout_net = LayoutNet(scoring_module, action_module, device)
+                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
 
@@ -171,13 +177,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
                 print('running loss backward: ')
-                import gc
-                for obj in gc.get_objects():
-                    try:
-                        if torch.is_tensor(obj) or (hasattr(obj, 'grad') and torch.is_tensor(obj.grad)):
-                            print(type(obj), obj.size())
-                    except:
-                        pass
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
