@@ -164,12 +164,11 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                binarized_preds = binarize(torch.sigmoid(pred_out))
-                acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
-                accuracy.append(acc)
+                # binarized_preds = binarize(torch.sigmoid(pred_out))
+                # acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
+                # accuracy.append(acc)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
-                break
 
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
@@ -177,8 +176,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 print('running loss backward: ')
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
-                # if clip_grad_value > 0:
-                #     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
+                if clip_grad_value > 0:
+                    torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
