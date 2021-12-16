@@ -116,8 +116,7 @@ def eval_acc(dataset, layout_net, count, device):
 
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count, device,
              print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size):
-    # loss_func = torch.nn.BCEWithLogitsLoss()
-    loss_func = torch.nn.L1Loss()
+    loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
@@ -143,16 +142,14 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             sample, scores, verbs, label = datum
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
                 continue
-            layout_net.scoring_outputs = scores[0]
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
                 continue
             for out in output_list:
                 true_out, pred_out = out
-                # labels = binarize(true_out).to(device)
-                # l = loss_func(pred_out, labels)
-                l = loss_func(pred_out, true_out)
+                labels = binarize(true_out).to(device)
+                l = loss_func(pred_out, labels)
                 if loss is None:
                     if torch.isnan(l).data:
                         print("Stop pretraining because loss=%s" % (l.data))
@@ -166,9 +163,9 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                # binarized_preds = binarize(torch.sigmoid(pred_out))
-                # acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
-                # accuracy.append(acc)
+                binarized_preds = binarize(torch.sigmoid(pred_out))
+                acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
+                accuracy.append(acc)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
 
@@ -177,7 +174,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             if steps % batch_size == 0:
                 print('running loss backward: ')
                 loss.backward()
-                # cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
+                cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
                 op.step()

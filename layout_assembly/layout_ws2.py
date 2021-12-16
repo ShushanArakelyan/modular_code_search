@@ -48,7 +48,6 @@ class LayoutNetWS2(LayoutNet):
         self.scoring_module = scoring_module
         self.action_module = action_module
         self.device = device
-        self.scoring_outputs = None
         self.finetune_codebert = True
         embedder.init_embedder(device)
 
@@ -61,24 +60,26 @@ class LayoutNetWS2(LayoutNet):
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
         if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
             raise ProcessingException()
-        self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
-        self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
-        outs = self.process_node(tree)
+        scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+        verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
+        outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings)
         return outs[-1]
 
     def get_masking_idx(self):
         return 0
 
-    def process_node(self, node, scoring_it=0, action_it=0, output_list=[], parent_module=None):
+    def process_node(self, node, scoring_emb, verb_emb, code_emb, scoring_it=0, action_it=0, output_list=[], parent_module=None):
         if node.node_type == 'action':
             action_module_wrapper = ActionModuleWrapper(self.action_module, self.device)
             action_module_wrapper.param = node.node_value
             for child in node.children:
                 action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child,
+                                                                                              scoring_emb, verb_emb,
+                                                                                              code_emb,
                                                                                               scoring_it, action_it,
                                                                                               output_list,
                                                                                               action_module_wrapper)
-            precomputed_embeddings = (self.verb_embeddings[action_it], self.code_embeddings[action_it])
+            precomputed_embeddings = (verb_emb[action_it], code_emb[action_it])
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
@@ -87,7 +88,7 @@ class LayoutNetWS2(LayoutNet):
             output_list.append(outputs)
             return parent_module, scoring_it, action_it, output_list
         elif node.node_type == 'scoring':
-            output = self.scoring_outputs[scoring_it]
+            output = scoring_emb[scoring_it]
             if output.shape[0] == 0:
                 raise ProcessingException()
             scoring_it += 1
@@ -96,7 +97,7 @@ class LayoutNetWS2(LayoutNet):
         elif node.node_type == 'preposition':
             parent_module.add_preposition(node.node_value)
             for child in node.children:
-                self.process_node(child, scoring_it, action_it, output_list, parent_module)
+                self.process_node(child, scoring_emb, verb_emb, code_emb, scoring_it, action_it, output_list, parent_module)
             return parent_module, scoring_it, action_it, output_list
 
     def set_eval(self):
