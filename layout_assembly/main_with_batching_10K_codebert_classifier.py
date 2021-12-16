@@ -204,6 +204,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
         checkpoint_prefix = checkpoint_dir + f'/model_{epoch}'
         loss = None
         steps = 0
+        for param in layout_net.parameters():
+            param.grad = None
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             # if (steps + 1) % print_every == 0:
             #     writer.add_scalar("Loss/train",
@@ -236,9 +238,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, lr, print_every, vers
             #     layout_net.set_train()
             #     if use_lr_scheduler:
             #         scheduler.step(np.mean(cumulative_loss[-print_every:]))
-
-            for param in layout_net.parameters():
-                param.grad = None
             sample, scores, verbs, label = datum
             if int(label) == 0:
                 label = negative_label
