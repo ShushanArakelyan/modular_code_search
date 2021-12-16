@@ -147,6 +147,10 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             for out in output_list:
                 true_out, pred_out = out
                 labels = binarize(true_out).to(device)
+                print(true_out)
+                print(pred_out)
+                print(labels)
+                print(device)
                 l = loss_func(pred_out, labels)
                 if loss is None:
                     if torch.isnan(l).data:
