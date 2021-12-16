@@ -130,8 +130,8 @@ class ActionModuleFacade:
 
 class ScoringModule:
     def __init__(self, device, checkpoint=None, eval=True):
-        if not embedder.initialized:
-            embedder.init_embedder(device)
+        # if not embedder.initialized:
+        embedder.init_embedder(device)
         self.scorer = torch.nn.Sequential(torch.nn.Linear(embedder.dim * 2, embedder.dim),
                                           torch.nn.ReLU(),
                                           torch.nn.Linear(embedder.dim, 1)).to(device)
