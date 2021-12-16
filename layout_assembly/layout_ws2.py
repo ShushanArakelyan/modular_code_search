@@ -31,9 +31,8 @@ class ActionModuleWrapper(object):
             self.inputs.append([self.empty_emb, input])
 
     def add_preposition(self, prep):
-        with torch.no_grad():
-            if prep not in self.prep_emb_cache:
-                self.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
+        if prep not in self.prep_emb_cache:
+            self.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
         self.inputs.append([self.prep_emb_cache[prep]])
 
     def set_eval(self):
