@@ -168,12 +168,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 binarized_preds = binarize(torch.sigmoid(pred_out))
                 acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
                 accuracy.append(acc)
-
-                device='cpu'
-                scoring_module = ScoringModule(device)
-                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
-                layout_net = LayoutNet(scoring_module, action_module, device)
-                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
 
@@ -189,6 +183,11 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+                device = 'cpu'
+                scoring_module = ScoringModule(device)
+                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
+                layout_net = LayoutNet(scoring_module, action_module, device)
+                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
 
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
