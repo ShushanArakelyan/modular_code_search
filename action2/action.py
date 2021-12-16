@@ -71,8 +71,8 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        return chain.from_iterable([self.modules[i].parameters() for i in self.modules.keys()] +
-                                   [self.verb_embedder.parameters()])
+        return chain([param for i in self.modules.keys() for param in self.modules[i].parameters()],
+                     self.verb_embedder.parameters())
 
     def named_parameters(self):
         return chain([(f"{i}_module.{name}", param) for i in self.modules.keys() for name, param in self.modules[i].named_parameters()],
