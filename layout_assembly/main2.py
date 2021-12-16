@@ -181,6 +181,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+                layout_net.action_module.init_networks(embedder.dim, device)
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
