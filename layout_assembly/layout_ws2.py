@@ -46,7 +46,7 @@ class ActionModuleWrapper(object):
 
 class LayoutNetWS2(LayoutNet):
     def __init__(self, scoring_module, action_module, device):
-        print(device)
+        print("in layout net: ", device)
         self.scoring_module = scoring_module
         self.action_module = action_module
         self.device = device
