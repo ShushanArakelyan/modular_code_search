@@ -73,8 +73,8 @@ class ActionModule(object):
                                    [self.verb_embedder.parameters()])
 
     def named_parameters(self):
-        return chain({f"{i}_module.{k}":v for i in self.modules.keys() for k, v in self.modules[i].named_parameters()},
-                                   {f"verb_embedder.{k}":v for k, v in self.verb_embedder.named_parameters()})
+        return chain([(f"{i}_module.{name}", param) for i in self.modules.keys() for name, param in self.modules[i].named_parameters()],
+                     [(f"verb_embedder.{name}", param) for name, param in self.verb_embedder.named_parameters()])
 
     def state_dict(self):
         state_dict = {f'{i}_input': self.modules[i].state_dict() for i in self.modules.keys()}
