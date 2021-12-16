@@ -147,10 +147,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             for out in output_list:
                 true_out, pred_out = out
                 labels = binarize(true_out).to(device)
-                print(true_out)
-                print(pred_out)
-                print(labels)
-                print(device)
                 l = loss_func(pred_out, labels)
                 if loss is None:
                     if torch.isnan(l).data:
@@ -183,11 +179,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-                device = 'cpu'
-                scoring_module = ScoringModule(device)
-                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
-                layout_net = LayoutNet(scoring_module, action_module, device)
-                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+                return
 
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
@@ -373,6 +365,13 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size)
+
+        pretrain(layout_net=layout_net, adamw=adamw, checkpoint_dir=checkpoint_dir, num_epochs=num_epochs_pretraining,
+                 data_loader=data_loader, clip_grad_value=clip_grad_value, example_count=example_count, device=device,
+                 lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
+                 distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
+                 batch_size=batch_size)
+
     if do_train:
         train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
