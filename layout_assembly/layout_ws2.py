@@ -9,10 +9,9 @@ from layout_assembly.utils import ProcessingException
 
 
 class ActionModuleWrapper(object):
-    empty_emb = None
-    prep_emb_cache = {}
-
     def __init__(self, action_module_facade, device):
+        self.empty_emb = None
+        self.prep_emb_cache = {}
         self.param = None
         self.inputs = []
         self.input_count = 0
@@ -27,15 +26,15 @@ class ActionModuleWrapper(object):
             self.inputs[-1].append(input)
         else:
             with torch.no_grad():
-                if ActionModuleWrapper.empty_emb is None:
-                    ActionModuleWrapper.empty_emb = torch.zeros(1, embedder.dim, requires_grad=False).to(self.device)
-            self.inputs.append([ActionModuleWrapper.empty_emb, input])
+                if self.empty_emb is None:
+                    self.empty_emb = torch.zeros(1, embedder.dim, requires_grad=False).to(self.device)
+            self.inputs.append([self.empty_emb, input])
 
     def add_preposition(self, prep):
         with torch.no_grad():
-            if prep not in ActionModuleWrapper.prep_emb_cache:
-                ActionModuleWrapper.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
-        self.inputs.append([ActionModuleWrapper.prep_emb_cache[prep]])
+            if prep not in self.prep_emb_cache:
+                self.prep_emb_cache[prep] = embedder.embed([prep], [' '])[1]
+        self.inputs.append([self.prep_emb_cache[prep]])
 
     def set_eval(self):
         self.module.set_eval()
