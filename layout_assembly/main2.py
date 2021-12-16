@@ -139,9 +139,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if stop_training:
                 break
-            sample, scores, verbs, label = datum
-            if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
-                continue
+            sample, _, _, _ = datum
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
@@ -173,6 +171,13 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
                 print('running loss backward: ')
+                import gc
+                for obj in gc.get_objects():
+                    try:
+                        if torch.is_tensor(obj) or (hasattr(obj, 'grad') and torch.is_tensor(obj.grad)):
+                            print(type(obj), obj.size())
+                    except:
+                        pass
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
