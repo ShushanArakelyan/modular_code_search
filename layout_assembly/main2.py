@@ -166,9 +166,9 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                binarized_preds = binarize(torch.sigmoid(pred_out))
-                acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
-                accuracy.append(acc)
+                # binarized_preds = binarize(torch.sigmoid(pred_out))
+                # acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
+                # accuracy.append(acc)
                 # f1 = compute_f1(binarized_preds, labels)
                 # f1s.append(f1)
 
