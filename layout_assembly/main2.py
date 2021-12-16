@@ -116,7 +116,8 @@ def eval_acc(dataset, layout_net, count, device):
 
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count, device,
              print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size):
-    loss_func = torch.nn.BCEWithLogitsLoss()
+    # loss_func = torch.nn.BCEWithLogitsLoss()
+    loss_func = torch.nn.L1Loss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
 
@@ -149,8 +150,9 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 continue
             for out in output_list:
                 true_out, pred_out = out
-                labels = binarize(true_out).to(device)
-                l = loss_func(pred_out, labels)
+                # labels = binarize(true_out).to(device)
+                # l = loss_func(pred_out, labels)
+                l = loss_func(pred_out, true_out)
                 if loss is None:
                     if torch.isnan(l).data:
                         print("Stop pretraining because loss=%s" % (l.data))
@@ -182,11 +184,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-                    
-                scoring_module = ScoringModule(device)
-                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
-                layout_net = LayoutNet(scoring_module, action_module, device)
-                op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
 
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
@@ -408,7 +405,7 @@ if __name__ == '__main__':
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--p_at_k', dest='p_at_k', type=int, action='append')
-    parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
+    parser.add_argument('--batch_size', dest='batch_size', type=int, default=5)
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
