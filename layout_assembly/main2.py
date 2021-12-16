@@ -23,7 +23,8 @@ def create_neg_sample(orig, distr):
 
 
 def binarize(a):
-    return torch.where(a < 0.5, torch.zeros_like(a), torch.ones_like(a))
+    with torch.no_grad():
+        return torch.where(a < 0.5, torch.zeros_like(a), torch.ones_like(a))
 
 
 def compute_alignment(a, b):
