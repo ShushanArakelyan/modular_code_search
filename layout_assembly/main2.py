@@ -365,6 +365,21 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size)
+        shard_range = num_negatives
+        dataset = ConcatDataset(
+            [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
+             range(shard_range + 1)])
+
+        if valid_file_name != "None":
+            valid_data = CodeSearchNetDataset_NotPrecomputed(filename=valid_file_name, device=device)
+        else:
+            valid_data, dataset = torch.utils.data.random_split(dataset,
+                                                                [int(len(dataset) * 0.3), int(len(dataset) * 0.7)],
+                                                                generator=torch.Generator().manual_seed(42))
+            print("Len of validation dataset before filtering: ", len(valid_data))
+            valid_data = filter_neg_samples(valid_data, device)
+            print("Len of validation dataset after filtering: ", len(valid_data))
+        data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
         pretrain(layout_net=layout_net, adamw=adamw, checkpoint_dir=checkpoint_dir, num_epochs=num_epochs_pretraining,
                  data_loader=data_loader, clip_grad_value=clip_grad_value, example_count=example_count, device=device,
