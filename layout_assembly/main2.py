@@ -136,9 +136,11 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if stop_training:
                 break
+            count_params = 0
             for name, param in layout_net.named_parameters():
-                # print(name)
+                count_params += 1
                 param.grad = None
+            print("total params counted: ", count_params)
             sample, scores, verbs, label = datum
             if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
                 continue
@@ -174,6 +176,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
                 print('running loss backward: ')
+                loss.register_hook(lambda grad: print(grad))
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
