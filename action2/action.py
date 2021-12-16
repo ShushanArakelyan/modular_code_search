@@ -12,25 +12,26 @@ class ActionModule(object):
         hidden_output_dims = [512, 7]
         self.verb_embedder = FC2(hidden_input_dims, hidden_output_dims, dropout=dropout).to(self.device)
         self.modules = None
-        self.max_inputs_allowed = max_inputs_allowed
+        self.max_inputs_allowed = 1
         self.init_networks(dim_size, dropout)
 
     def init_networks(self, dim_size, dropout):
         self.modules = {}
         for i in range(self.max_inputs_allowed):
             dim = dim_size + (i + 1) * 8
-            self.modules[i] = torch.nn.Sequential(
+            self.module = torch.nn.Sequential(
                 torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
                 torch.nn.Linear(dim, int(dim / 2)),
                 torch.nn.Dropout(dropout),
                 torch.nn.ReLU(),
                 torch.nn.Linear(int(dim / 2), 1)
             ).to(self.device)
+        self.modules[0] = self.module
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
         num_inputs = len(inputs) - 1
-        if num_inputs > 2 or precomputed_embeddings is None:
+        if num_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
             raise ProcessingException()
 
         verb_embedding, code_embedding = precomputed_embeddings
@@ -71,8 +72,9 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        return chain([param for i in self.modules.keys() for param in self.modules[i].parameters()],
-                     self.verb_embedder.parameters())
+        # return chain([param for i in self.modules.keys() for param in self.modules[i].parameters()],
+        #              self.verb_embedder.parameters())
+        return chain(self.module.parameters(), self.verb_embedder.parameters())
 
     def named_parameters(self):
         return chain([(f"{i}_module.{name}", param) for i in self.modules.keys() for name, param in self.modules[i].named_parameters()],
