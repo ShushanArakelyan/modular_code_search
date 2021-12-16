@@ -23,7 +23,7 @@ def init_embedder(_device, load_finetuned=False, checkpoint_dir=False):
     global device, initialized
     global tokenizer, model, classifier
     global sep_embedding, cls_embedding
-    print(_device)
+    print("in action codebert2: ", _device)
     if 'cuda' in _device:
         torch.cuda.set_device(_device)
         device = _device

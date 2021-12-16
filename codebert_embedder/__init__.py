@@ -16,7 +16,6 @@ initialized = False
 def init_embedder(_device):
     global device, initialized
     global tokenizer, model
-    print("in action codebert: ", _device)
     if 'cuda' in _device:
         torch.cuda.set_device(_device)
         device = _device
