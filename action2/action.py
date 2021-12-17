@@ -35,6 +35,7 @@ class ActionModule(object):
             raise ProcessingException()
 
         verb_embedding, code_embedding = precomputed_embeddings
+        num_inputs = 0
         for indx, i in enumerate(inputs):
             if len(i) < 2:
                 num_inputs -= 1
