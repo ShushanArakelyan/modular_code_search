@@ -65,14 +65,14 @@ class ActionModule(object):
         updated_inputs = torch.cat(updated_inputs, dim=1)
         code_embedding = code_embedding[:N, :]
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1).unsqueeze(dim=1)
-        out_scores = module[0].forward(final_fwd_input).squeeze(dim=1)
-        out_scores = module[1].forward(out_scores)
-        out_scores = module[2].forward(out_scores)
-        out_scores = module[3].forward(out_scores)
-        out_scores = module[4].forward(out_scores)
-        N = min(len(true_scores), len(out_scores))
+        out_scores0 = module[0].forward(final_fwd_input).squeeze(dim=1)
+        out_scores1 = module[1].forward(out_scores0)
+        out_scores2 = module[2].forward(out_scores1)
+        out_scores3 = module[3].forward(out_scores2)
+        out_scores4 = module[4].forward(out_scores3)
+        N = min(len(true_scores), len(out_scores4))
         truncated_true_scores = true_scores[:N, :]
-        truncated_out_scores = out_scores[:N, :]
+        truncated_out_scores = out_scores4[:N, :]
         return truncated_true_scores, truncated_out_scores
 
     def parameters(self):
