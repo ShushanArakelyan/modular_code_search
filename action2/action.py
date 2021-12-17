@@ -16,6 +16,7 @@ class ActionModule(object):
         self.init_networks(dim_size, dropout)
 
     def init_networks(self, dim_size, dropout):
+        self.modules = {}
         for i in range(self.max_inputs_allowed):
             dim = dim_size + (i + 1) * 8
             self.modules[i] = torch.nn.Sequential(
