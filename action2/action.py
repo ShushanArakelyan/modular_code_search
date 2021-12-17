@@ -75,7 +75,7 @@ class ActionModule(object):
         N = min(len(true_scores), len(out_scores4))
         truncated_true_scores = true_scores[:N, :]
         truncated_out_scores = out_scores4[:N, :]
-        truncated_out_scores = torch.ones_like(truncated_out_scores)
+        truncated_out_scores = torch.ones_like(truncated_out_scores, requires_grad=True)
         return truncated_true_scores, truncated_out_scores
 
     def parameters(self):
