@@ -119,7 +119,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
-    layout_net.train()
+    layout_net.set_train()
     checkpoint_dir += '/pretrain'
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
