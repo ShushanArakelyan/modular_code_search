@@ -76,11 +76,11 @@ class ActionModule(object):
         return true_scores, out_scores
 
     def parameters(self):
-        return chain([param for i in self.modules.keys() for param in self.modules[i].parameters()],
+        return chain([param for i, m in self.modules.items() for subm in m for param in subm.parameters()],
                      self.verb_embedder.parameters())
 
     def named_parameters(self):
-        return chain([(f"{i}_module.{name}", param) for i in self.modules.keys() for name, param in self.modules[i].named_parameters()],
+        return chain([(f"{i}_module.{name}", param) for i in self.modules.items() for name, param in self.modules[i].named_parameters()],
                      [(f"verb_embedder.{name}", param) for name, param in self.verb_embedder.named_parameters()])
 
     def state_dict(self):
