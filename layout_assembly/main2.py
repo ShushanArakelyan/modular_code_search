@@ -171,8 +171,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
-                print('running loss backward: ')
-                loss.backward(retain_graph=True)
+                loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
@@ -180,8 +179,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-
-
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
@@ -284,11 +281,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-
-                scoring_module = ScoringModule(device)
-                action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
-                layout_net = LayoutNet(scoring_module, action_module, device)
-
             if steps >= example_count:
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
@@ -331,7 +323,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size):
-    torch.autograd.set_detect_anomaly(True)
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -367,7 +358,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size)
-
     if do_train:
         train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
@@ -404,7 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--p_at_k', dest='p_at_k', type=int, action='append')
-    parser.add_argument('--batch_size', dest='batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')

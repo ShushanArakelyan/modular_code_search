@@ -69,17 +69,20 @@ class LayoutNetWS2(LayoutNet):
     def get_masking_idx(self):
         return 0
 
-    def process_node(self, node, scoring_emb, verb_emb, code_emb, output_list, scoring_it=0, action_it=0, parent_module=None):
+    def process_node(self, node, scoring_emb, verb_emb, code_emb, output_list, scoring_it=0, action_it=0,
+                     parent_module=None):
         if node.node_type == 'action':
             action_module_wrapper = ActionModuleWrapper(self.action_module, self.device)
             action_module_wrapper.param = node.node_value
             for child in node.children:
-                action_module_wrapper, scoring_it, action_it, output_list = self.process_node(child,
-                                                                                              scoring_emb, verb_emb,
-                                                                                              code_emb,
-                                                                                              scoring_it, action_it,
-                                                                                              output_list,
-                                                                                              action_module_wrapper)
+                action_module_wrapper, scoring_it, action_it, output_list = self.process_node(node=child,
+                                                                                              scoring_emb=scoring_emb,
+                                                                                              verb_emb=verb_emb,
+                                                                                              code_emb=code_emb,
+                                                                                              scoring_it=scoring_it,
+                                                                                              action_it=action_it,
+                                                                                              output_list=output_list,
+                                                                                              parent_module=action_module_wrapper)
             precomputed_embeddings = (verb_emb[action_it], code_emb[action_it])
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
@@ -98,7 +101,14 @@ class LayoutNetWS2(LayoutNet):
         elif node.node_type == 'preposition':
             parent_module.add_preposition(node.node_value)
             for child in node.children:
-                self.process_node(child, scoring_emb, verb_emb, code_emb, scoring_it, action_it, output_list, parent_module)
+                self.process_node(node=child,
+                                  scoring_emb=scoring_emb,
+                                  verb_emb=verb_emb,
+                                  code_emb=code_emb,
+                                  scoring_it=scoring_it,
+                                  action_it=action_it,
+                                  output_list=output_list,
+                                  parent_module=parent_module)
             return parent_module, scoring_it, action_it, output_list
 
     def set_eval(self):
