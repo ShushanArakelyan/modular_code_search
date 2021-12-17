@@ -21,10 +21,10 @@ class ActionModule(object):
             dim = dim_size + (i + 1) * 8
             self.modules[i] = torch.nn.Sequential(
                 torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
-                torch.nn.Linear(dim, int(dim / 2)),
-                torch.nn.Dropout(dropout),
-                torch.nn.ReLU(),
-                torch.nn.Linear(int(dim / 2), 1)
+                torch.nn.Linear(dim, 1),
+                # torch.nn.Dropout(dropout),
+                # torch.nn.ReLU(),
+                # torch.nn.Linear(int(dim / 2), 1)
             ).to(self.device)
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):
