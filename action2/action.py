@@ -19,13 +19,14 @@ class ActionModule(object):
         self.modules = {}
         for i in range(self.max_inputs_allowed):
             dim = dim_size + (i + 1) * 8
-            self.modules[i] = torch.nn.Sequential(
-                torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
-                torch.nn.Linear(dim, 1),
-                # torch.nn.Dropout(dropout),
-                # torch.nn.ReLU(),
-                # torch.nn.Linear(int(dim / 2), 1)
-            ).to(self.device)
+            self.modules[i] = (
+                torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8).to(self.device),
+                torch.nn.Linear(dim, 1).to(self.device),
+                torch.nn.Dropout(dropout).to(self.device),
+                torch.nn.ReLU().to(self.device),
+                torch.nn.Linear(int(dim / 2), 1).to(self.device))
+            for j, m in enumerate(self.modules[i]):
+                m.register_backward_hook(lambda _: print(f'submodule {j} in module {i}'))
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
@@ -64,7 +65,11 @@ class ActionModule(object):
         updated_inputs = torch.cat(updated_inputs, dim=1)
         code_embedding = code_embedding[:N, :]
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1).unsqueeze(dim=1)
-        out_scores = module.forward(final_fwd_input).squeeze(dim=1)
+        out_scores = module[0].forward(final_fwd_input).squeeze(dim=1)
+        out_scores = module[1].forward(out_scores)
+        out_scores = module[2].forward(out_scores)
+        out_scores = module[3].forward(out_scores)
+        out_scores = module[4].forward(out_scores)
         N = min(len(true_scores), len(out_scores))
         true_scores = true_scores[:N, :]
         out_scores = out_scores[:N, :]
