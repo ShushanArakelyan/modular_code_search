@@ -21,7 +21,7 @@ class ActionModule(object):
             dim = dim_size + (i + 1) * 8
             self.modules[i] = (
                 torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8).to(self.device),
-                torch.nn.Linear(dim, 1).to(self.device),
+                torch.nn.Linear(dim, int(dim / 2)).to(self.device),
                 torch.nn.Dropout(dropout).to(self.device),
                 torch.nn.ReLU().to(self.device),
                 torch.nn.Linear(int(dim / 2), 1).to(self.device))
