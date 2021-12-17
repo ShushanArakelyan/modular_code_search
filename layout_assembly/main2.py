@@ -119,7 +119,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
-
+    layout_net.train()
     checkpoint_dir += '/pretrain'
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
@@ -170,10 +170,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             if steps % batch_size == 0:
-                from torchviz import make_dot
-                graph = make_dot(pred_out, params=dict(layout_net.named_parameters()))
-                graph.draw(f'/project/hauserc_374/shushan/graph_{steps}.png')
-
                 print('running loss backward: ')
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
