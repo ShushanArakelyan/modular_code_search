@@ -62,14 +62,14 @@ class LayoutNetWS2(LayoutNet):
             raise ProcessingException()
         scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
-        outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings,
-                                 scoring_it=0, action_it=0, output_list=[])
+        outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],
+                                 scoring_it=0, action_it=0)
         return outs[-1]
 
     def get_masking_idx(self):
         return 0
 
-    def process_node(self, node, scoring_emb, verb_emb, code_emb, scoring_it=0, action_it=0, output_list=[], parent_module=None):
+    def process_node(self, node, scoring_emb, verb_emb, code_emb, output_list, scoring_it=0, action_it=0, parent_module=None):
         if node.node_type == 'action':
             action_module_wrapper = ActionModuleWrapper(self.action_module, self.device)
             action_module_wrapper.param = node.node_value
