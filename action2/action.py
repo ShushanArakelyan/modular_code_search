@@ -20,7 +20,7 @@ class ActionModule(object):
         for i in range(self.max_inputs_allowed):
             dim = dim_size + (i + 1) * 8
             self.modules[i] = torch.nn.Sequential(
-                # torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
+                torch.nn.TransformerEncoderLayer(d_model=dim, nhead=8),
                 torch.nn.Linear(dim, int(dim / 2)),
                 torch.nn.Dropout(dropout),
                 torch.nn.ReLU(),
