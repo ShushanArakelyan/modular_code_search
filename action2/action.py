@@ -71,9 +71,9 @@ class ActionModule(object):
         out_scores = module[3].forward(out_scores)
         out_scores = module[4].forward(out_scores)
         N = min(len(true_scores), len(out_scores))
-        # true_scores = true_scores[:N, :]
-        # out_scores = out_scores[:N, :]
-        return true_scores, out_scores
+        truncated_true_scores = true_scores[:N, :]
+        truncated_out_scores = out_scores[:N, :]
+        return truncated_true_scores, truncated_out_scores
 
     def parameters(self):
         return chain([param for i, m in self.modules.items() for subm in m for param in subm.parameters()],

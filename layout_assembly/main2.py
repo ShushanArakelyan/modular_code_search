@@ -144,6 +144,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
                 continue
+            print("Len of output list:", len(output_list))
             for out in output_list:
                 true_out, pred_out = out
                 labels = binarize(true_out).to(device)
