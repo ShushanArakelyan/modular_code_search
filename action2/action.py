@@ -71,7 +71,6 @@ class ActionModule(object):
         out_scores1 = module[1].forward(out_scores0)
         out_scores2 = module[2].forward(out_scores1)
         out_scores3 = module[3].forward(out_scores2)
-        out_scores3 = torch.ones_like(out_scores3)
         out_scores4 = module[4].forward(out_scores3)
         N = min(len(true_scores), len(out_scores4))
         truncated_true_scores = true_scores[:N, :]
