@@ -71,8 +71,8 @@ class ActionModule(object):
         out_scores = module[3].forward(out_scores)
         out_scores = module[4].forward(out_scores)
         N = min(len(true_scores), len(out_scores))
-        true_scores = true_scores[:N, :]
-        out_scores = out_scores[:N, :]
+        # true_scores = true_scores[:N, :]
+        # out_scores = out_scores[:N, :]
         return true_scores, out_scores
 
     def parameters(self):
