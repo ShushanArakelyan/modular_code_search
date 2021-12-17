@@ -65,6 +65,7 @@ class ActionModule(object):
         # scores might be of different sizes depending on the query they were embedded with.
         updated_inputs = [u[:N, :] for u in updated_inputs]
         updated_inputs = torch.cat(updated_inputs, dim=1)
+        updated_inputs = torch.ones_like(updated_inputs)
         code_embedding = code_embedding[:N, :]
         final_fwd_input = torch.cat((updated_inputs, code_embedding), dim=1).unsqueeze(dim=1)
         out_scores0 = module[0].forward(final_fwd_input).squeeze(dim=1)
