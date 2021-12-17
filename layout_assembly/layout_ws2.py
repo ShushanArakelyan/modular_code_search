@@ -62,7 +62,8 @@ class LayoutNetWS2(LayoutNet):
             raise ProcessingException()
         scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
-        outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings)
+        outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings,
+                                 scoring_it=0, action_it=0, output_list=[])
         return outs[-1]
 
     def get_masking_idx(self):
