@@ -55,6 +55,7 @@ class ActionModule(object):
             repl_out = out.repeat(len(scores), 1)
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
+            break
         if num_inputs < 0:
             raise ProcessingException()
         module = self.modules[num_inputs]
