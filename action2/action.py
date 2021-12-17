@@ -95,12 +95,12 @@ class ActionModule(object):
 
     def set_eval(self):
         self.verb_embedder.eval()
-        for i, m in self.modules.iteritems():
+        for i, m in self.modules.items():
             m.eval()
 
     def set_train(self):
         self.verb_embedder.train()
-        for i, m in self.modules.iteritems():
+        for i, m in self.modules.items():
             m.train()
 
 #
