@@ -267,7 +267,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss += l
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
-            accuracy.append(int(torch.sigmoid(pred) == label))
+            binarized_pred = binarize(torch.sigmoid(pred))
+            accuracy.append((binarized_pred == label).cpu().detach().numpy())
             if steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
