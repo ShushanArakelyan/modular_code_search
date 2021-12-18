@@ -28,6 +28,7 @@ def binarize(a):
 
 
 def compute_alignment(a, b):
+    print(a.shape, b.shape)
     return torch.sigmoid(torch.dot(a, b))
 
 
@@ -49,7 +50,6 @@ def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=
             pred = make_prediction(output_list, device)
         except ProcessingException:
             return None, None
-        print(pred)
         ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
         for neg_idx in idxs_to_eval:
             distractor, _, _, _ = dataset[neg_idx]
