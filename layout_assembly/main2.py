@@ -394,7 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
     parser.add_argument('--patience', dest='patience', type=int, default=10)
-    parser.add_argument('--p_at_k', dest='p_at_k', type=int, action='append')
+    parser.add_argument('--p_at_k', dest='p_at_k', action='append')
     parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
