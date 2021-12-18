@@ -401,6 +401,7 @@ if __name__ == '__main__':
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
 
     args = parser.parse_args()
+    print(args.p_at_k)
     main(device=args.device,
          data_dir=args.data_dir,
          scoring_checkpoint=args.scoring_checkpoint,
