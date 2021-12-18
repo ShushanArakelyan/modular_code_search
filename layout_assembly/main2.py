@@ -36,8 +36,6 @@ def make_prediction(output_list, device):
     print(len(output_list))
     output_tensor = torch.cat(*output_list, dim=1)
     print("output_tensor: ", output_tensor.shape)
-    output_tensor = output_tensor.squeeze()
-    print("output_tensor: ", output_tensor.shape)
     alignment_scores = torch.sigmoid(torch.dot(output_tensor[:, 0], output_tensor[:, 1]))
     print("alignment_scores: ", alignment_scores.shape)
     pred = torch.prod(alignment_scores)
@@ -253,6 +251,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             layout_net.scoring_outputs = scores[0]
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
+                print(len(output_list))
             except ProcessingException:
                 continue  # skip example
             pred = make_prediction(output_list, device)
