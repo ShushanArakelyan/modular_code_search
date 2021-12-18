@@ -40,25 +40,27 @@ def make_prediction(output_list, device):
     return pred
 
 
-def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, count=250):
+def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=100, count=250):
     def get_mrr_for_one_sample(dataset, idx, idxs_to_eval, layout_net, k):
         ranks = []
         sample, _, _, _ = dataset[idx]
-        pred = layout_net.forward(sample[-1][1:-1], sample)
-        if pred is None:
+        try:
+            output_list = layout_net.forward(*transform_sample(sample))
+            pred = make_prediction(output_list, device)
+        except ProcessingException:
             return None, None
-        else:
-            ranks.append(float(torch.sigmoid(pred[0][1]).cpu().numpy()))
-            for neg_idx in idxs_to_eval:
-                distractor, _, _, _ = dataset[neg_idx]
-                neg_sample = create_neg_sample(sample, distractor)
-                try:
-                    output_list = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
-                    pred = make_prediction(output_list)
-                    ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
-                except ProcessingException:
-                    np.random.seed(neg_idx)
-                    ranks.append(np.random.rand(1)[0])
+        print(pred)
+        ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
+        for neg_idx in idxs_to_eval:
+            distractor, _, _, _ = dataset[neg_idx]
+            neg_sample = create_neg_sample(sample, distractor)
+            try:
+                output_list = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
+                pred = make_prediction(output_list, device)
+                ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
+            except ProcessingException:
+                np.random.seed(neg_idx)
+                ranks.append(np.random.rand(1)[0])
         return mrr(ranks), [p_at_k(ranks, ki) for ki in k]
 
     results = {f'P@{ki}': [] for ki in k}
