@@ -374,8 +374,6 @@ if __name__ == '__main__':
                         help='number of epochs to train', default=50)
     parser.add_argument('--print_every', dest='print_every', type=int,
                         help='print to tensorboard after this many iterations', default=1000)
-    parser.add_argument('--save_every', dest='save_every', type=int,
-                        help='save to checkpoint after this many iterations', default=50000)
     parser.add_argument('--lr', dest='lr', type=float, help='learning rate', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
                         help='Validation data file', required=True)
