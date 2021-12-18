@@ -162,7 +162,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
                 binarized_preds = binarize(torch.sigmoid(pred_out))
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
-                f1.append(f1_score(labels, binarized_preds))
+                f1.append(f1_score(labels.cpu().detach().numpy(),
+                                   binarized_preds.cpu().detach().numpy()))
 
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
