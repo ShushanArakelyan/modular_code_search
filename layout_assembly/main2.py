@@ -281,38 +281,39 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 print(f"Stop training because maximum number of steps {steps} has been performed")
                 stop_training = True
                 break
-        writer.add_scalar("Training Loss/train",
-                          np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
-        writer.add_scalar("Training Acc/train",
-                          np.mean(accuracy[-print_every:]), writer_it)
-        layout_net.set_eval()
-        mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
-        acc = eval_acc(valid_data, layout_net, count=1000, device=device)
-        writer.add_scalar("Training MRR/valid", mrr, writer_it)
-        for pre, ki in zip(p_at_ks, k):
-            writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
-        writer.add_scalar("Training Acc/valid", acc, writer_it)
-        cur_perf = (mrr, acc, p_at_ks[0])
-        print("Best performance: ", best_accuracy)
-        print("Current performance: ", cur_perf)
-        print("best < current: ", best_accuracy < cur_perf)
-        if best_accuracy < cur_perf:
-            layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
-            print("Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
-                  (best_accuracy, cur_perf, epoch, steps))
-            best_accuracy = cur_perf
-            wait_step = 0
-            stop_training = False
-        else:
-            wait_step += 1
-            if wait_step >= patience:
-                print("Stopping training because wait steps exceeded: ", wait_step)
-                stop_training = True
-        layout_net.set_train()
-        if use_lr_scheduler:
-            scheduler.step(np.mean(cumulative_loss[-print_every:]))
-        if stop_training:
-            break
+            if steps % print_every == 0:
+                writer.add_scalar("Training Loss/train",
+                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
+                writer.add_scalar("Training Acc/train",
+                                  np.mean(accuracy[-print_every:]), writer_it)
+                layout_net.set_eval()
+                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
+                acc = eval_acc(valid_data, layout_net, count=1000, device=device)
+                writer.add_scalar("Training MRR/valid", mrr, writer_it)
+                for pre, ki in zip(p_at_ks, k):
+                    writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
+                writer.add_scalar("Training Acc/valid", acc, writer_it)
+                cur_perf = (mrr, acc, p_at_ks[0])
+                print("Best performance: ", best_accuracy)
+                print("Current performance: ", cur_perf)
+                print("best < current: ", best_accuracy < cur_perf)
+                if best_accuracy < cur_perf:
+                    layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+                    print("Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
+                          (best_accuracy, cur_perf, epoch, steps))
+                    best_accuracy = cur_perf
+                    wait_step = 0
+                    stop_training = False
+                else:
+                    wait_step += 1
+                    if wait_step >= patience:
+                        print("Stopping training because wait steps exceeded: ", wait_step)
+                        stop_training = True
+                layout_net.set_train()
+                if use_lr_scheduler:
+                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
+                if stop_training:
+                    break
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
