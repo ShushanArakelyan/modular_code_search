@@ -221,8 +221,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    positive_label = torch.tensor(1).to(device)
-    negative_label = torch.tensor(0).to(device)
+    positive_label = torch.tensor(1, dtype=float).to(device)
+    negative_label = torch.tensor(0, dtype=float).to(device)
 
     writer_it = 0
     best_accuracy = (-1.0, -1.0, -1.0)
@@ -398,7 +398,7 @@ if __name__ == '__main__':
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
     parser.add_argument('--finetune_scoring', dest='finetune_scoring', default=False, action='store_true')
-    parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', default=str)
+    parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', type=str)
 
     args = parser.parse_args()
     main(device=args.device,
