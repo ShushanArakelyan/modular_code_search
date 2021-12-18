@@ -253,6 +253,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 continue  # skip example
             pred = make_prediction(output_list, device)
             if loss is None:
+                print(type(pred), type(label))
                 print(pred.shape, label.shape)
                 loss = loss_func(pred, label)
                 if torch.isnan(loss).data:
