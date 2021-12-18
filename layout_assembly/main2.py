@@ -62,7 +62,6 @@ def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
         return mrr(ranks), [p_at_k(ranks, ki) for ki in k]
-
     results = {f'P@{ki}': [] for ki in k}
     results['MRR'] = []
     with torch.no_grad():
@@ -189,7 +188,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 writer.add_scalar("Pretraining Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
+                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=250)
                 acc = eval_acc(valid_data, layout_net, count=1000, device=device)
                 writer.add_scalar("Pretraining MRR/valid", mrr, writer_it)
                 for pre, ki in zip(p_at_ks, k):
@@ -291,7 +290,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/train",
                           np.mean(accuracy[-print_every:]), writer_it)
         layout_net.set_eval()
-        mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
+        mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=250)
         acc = eval_acc(valid_data, layout_net, count=1000, device=device)
         writer.add_scalar("Training MRR/valid", mrr, writer_it)
         for pre, ki in zip(p_at_ks, k):
@@ -401,7 +400,6 @@ if __name__ == '__main__':
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
 
     args = parser.parse_args()
-    print(args.p_at_k)
     main(device=args.device,
          data_dir=args.data_dir,
          scoring_checkpoint=args.scoring_checkpoint,
