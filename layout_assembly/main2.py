@@ -88,8 +88,6 @@ def eval_acc(dataset, layout_net, count, device):
     accs = []
     layout_net.set_eval()
     with torch.no_grad():
-        precomputed_scores_provided = layout_net.precomputed_scores_provided
-        layout_net.precomputed_scores_provided = False
         i = 0
         for sample in range(len(dataset)):
             sample, _, _, label = dataset[i]
@@ -109,7 +107,6 @@ def eval_acc(dataset, layout_net, count, device):
             if i >= count:
                 break
             i += 1
-        layout_net.precomputed_scores_provided = precomputed_scores_provided
     layout_net.set_train()
     return np.mean(accs)
 
