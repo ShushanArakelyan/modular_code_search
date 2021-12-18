@@ -253,7 +253,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 continue  # skip example
             pred = make_prediction(output_list)
             if loss is None:
-                print(pred.requires_grad, label.requires_grad)
                 loss = loss_func(pred, label)
                 if torch.isnan(loss).data:
                     print("Stop training because loss=%s" % (loss.data))
