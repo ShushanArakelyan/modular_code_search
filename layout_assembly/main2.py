@@ -216,8 +216,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
-    # if finetune_scoring:
-    #     layout_net.finetune_scoring = True
+    if finetune_scoring:
+        layout_net.finetune_scoring = True
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
