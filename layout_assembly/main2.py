@@ -249,7 +249,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             layout_net.scoring_outputs = scores[0]
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
-                print(len(output_list))
             except ProcessingException:
                 continue  # skip example
             pred = make_prediction(output_list)
