@@ -32,24 +32,22 @@ def compute_alignment(a, b):
     return torch.sigmoid(torch.dot(a, b))
 
 
-def make_prediction(output_list, device):
-    print(len(output_list))
-    output_tensor = torch.cat(*output_list, dim=1)
-    print("output_tensor: ", output_tensor.shape)
+def make_prediction(output_list):
+    output_tensor = torch.cat(*output_list[0], dim=1)
+    # for i in range(1, len(output_list)):
+    #     output_tensor = torch.cat((output_tensor, *output_list[i]), dim=1)
     alignment_scores = torch.sigmoid(torch.dot(output_tensor[:, 0], output_tensor[:, 1]))
-    print("alignment_scores: ", alignment_scores.shape)
     pred = torch.prod(alignment_scores)
-    print("pred: ", pred.shape)
     return pred
 
 
-def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=100, count=250):
+def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, count=250):
     def get_mrr_for_one_sample(dataset, idx, idxs_to_eval, layout_net, k):
         ranks = []
         sample, _, _, _ = dataset[idx]
         try:
             output_list = layout_net.forward(sample[-1][1:-1], sample)
-            pred = make_prediction(output_list, device)
+            pred = make_prediction(output_list)
         except ProcessingException:
             return None, None
         ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
@@ -58,7 +56,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=
             neg_sample = create_neg_sample(sample, distractor)
             try:
                 output_list = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
-                pred = make_prediction(output_list, device)
+                pred = make_prediction(output_list)
                 ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
             except ProcessingException:
                 np.random.seed(neg_idx)
@@ -84,7 +82,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=
 def eval_acc(dataset, layout_net, count, device):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
-        pred = make_prediction(output_list, device)
+        pred = make_prediction(output_list)
         binarized_pred = binarize(torch.sigmoid(pred))
         return int(binarized_pred == label)
 
@@ -254,7 +252,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 print(len(output_list))
             except ProcessingException:
                 continue  # skip example
-            pred = make_prediction(output_list, device)
+            pred = make_prediction(output_list)
             if loss is None:
                 print(pred.requires_grad, label.requires_grad)
                 loss = loss_func(pred, label)
@@ -290,7 +288,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/train",
                           np.mean(accuracy[-print_every:]), writer_it)
         layout_net.set_eval()
-        mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=250)
+        mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
         acc = eval_acc(valid_data, layout_net, count=1000, device=device)
         writer.add_scalar("Training MRR/valid", mrr, writer_it)
         for pre, ki in zip(p_at_ks, k):
