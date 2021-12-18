@@ -45,7 +45,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, device, k=[1], distractor_set_size=
         ranks = []
         sample, _, _, _ = dataset[idx]
         try:
-            output_list = layout_net.forward(*transform_sample(sample))
+            output_list = layout_net.forward(sample[-1][1:-1], sample)
             pred = make_prediction(output_list, device)
         except ProcessingException:
             return None, None
