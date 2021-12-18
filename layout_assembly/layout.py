@@ -76,7 +76,7 @@ class LayoutNet:
         try:
             scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
             if not self.precomputed_scores_provided:
-                self.scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+                self.scoring_outputs = self.scoring_module.forward_batch_no_grad(scoring_inputs[0], scoring_inputs[1])
             self.verb_embeddings, self.code_embeddings = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
             self.accumulated_loss = []
             _, output, _, _ = self.process_node(tree, code)

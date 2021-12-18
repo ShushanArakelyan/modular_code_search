@@ -49,6 +49,7 @@ class LayoutNetWS2(LayoutNet):
         self.action_module = action_module
         self.device = device
         self.finetune_codebert = True
+        self.finetune_scoring = False
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
@@ -60,7 +61,12 @@ class LayoutNetWS2(LayoutNet):
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
         if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
             raise ProcessingException()
-        scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+        if self.finetune_scoring:
+            scoring_forward_method = self.scoring_module.forward_batch
+        else:
+            scoring_forward_method = self.scoring_module.forward_batch_no_grad
+
+        scoring_outputs = scoring_forward_method(scoring_inputs[0], scoring_inputs[1])
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
         outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],
                                  scoring_it=0, action_it=0)
@@ -118,16 +124,20 @@ class LayoutNetWS2(LayoutNet):
         self.action_module.set_train()
 
     def parameters(self):
+        parameters = (self.action_module.parameters(),)
         if self.finetune_codebert:
-            return chain(self.action_module.parameters(), embedder.model.parameters())
-        else:
-            return chain(self.action_module.parameters())
+            parameters = parameters + (embedder.model.parameters(),)
+        if self.finetune_scoring:
+            parameters = parameters + (self.scoring_module.parameters(),)
+        return chain(*parameters)
 
     def named_parameters(self):
+        parameters = (self.action_module.named_parameters(),)
         if self.finetune_codebert:
-            return chain(self.action_module.named_parameters(), embedder.model.named_parameters())
-        else:
-            return chain(self.action_module.named_parameters())
+            parameters = parameters + (embedder.model.named_parameters(),)
+        if self.finetune_scoring:
+            parameters = parameters + (self.scoring_module.named_parameters(),)
+        return chain(*parameters)
 
     def load_from_checkpoint(self, checkpoint):
         # self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')

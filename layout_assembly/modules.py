@@ -148,17 +148,17 @@ class ScoringModule:
     def forward_batch(self, queries, codes, separate_embedding=False):
         if separate_embedding:
             raise Exception("Separate embedding not supported for processing in batch")
-        with torch.no_grad():
-            query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
-            assert len(query_embeddings) == len(code_embeddings)
-            scorer_out = []
-            for qe, ce in zip(query_embeddings, code_embeddings):
-                # forward_input = torch.cat((query_embeddings, code_embeddings), dim=2)
-                qe = qe.repeat(ce.shape[0], 1)
-                # print(qe.shape, ce.shape)
-                scorer_out.append(torch.sigmoid(self.scorer.forward(torch.cat((qe, ce), dim=1))))
-        # scorer_out = torch.cat(scorer_out, dim=0)
+        query_embeddings, code_embeddings = embedder.embed_batch(queries, codes)
+        assert len(query_embeddings) == len(code_embeddings)
+        scorer_out = []
+        for qe, ce in zip(query_embeddings, code_embeddings):
+            qe = qe.repeat(ce.shape[0], 1)
+            scorer_out.append(torch.sigmoid(self.scorer.forward(torch.cat((qe, ce), dim=1))))
         return scorer_out
+
+    def forward_batch_no_grad(self, queries, codes, separate_embedding=False):
+        with torch.no_grad():
+            return self.forward_batch(queries, codes, separate_embedding)
 
     def forward(self, query, sample, separate_embedding=False):
         if separate_embedding:

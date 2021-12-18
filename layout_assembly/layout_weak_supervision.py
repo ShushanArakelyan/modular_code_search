@@ -31,7 +31,7 @@ class LayoutNet_weak_supervision(LayoutNet_w_codebert_classifier):
             return None
         if not self.filter(verbs[0][0].lower()):
             return None
-        scoring_labels = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+        scoring_labels = self.scoring_module.forward_batch_no_grad(scoring_inputs[0], scoring_inputs[1])
         try:
             self.verb_embeddings, self.code_embeddings = embedder.embed_in_list(verbs[0],
                                                                                 verbs[1],

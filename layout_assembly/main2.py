@@ -211,11 +211,13 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count,
-          use_lr_scheduler, writer, valid_data, k, distractor_set_size, print_every, patience, batch_size):
+          use_lr_scheduler, writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
+    if finetune_scoring:
+        layout_net.finetune_scoring = True
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
@@ -316,7 +318,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
-         clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size):
+         clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
+         finetune_scoring):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -353,11 +356,13 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size)
     if do_train:
+        if layout_net_training_ckp is not None:
+            layout_net.load_from_checkpoint(layout_net_training_ckp)
         train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               example_count=example_count, use_lr_scheduler=use_lr_scheduler,
               writer=writer, valid_data=valid_data, k=k, distractor_set_size=distractor_set_size,
-              print_every=print_every, patience=patience, batch_size=batch_size)
+              print_every=print_every, patience=patience, batch_size=batch_size, finetune_scoring=finetune_scoring)
 
 
 if __name__ == '__main__':
@@ -390,6 +395,8 @@ if __name__ == '__main__':
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
+    parser.add_argument('--finetune_scoring', dest='finetune_scoring', default=False, action='store_true')
+    parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', default=str)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -413,4 +420,6 @@ if __name__ == '__main__':
          distractor_set_size=args.distractor_set_size,
          do_pretrain=args.do_pretrain,
          do_train=args.do_train,
-         batch_size=args.batch_size)
+         batch_size=args.batch_size,
+         layout_net_training_ckp=args.layout_net_training_ckp,
+         finetune_scoring=args.finetune_scoring)

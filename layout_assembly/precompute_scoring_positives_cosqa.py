@@ -68,7 +68,7 @@ def main(shard_size, scoring_checkpoint):
                     code = sample[1]
                     scoring_inputs, verb_embeddings = layout_net.precompute_inputs(tree, code, [[], [], []],
                                                                                    [[], []], '')
-                    scoring_outputs = layout_net.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
+                    scoring_outputs = layout_net.scoring_module.forward_batch_no_grad(scoring_inputs[0], scoring_inputs[1])
                     verb_embeddings, _ = embedder.embed_batch(verb_embeddings[0], verb_embeddings[1])
                 except Exception as ex:
                     print(ex)
