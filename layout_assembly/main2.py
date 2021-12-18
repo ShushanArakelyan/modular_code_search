@@ -419,7 +419,7 @@ if __name__ == '__main__':
          use_lr_scheduler=args.use_lr_scheduler,
          clip_grad_value=args.clip_grad_value,
          patience=args.patience,
-         k=args.p_at_k,
+         k=[int(ki) for ki in args.p_at_k],
          distractor_set_size=args.distractor_set_size,
          do_pretrain=args.do_pretrain,
          do_train=args.do_train,
