@@ -17,6 +17,7 @@ from layout_assembly.layout_ws2 import LayoutNetWS2 as LayoutNet
 from layout_assembly.modules import ScoringModule
 from layout_assembly.utils import ProcessingException
 
+from sklearn.metrics import f1_score
 
 def create_neg_sample(orig, distr):
     return (orig[0], distr[1], distr[2], distr[3], orig[4])
@@ -82,8 +83,8 @@ def eval_acc(dataset, layout_net, count, device):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list, device)
-        binarized_pred = binarize(pred)
-        return int(torch.sigmoid(binarized_pred) == label)
+        binarized_pred = binarize(torch.sigmoid(pred))
+        return int(binarized_pred == label)
 
     accs = []
     layout_net.set_eval()
@@ -129,6 +130,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
+        f1 = []
         loss = None
         steps = 0
         for x in layout_net.parameters():
@@ -159,10 +161,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                     loss += l
 
                 binarized_preds = binarize(torch.sigmoid(pred_out))
-                acc = sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0]
-                accuracy.append(acc)
-                # f1 = compute_f1(binarized_preds, labels)
-                # f1s.append(f1)
+                accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
+                f1.append(f1_score(labels, binarized_preds))
 
             steps += 1
             writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
@@ -176,20 +176,21 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 for x in layout_net.parameters():
                     x.grad = None
             if steps >= example_count:
-                print(f"Stop training because maximum number of steps {steps} has been performed")
-                stop_training = True
+                break
             if steps % print_every == 0:
-                writer.add_scalar("Pretraining Loss/train",
+                writer.add_scalar("Pretraining Loss/pretraining",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
-                writer.add_scalar("Pretraining Acc/train",
+                writer.add_scalar("Pretraining Acc/pretraining",
                                   np.mean(accuracy[-print_every:]), writer_it)
+                writer.add_scalar("Pretraining F1/pretraining",
+                                  np.mean(f1[-print_every:]), writer_it)
                 layout_net.set_eval()
-                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=250)
                 acc = eval_acc(valid_data, layout_net, count=1000, device=device)
-                writer.add_scalar("Pretraining MRR/valid", mrr, writer_it)
+                writer.add_scalar("Pretraining Acc/inference", acc, writer_it)
+                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=100)
+                writer.add_scalar("Pretraining MRR/inference", mrr, writer_it)
                 for pre, ki in zip(p_at_ks, k):
-                    writer.add_scalar(f"Pretraining P@{ki}/valid", pre, writer_it)
-                writer.add_scalar("Pretraining Acc/valid", acc, writer_it)
+                    writer.add_scalar(f"Pretraining P@{ki}/inference", pre, writer_it)
                 cur_perf = (mrr, acc, p_at_ks[0])
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
