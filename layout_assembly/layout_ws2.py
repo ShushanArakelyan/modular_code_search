@@ -60,6 +60,7 @@ class LayoutNetWS2(LayoutNet):
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
         if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
             raise ProcessingException()
+        print(scoring_inputs[0].shape, scoring_inputs[1].shape)
         scoring_outputs = self.scoring_module.forward_batch(scoring_inputs[0], scoring_inputs[1])
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
         outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],
