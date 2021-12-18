@@ -33,7 +33,8 @@ def compute_alignment(a, b):
 
 
 def make_prediction(output_list, device):
-    output_tensor = torch.cat(*output_list, dim=0)
+    print(output_list[0].shape)
+    output_tensor = torch.cat(*output_list, dim=1)
     print("output_tensor: ", output_tensor.shape)
     output_tensor = output_tensor.squeeze()
     print("output_tensor: ", output_tensor.shape)
