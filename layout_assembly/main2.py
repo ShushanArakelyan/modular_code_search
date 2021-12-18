@@ -33,7 +33,7 @@ def compute_alignment(a, b):
 
 
 def make_prediction(output_list):
-    output_tensor = torch.cat(*output_list[0], dim=1)
+    output_tensor = torch.cat(output_list[0], dim=1)
     # for i in range(1, len(output_list)):
     #     output_tensor = torch.cat((output_tensor, *output_list[i]), dim=1)
     alignment_scores = torch.sigmoid(torch.dot(output_tensor[:, 0], output_tensor[:, 1]))
