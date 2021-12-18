@@ -28,14 +28,13 @@ def binarize(a):
 
 
 def compute_alignment(a, b):
-    print(a.shape, b.shape)
     return torch.sigmoid(torch.dot(a, b))
 
 
 def make_prediction(output_list, device):
     alignment_scores = []
     for out in output_list:
-        alignment_scores.append(compute_alignment(out[0], out[1]))
+        alignment_scores.append(compute_alignment(out[0].squeeze(), out[1].squeeze()))
     alignment_scores = torch.FloatTensor(alignment_scores).to(device)
     pred = torch.prod(alignment_scores)
     return pred
