@@ -222,8 +222,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    positive_label = torch.FloatTensor([1]).to(device)
-    negative_label = torch.FloatTensor([0]).to(device)
+    positive_label = torch.FloatTensor(1).to(device)
+    negative_label = torch.FloatTensor(0).to(device)
 
     writer_it = 0
     best_accuracy = (-1.0, -1.0, -1.0)
