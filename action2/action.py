@@ -14,6 +14,8 @@ class ActionModule(object):
         self.modules = None
         self.max_inputs_allowed = max_inputs_allowed
         self.init_networks(dim_size, dropout)
+        self.dim_size = dim_size
+        self.dropout = dropout
 
     def init_networks(self, dim_size, dropout):
         self.modules = {}
@@ -83,14 +85,21 @@ class ActionModule(object):
         return state_dict
 
     def save_to_checkpoint(self, checkpoint):
-        torch.save(self.state_dict(), checkpoint)
+        save_dict = {i: m.state_dict() for i, m in self.modules.items()}
+        save_dict['verb_embedder'] = self.verb_embedder.state_dict()
+        save_dict['dim_size'] = self.dim_size
+        save_dict['dropout'] = self.dropout
+        torch.save(save_dict, checkpoint)
 
     def load_from_checkpoint(self, checkpoint):
-        raise NotImplementedError()
-        # models = torch.load(checkpoint, map_location=self.device)
-        #
-        # self.one_input_module.load_state_dict(models['one_input'])
-        # self.two_inputs_module.load_state_dict(models['two_inputs'])
+        save_dict = torch.load(checkpoint, map_location=self.device)
+        self.dropout = save_dict['dropout']
+        self.dim_size = save_dict['dim_size']
+        self.max_inputs_allowed = len(save_dict) - 3
+        self.init_networks(self.dim_size, self.dropout)
+        self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
+        for i, state_dict in save_dict.items:
+            self.modules[i].load_state_dict(state_dict[i])
 
     def set_eval(self):
         self.verb_embedder.eval()

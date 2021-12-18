@@ -360,6 +360,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     if do_train:
         if layout_net_training_ckp is not None:
             layout_net.load_from_checkpoint(layout_net_training_ckp)
+        else:
+            pretraining_best_checkpoint = checkpoint_dir + '/pretrain/best_model.tar'
+            if os.path.exists(pretraining_best_checkpoint):
+                layout_net.load_from_checkpoint(pretraining_best_checkpoint)
         train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               example_count=example_count, use_lr_scheduler=use_lr_scheduler,
