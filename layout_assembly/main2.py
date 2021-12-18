@@ -288,7 +288,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=250)
+                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
                 acc = eval_acc(valid_data, layout_net, count=1000, device=device)
                 writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 for pre, ki in zip(p_at_ks, k):
