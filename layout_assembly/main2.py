@@ -123,7 +123,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         os.makedirs(checkpoint_dir)
 
     writer_it = 0
-    best_accuracy = (-1.0, -1.0, -1.0)
+    best_accuracy = -1.0
     wait_step = 0
     stop_training = False
 
@@ -188,18 +188,14 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 layout_net.set_eval()
                 acc = eval_acc(valid_data, layout_net, count=1000, device=device)
                 writer.add_scalar("Pretraining Acc/inference", acc, writer_it)
-                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, device, k, distractor_set_size, count=100)
-                writer.add_scalar("Pretraining MRR/inference", mrr, writer_it)
-                for pre, ki in zip(p_at_ks, k):
-                    writer.add_scalar(f"Pretraining P@{ki}/inference", pre, writer_it)
-                cur_perf = (mrr, acc, p_at_ks[0])
+                cur_perf = acc
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
                 print("best < current: ", best_accuracy < cur_perf)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print(
-                        "Saving model with best pretraining performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
+                        "Saving model with best pretraining accuracy performance: %s -> %s on epoch=%d, global_step=%d" %
                         (best_accuracy, cur_perf, epoch, steps))
                     best_accuracy = cur_perf
                     wait_step = 0
