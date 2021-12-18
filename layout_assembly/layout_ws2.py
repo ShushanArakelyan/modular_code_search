@@ -140,8 +140,7 @@ class LayoutNetWS2(LayoutNet):
         return chain(*parameters)
 
     def load_from_checkpoint(self, checkpoint):
-        # self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
-        #
+        self.action_module_facade.load_from_checkpoint(checkpoint + '.action_module')
         # models = torch.load(checkpoint, map_location=self.device)
         # self.classifier.load_state_dict(models['classifier'])
         # self.classifier = self.classifier.to(self.device)
