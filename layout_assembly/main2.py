@@ -33,11 +33,14 @@ def compute_alignment(a, b):
 
 
 def make_prediction(output_list, device):
-    alignment_scores = []
-    for out in output_list:
-        alignment_scores.append(compute_alignment(out[0].squeeze(), out[1].squeeze()))
-    alignment_scores = torch.FloatTensor(alignment_scores).to(device)
+    output_tensor = torch.cat(output_list, dim=0)
+    print("output_tensor: ", output_tensor.shape)
+    output_tensor = output_tensor.squeeze()
+    print("output_tensor: ", output_tensor.shape)
+    alignment_scores = torch.sigmoid(torch.dot(output_tensor[:, 0], output_tensor[:, 1]))
+    print("alignment_scores: ", alignment_scores.shape)
     pred = torch.prod(alignment_scores)
+    print("pred: ", pred.shape)
     return pred
 
 
