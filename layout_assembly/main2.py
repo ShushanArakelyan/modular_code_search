@@ -234,7 +234,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 writer.add_scalar("Pretraining F1/pretraining",
                                   np.mean(f1_scores[-print_every:]), writer_it)
                 layout_net.set_eval()
-                acc, f1 = eval_acc_f1_pretraining_task(valid_data, layout_net, count=1000)
+                acc, f1 = eval_acc_f1_pretraining_task(valid_data, layout_net, override_negatives=override_negatives,
+                                                       count=1000)
                 writer.add_scalar("Pretraining F1/valid pretraining", f1, writer_it)
                 writer.add_scalar("Pretraining Acc/valid pretraining", acc, writer_it)
                 cur_perf = (acc, f1)
