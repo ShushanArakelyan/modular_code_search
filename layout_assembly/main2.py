@@ -79,7 +79,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
     return np.mean(results['MRR']), [np.mean(results[f'P@{ki}']) for ki in k]
 
 
-def eval_acc(dataset, layout_net, count, device):
+def eval_acc(dataset, layout_net, count):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
@@ -112,6 +112,47 @@ def eval_acc(dataset, layout_net, count, device):
     return np.mean(accs)
 
 
+def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives):
+    def get_acc_for_one_sample(sample, label):
+        true_out, pred_out = layout_net.forward(sample[-1][1:-1], sample)
+        if override_negatives:
+            if label == 0:
+                true_out = torch.zeros_like(true_out)
+        labels = binarize(true_out).cpu().detach().numpy()
+        binarized_preds = binarize(torch.sigmoid(pred_out)).cpu().detach().numpy()
+        acc = sum(binarized_preds == labels) * 1. / labels.shape[0]
+        f1 = f1_score(labels, binarized_preds, zero_division=1)
+        return acc, f1
+
+    accs = []
+    f1_scores = []
+    layout_net.set_eval()
+    with torch.no_grad():
+        i = 0
+        for sample in range(len(dataset)):
+            sample, _, _, label = dataset[i]
+            assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
+            try:
+                accs.append(get_acc_for_one_sample(sample, label))
+            except ProcessingException:
+                continue
+            # Create a negative example
+            np.random.seed(22222 + i)
+            neg_idx = np.random.choice(range(len(dataset)), 1)[0]
+            neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
+            try:
+                acc, f1 = get_acc_for_one_sample(neg_sample, label=0)
+                accs.append(acc)
+                f1_scores.append(f1)
+            except ProcessingException:
+                continue
+            if i >= count:
+                break
+            i += 1
+    layout_net.set_train()
+    return np.mean(accs), np.mean(f1_scores)
+
+
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count, device,
              print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size,
              skip_negatives, override_negatives):
@@ -131,7 +172,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     for epoch in range(num_epochs):
         cumulative_loss = []
         accuracy = []
-        f1 = []
+        f1_scores = []
         loss = None
         steps = 0
         for x in layout_net.parameters():
@@ -169,7 +210,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
                 binarized_preds = binarize(torch.sigmoid(pred_out))
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
-                f1.append(f1_score(labels.cpu().detach().numpy().flatten(),
+                f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
                                    binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
 
             steps += 1
@@ -188,14 +229,15 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
             if steps % print_every == 0:
                 writer.add_scalar("Pretraining Loss/pretraining",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
-                writer.add_scalar("Pretraining Acc/pretraining",
+                writer.add_scalar("Pretraining Acc/train pretraining",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 writer.add_scalar("Pretraining F1/pretraining",
-                                  np.mean(f1[-print_every:]), writer_it)
+                                  np.mean(f1_scores[-print_every:]), writer_it)
                 layout_net.set_eval()
-                acc = eval_acc(valid_data, layout_net, count=1000, device=device)
-                writer.add_scalar("Pretraining Acc/inference", acc, writer_it)
-                cur_perf = (acc, np.mean(f1[-print_every:]))
+                acc, f1 = eval_acc_pretraining_task(valid_data, layout_net, count=1000)
+                writer.add_scalar("Pretraining F1/valid pretraining", f1, writer_it)
+                writer.add_scalar("Pretraining Acc/valid pretraining", acc, writer_it)
+                cur_perf = (acc, f1)
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
                 print("best < current: ", best_accuracy < cur_perf)
@@ -296,7 +338,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
                 mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-                acc = eval_acc(valid_data, layout_net, count=1000, device=device)
+                acc = eval_acc(valid_data, layout_net, count=1000)
                 writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 for pre, ki in zip(p_at_ks, k):
                     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
