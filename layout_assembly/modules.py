@@ -200,3 +200,10 @@ class ScoringModule:
             forward_input = torch.cat((cls_token_embedding, code_embedding), dim=1)
             scorer_out = torch.sigmoid(self.scorer.forward(forward_input)).squeeze()
             return scorer_out
+
+    def parameters(self):
+        return chain(self.scorer.parameters(), embedder.model.parameters())
+
+    def named_parameters(self):
+        return chain(self.scorer.named_parameters(), embedder.model.named_parameters())
+
