@@ -124,7 +124,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         os.makedirs(checkpoint_dir)
 
     writer_it = 0
-    best_accuracy = -1.0
+    best_accuracy = (-1.0, -1.0)
     wait_step = 0
     stop_training = False
 
@@ -195,7 +195,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 layout_net.set_eval()
                 acc = eval_acc(valid_data, layout_net, count=1000, device=device)
                 writer.add_scalar("Pretraining Acc/inference", acc, writer_it)
-                cur_perf = acc
+                cur_perf = (acc, np.mean(f1[-print_every:]))
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
                 print("best < current: ", best_accuracy < cur_perf)
