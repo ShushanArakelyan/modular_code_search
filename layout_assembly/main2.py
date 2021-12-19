@@ -113,7 +113,8 @@ def eval_acc(dataset, layout_net, count, device):
 
 
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count, device,
-             print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size):
+             print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size,
+             skip_negatives, override_negatives):
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
@@ -138,13 +139,19 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if stop_training:
                 break
-            sample, _, _, _ = datum
+            sample, _, _, label = datum
+            if skip_negatives:
+                if label == 0: # skip negative samples
+                    continue
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
                 continue
             for out in output_list:
                 true_out, pred_out = out
+                if override_negatives:
+                    if label == 0:
+                        true_out = torch.zeros_like(true_out)
                 labels = binarize(true_out).to(device)
                 l = loss_func(pred_out, labels)
                 if loss is None:
@@ -321,7 +328,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
-         finetune_scoring):
+         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -356,7 +363,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  data_loader=data_loader, clip_grad_value=clip_grad_value, example_count=example_count, device=device,
                  lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
-                 batch_size=batch_size)
+                 batch_size=batch_size, override_negatives=override_negatives_in_pretraining,
+                 skip_negatives=skip_negatives_in_pretraining)
     if do_train:
         if layout_net_training_ckp is not None:
             layout_net.load_from_checkpoint(layout_net_training_ckp)
@@ -403,6 +411,8 @@ if __name__ == '__main__':
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
     parser.add_argument('--finetune_scoring', dest='finetune_scoring', default=False, action='store_true')
     parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', type=str)
+    parser.add_argument('--override_negatives_in_pretraining', dest='override_negatives_in_pretraining', default=False, action='store_true')
+    parser.add_argument('--skip_negatives_in_pretraining', dest='skip_negatives_in_pretraining', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -428,4 +438,6 @@ if __name__ == '__main__':
          do_train=args.do_train,
          batch_size=args.batch_size,
          layout_net_training_ckp=args.layout_net_training_ckp,
-         finetune_scoring=args.finetune_scoring)
+         finetune_scoring=args.finetune_scoring,
+         override_negatives_in_pretraining=args.override_negatives_in_pretraining,
+         skip_negatives_in_pretraining=args.skip_negatives_in_pretraining)
