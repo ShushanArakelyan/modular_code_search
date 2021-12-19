@@ -328,7 +328,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
-         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining):
+         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -366,6 +366,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  batch_size=batch_size, override_negatives=override_negatives_in_pretraining,
                  skip_negatives=skip_negatives_in_pretraining)
     if do_train:
+        if use_dummy_action:
+            from action2.dummy_action import DummyActionModule
+            action_module = DummyActionModule(device, dim_size=embedder.dim, dropout=dropout)
+            layout_net = LayoutNet(scoring_module, action_module, device)
         if layout_net_training_ckp is not None:
             layout_net.load_from_checkpoint(layout_net_training_ckp)
         else:
@@ -413,6 +417,7 @@ if __name__ == '__main__':
     parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', type=str)
     parser.add_argument('--override_negatives_in_pretraining', dest='override_negatives_in_pretraining', default=False, action='store_true')
     parser.add_argument('--skip_negatives_in_pretraining', dest='skip_negatives_in_pretraining', default=False, action='store_true')
+    parser.add_argument('--use_dummy_action', dest='use_dummy_action', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -440,4 +445,5 @@ if __name__ == '__main__':
          layout_net_training_ckp=args.layout_net_training_ckp,
          finetune_scoring=args.finetune_scoring,
          override_negatives_in_pretraining=args.override_negatives_in_pretraining,
-         skip_negatives_in_pretraining=args.skip_negatives_in_pretraining)
+         skip_negatives_in_pretraining=args.skip_negatives_in_pretraining,
+         use_dummy_action=args.use_dummy_action)
