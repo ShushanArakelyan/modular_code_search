@@ -207,3 +207,10 @@ class ScoringModule:
     def named_parameters(self):
         return chain(self.scorer.named_parameters(), embedder.model.named_parameters())
 
+    def save_to_checkpoint(self, checkpoint):
+        model_dict = {}
+        model_dict['embedder'] = embedder.model.state_dict()
+        model_dict['scorer'] = self.scorer.state_dict()
+        torch.save(model_dict, checkpoint)
+
+
