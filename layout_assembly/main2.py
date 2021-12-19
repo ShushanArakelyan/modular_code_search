@@ -114,15 +114,19 @@ def eval_acc(dataset, layout_net, count):
 
 def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives):
     def get_acc_for_one_sample(sample, label):
-        true_out, pred_out = layout_net.forward(sample[-1][1:-1], sample)
-        if override_negatives:
-            if label == 0:
-                true_out = torch.zeros_like(true_out)
-        labels = binarize(true_out).cpu().detach().numpy()
-        binarized_preds = binarize(torch.sigmoid(pred_out)).cpu().detach().numpy()
-        acc = sum(binarized_preds == labels) * 1. / labels.shape[0]
-        f1 = f1_score(labels, binarized_preds, zero_division=1)
-        return acc, f1
+        output_list = layout_net.forward(sample[-1][1:-1], sample)
+        accs = []
+        f1s = []
+        for out in output_list:
+            true_out, pred_out = out
+            if override_negatives:
+                if label == 0:
+                    true_out = torch.zeros_like(true_out)
+            labels = binarize(true_out).cpu().detach().numpy()
+            binarized_preds = binarize(torch.sigmoid(pred_out)).cpu().detach().numpy()
+            accs.append(sum(binarized_preds == labels) * 1. / labels.shape[0])
+            f1s.append(f1_score(labels, binarized_preds, zero_division=1))
+        return np.mean(accs), np.mean(f1s)
 
     accs = []
     f1_scores = []
