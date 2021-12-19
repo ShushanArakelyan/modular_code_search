@@ -98,7 +98,7 @@ class ActionModule(object):
         self.max_inputs_allowed = len(save_dict) - 3
         self.init_networks(self.dim_size, self.dropout)
         self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
-        for i, state_dict in save_dict.items:
+        for i, state_dict in save_dict.items():
             self.modules[i].load_state_dict(state_dict[i])
 
     def set_eval(self):
