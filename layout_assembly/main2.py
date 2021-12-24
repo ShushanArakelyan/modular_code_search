@@ -230,8 +230,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-            if steps >= example_count:
-                break
             if steps % print_every == 0:
                 writer.add_scalar("Pretraining Loss/pretraining",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
@@ -264,6 +262,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
+            if steps >= example_count:
+                break
 
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count,
@@ -334,23 +334,20 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-            if steps >= example_count:
-                print(f"Stop training because maximum number of steps {steps} has been performed")
-                stop_training = True
-                break
             if steps % print_every == 0:
                 writer.add_scalar("Training Loss/train",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), writer_it)
                 layout_net.set_eval()
-                mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
+                # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
                 acc = eval_acc(valid_data, layout_net, count=1000)
-                writer.add_scalar("Training MRR/valid", mrr, writer_it)
-                for pre, ki in zip(p_at_ks, k):
-                    writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
+                # writer.add_scalar("Training MRR/valid", mrr, writer_it)
+                # for pre, ki in zip(p_at_ks, k):
+                #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
                 writer.add_scalar("Training Acc/valid", acc, writer_it)
-                cur_perf = (mrr, acc, p_at_ks[0])
+                # cur_perf = (mrr, acc, p_at_ks[0])
+                cur_perf = (0, acc, 0)
                 print("Best performance: ", best_accuracy)
                 print("Current performance: ", cur_perf)
                 print("best < current: ", best_accuracy < cur_perf)
@@ -371,6 +368,10 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
                 if stop_training:
                     break
+            if steps >= example_count:
+                print(f"Stop training because maximum number of steps {steps} has been performed")
+                stop_training = True
+                break
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
