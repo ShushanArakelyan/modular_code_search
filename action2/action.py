@@ -100,8 +100,8 @@ class ActionModule(object):
         self.init_networks(self.dim_size, self.dropout)
         print("Loading from checkpoint, modules: ", self.modules)
         self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
-        for i, state_dict in save_dict.items():
-            self.modules[i].load_state_dict(state_dict)
+        for i in range(self.max_inputs_allowed):
+            self.modules[i].load_state_dict(save_dict[i])
 
     def set_eval(self):
         self.verb_embedder.eval()
