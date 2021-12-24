@@ -154,6 +154,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
                 break
             i += 1
     layout_net.set_train()
+    print(accs, np.mean(accs))
     return np.mean(accs), np.mean(f1_scores)
 
 
