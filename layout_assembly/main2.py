@@ -244,7 +244,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                                                        count=1000)
                 writer.add_scalar("Pretraining F1/valid pretraining", f1, writer_it)
                 writer.add_scalar("Pretraining Acc/valid pretraining", acc, writer_it)
-                cur_perf = (acc, f1)
+                cur_perf = (f1, acc)
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
                 print("best < current: ", best_accuracy < cur_perf)
