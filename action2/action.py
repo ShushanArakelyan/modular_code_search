@@ -101,7 +101,7 @@ class ActionModule(object):
         print("Loading from checkpoint, modules: ", self.modules)
         self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
         for i, state_dict in save_dict.items():
-            self.modules[i].load_state_dict(state_dict[i])
+            self.modules[i].load_state_dict(state_dict)
 
     def set_eval(self):
         self.verb_embedder.eval()
