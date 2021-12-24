@@ -96,7 +96,9 @@ class ActionModule(object):
         self.dropout = save_dict['dropout']
         self.dim_size = save_dict['dim_size']
         self.max_inputs_allowed = len(save_dict) - 3
+        print("Loading from checkpoint, max inputs allowed ", self.max_inputs_allowed)
         self.init_networks(self.dim_size, self.dropout)
+        print("Loading from checkpoint, modules: ", self.modules)
         self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
         for i, state_dict in save_dict.items():
             self.modules[i].load_state_dict(state_dict[i])
