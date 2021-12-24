@@ -113,7 +113,7 @@ def eval_acc(dataset, layout_net, count):
 
 
 def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives):
-    def get_acc_for_one_sample(sample, label):
+    def get_acc_and_f1_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         accs = []
         f1s = []
@@ -137,7 +137,9 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
-                accs.append(get_acc_for_one_sample(sample, label))
+                acc, f1 = get_acc_and_f1_for_one_sample(sample, label)
+                accs.append(acc)
+                f1_scores.append(f1)
             except ProcessingException:
                 continue
             # Create a negative example
@@ -145,7 +147,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
             try:
-                acc, f1 = get_acc_for_one_sample(neg_sample, label=0)
+                acc, f1 = get_acc_and_f1_for_one_sample(neg_sample, label=0)
                 accs.append(acc)
                 f1_scores.append(f1)
             except ProcessingException:
@@ -154,7 +156,6 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
                 break
             i += 1
     layout_net.set_train()
-    print(accs, np.mean(accs))
     return np.mean(accs), np.mean(f1_scores)
 
 
