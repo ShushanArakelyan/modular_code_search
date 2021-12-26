@@ -26,7 +26,8 @@ class ActionModule(object):
                 torch.nn.Linear(dim, int(dim / 2)),
                 torch.nn.Dropout(dropout),
                 torch.nn.ReLU(),
-                torch.nn.Linear(int(dim / 2), 1)
+                torch.nn.Linear(int(dim / 2), 1),
+                torch.nn.Sigmoid(),
             ).to(self.device)
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):

@@ -53,14 +53,14 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
             pred = make_prediction(output_list)
         except ProcessingException:
             return None, None
-        ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
+        ranks.append(float(pred.cpu().numpy()))
         for neg_idx in idxs_to_eval:
             distractor, _, _, _ = dataset[neg_idx]
             neg_sample = create_neg_sample(sample, distractor)
             try:
                 output_list = layout_net.forward(neg_sample[-1][1:-1], neg_sample)
                 pred = make_prediction(output_list)
-                ranks.append(float(torch.sigmoid(pred).cpu().numpy()))
+                ranks.append(float(pred.cpu().numpy()))
             except ProcessingException:
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
@@ -86,7 +86,8 @@ def eval_acc(dataset, layout_net, count):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
-        binarized_pred = binarize(torch.sigmoid(pred)).cpu()
+        binarized_pred = binarize(pred).cpu()
+        print("valid pred: ", pred, ", label: ", label, ", binarized_pred: ", binarized_pred)
         return (binarized_pred == label).detach().numpy()
 
     accs = []
@@ -332,7 +333,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss += l
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
-            binarized_pred = binarize(torch.sigmoid(pred))
+            binarized_pred = binarize(pred)
             accuracy.append((binarized_pred == label).cpu().detach().numpy())
             if epoch_steps % batch_size == 0:
                 loss.backward()
