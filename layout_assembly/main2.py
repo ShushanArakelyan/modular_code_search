@@ -103,6 +103,7 @@ def eval_acc(dataset, layout_net, count):
             try:
                 accs.append(get_acc_for_one_sample(sample, label=positive_label))
             except ProcessingException:
+                print("skipping + example")
                 continue
             # Create a negative example
             np.random.seed(22222 + i)
@@ -111,8 +112,10 @@ def eval_acc(dataset, layout_net, count):
             try:
                 accs.append(get_acc_for_one_sample(neg_sample, label=negative_label))
             except ProcessingException:
+                print("skipping - example")
                 continue
             if i >= count:
+                print("breaking because i > count: ", i, count)
                 break
             i += 1
     layout_net.set_train()
