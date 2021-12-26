@@ -86,18 +86,20 @@ def eval_acc(dataset, layout_net, count):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
-        binarized_pred = binarize(torch.sigmoid(pred))
-        return int(binarized_pred == label)
+        binarized_pred = binarize(torch.sigmoid(pred)).cpu()
+        return (binarized_pred == label).detach().numpy()
 
     accs = []
     layout_net.set_eval()
+    positive_label = torch.tensor(1, dtype=torch.float).cpu()
+    negative_label = torch.tensor(0, dtype=torch.float).cpu()
     with torch.no_grad():
         i = 0
         for sample in range(len(dataset)):
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
-                accs.append(get_acc_for_one_sample(sample, label))
+                accs.append(get_acc_for_one_sample(sample, label=positive_label))
             except ProcessingException:
                 continue
             # Create a negative example
@@ -105,7 +107,7 @@ def eval_acc(dataset, layout_net, count):
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
             try:
-                accs.append(get_acc_for_one_sample(neg_sample, label=0))
+                accs.append(get_acc_for_one_sample(neg_sample, label=negative_label))
             except ProcessingException:
                 continue
             if i >= count:
