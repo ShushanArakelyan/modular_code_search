@@ -37,11 +37,12 @@ def make_prediction(output_list):
     print("len of output_list: ", len(output_list))
     for i in range(len(output_list)):
         print("output_list[i][0]: ", output_list[i][0].shape, ", output_list[i][1]: ", output_list[i][1].shape)
+        s = torch.sigmoid(torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze()))
         if alignment_scores is None:
-            alignment_scores = torch.sigmoid(torch.dot(output_list[i][0], output_list[i][1]))
+            alignment_scores = s
             print("alignment_scores.shape: ", alignment_scores.shape)
         else:
-            alignment_scores = torch.cat((alignment_scores, torch.sigmoid(torch.dot(output_list[i][0], output_list[i][1]))))
+            alignment_scores = torch.cat((alignment_scores, s))
             print("alignment_scores.shape: ", alignment_scores.shape)
     pred = torch.prod(alignment_scores)
     return pred
