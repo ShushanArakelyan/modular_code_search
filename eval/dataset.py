@@ -62,6 +62,7 @@ class CodeSearchNetDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
+        idx = int(idx)
         sample = (self.data['docstring_tokens'][idx],
                   self.data['code_tokens'][idx],
                   self.data['static_tags'][idx],
