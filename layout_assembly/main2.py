@@ -270,7 +270,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count_per_epoch,
           use_lr_scheduler, writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
-    loss_func = torch.nn.BCEWithLogitsLoss()
+    loss_func = torch.nn.BCELoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
@@ -279,8 +279,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    positive_label = torch.tensor(1, dtype=float).to(device)
-    negative_label = torch.tensor(0, dtype=float).to(device)
+    positive_label = torch.tensor(1, dtype=torch.float).to(device)
+    negative_label = torch.tensor(0, dtype=torch.float).to(device)
 
     total_steps = 0
     best_accuracy = (-1.0, -1.0, -1.0)
