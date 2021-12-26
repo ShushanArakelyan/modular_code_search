@@ -84,8 +84,8 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
 
 def eval_acc(dataset, layout_net, count):
     def get_acc_for_one_sample(sample, label):
+        print("valid sample: ", sample[-1][1:-1])
         output_list = layout_net.forward(sample[-1][1:-1], sample)
-        print("got output list")
         pred = make_prediction(output_list)
         print("made prediction")
         binarized_pred = binarize(pred).cpu()
