@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 import torch
 import tqdm
+from sklearn.metrics import f1_score
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -17,7 +18,6 @@ from layout_assembly.layout_ws2 import LayoutNetWS2 as LayoutNet
 from layout_assembly.modules import ScoringModule
 from layout_assembly.utils import ProcessingException
 
-from sklearn.metrics import f1_score
 
 def create_neg_sample(orig, distr):
     return (orig[0], distr[1], distr[2], distr[3], orig[4])
@@ -65,6 +65,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
         return mrr(ranks), [p_at_k(ranks, ki) for ki in k]
+
     results = {f'P@{ki}': [] for ki in k}
     results['MRR'] = []
     with torch.no_grad():
@@ -165,9 +166,9 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
     return np.mean(accs), np.mean(f1_scores)
 
 
-def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count_per_epoch, device,
-             print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size,
-             skip_negatives, override_negatives):
+def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, device, print_every,
+             writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size, skip_negatives,
+             override_negatives):
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
@@ -196,7 +197,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 break
             sample, _, _, label = datum
             if skip_negatives:
-                if label == 0: # skip negative samples
+                if label == 0:  # skip negative samples
                     continue
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
@@ -225,7 +226,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 binarized_preds = binarize(torch.sigmoid(pred_out))
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
-                                   binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
+                                          binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
 
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
@@ -270,12 +271,10 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
-            if epoch_steps >= example_count_per_epoch:
-                break
 
 
-def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count_per_epoch,
-          use_lr_scheduler, writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
+def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
+          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
     loss_func = torch.nn.BCELoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
@@ -361,8 +360,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
-                    print("Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
-                          (best_accuracy, cur_perf, epoch, epoch_steps))
+                    print(
+                        "Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
+                        (best_accuracy, cur_perf, epoch, epoch_steps))
                     best_accuracy = cur_perf
                     wait_step = 0
                     stop_training = False
@@ -376,10 +376,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
                 if stop_training:
                     break
-            if epoch_steps >= example_count_per_epoch:
-                print(f"Continue to next epoch because maximum number of examples per epoch: {example_count_per_epoch} "
-                      f"has been exceeded")
-                break
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
@@ -400,6 +396,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         print("Len of validation dataset before filtering: ", len(valid_data))
         valid_data = filter_neg_samples(valid_data, device)
         print("Len of validation dataset after filtering: ", len(valid_data))
+    if example_count is not None and example_count < len(dataset):
+        import torch.utils.data as data_utils
+        indices = torch.arange(example_count)
+        dataset = data_utils.Subset(dataset, indices)
+        print(f"Modified dataset, new dataset has {len(dataset)} examples")
     data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
@@ -417,12 +418,12 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         os.makedirs(checkpoint_dir)
 
     if do_pretrain:
-        pretrain(layout_net=layout_net, adamw=adamw, checkpoint_dir=checkpoint_dir, num_epochs=num_epochs_pretraining,
-                 data_loader=data_loader, clip_grad_value=clip_grad_value, example_count_per_epoch=example_count, device=device,
-                 lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
+        pretrain(layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
+                 num_epochs=num_epochs_pretraining, data_loader=data_loader, clip_grad_value=clip_grad_value,
+                 device=device, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
-                 batch_size=batch_size, override_negatives=override_negatives_in_pretraining,
-                 skip_negatives=skip_negatives_in_pretraining)
+                 batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
+                 override_negatives=override_negatives_in_pretraining)
     if do_train:
         if use_dummy_action:
             from action2.dummy_action import DummyActionModule
@@ -434,11 +435,11 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
             pretraining_best_checkpoint = checkpoint_dir + '/pretrain/best_model.tar'
             if os.path.exists(pretraining_best_checkpoint):
                 layout_net.load_from_checkpoint(pretraining_best_checkpoint)
-        train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
+        train(device=device, layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
-              example_count_per_epoch=example_count, use_lr_scheduler=use_lr_scheduler,
-              writer=writer, valid_data=valid_data, k=k, distractor_set_size=distractor_set_size,
-              print_every=print_every, patience=patience, batch_size=batch_size, finetune_scoring=finetune_scoring)
+              use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
+              distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
+              batch_size=batch_size, finetune_scoring=finetune_scoring)
 
 
 if __name__ == '__main__':
@@ -473,8 +474,10 @@ if __name__ == '__main__':
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
     parser.add_argument('--finetune_scoring', dest='finetune_scoring', default=False, action='store_true')
     parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', type=str)
-    parser.add_argument('--override_negatives_in_pretraining', dest='override_negatives_in_pretraining', default=False, action='store_true')
-    parser.add_argument('--skip_negatives_in_pretraining', dest='skip_negatives_in_pretraining', default=False, action='store_true')
+    parser.add_argument('--override_negatives_in_pretraining', dest='override_negatives_in_pretraining', default=False,
+                        action='store_true')
+    parser.add_argument('--skip_negatives_in_pretraining', dest='skip_negatives_in_pretraining', default=False,
+                        action='store_true')
     parser.add_argument('--use_dummy_action', dest='use_dummy_action', default=False, action='store_true')
 
     args = parser.parse_args()
