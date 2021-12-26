@@ -53,23 +53,32 @@ class LayoutNetWS2(LayoutNet):
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
+        print(1)
         tree = self.construct_layout(ccg_parse)
+        print(2)
         tree = self.remove_concats(tree)
+        print(3)
         code = sample[1]
         if len(code) == 0:  # erroneous example
             raise ProcessingException()
+        print(4)
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
+        print(5)
         if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
             raise ProcessingException()
+        print(6)
         if self.finetune_scoring:
             scoring_forward_method = self.scoring_module.forward_batch
         else:
             scoring_forward_method = self.scoring_module.forward_batch_no_grad
-
+        print(7)
         scoring_outputs = scoring_forward_method(scoring_inputs[0], scoring_inputs[1])
+        print(8)
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
+        print(9)
         outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],
                                  scoring_it=0, action_it=0)
+        print(10)
         return outs[-1]
 
     def get_masking_idx(self):
