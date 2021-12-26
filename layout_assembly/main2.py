@@ -411,7 +411,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         print("Len of validation dataset after filtering: ", len(valid_data))
     if example_count is not None and example_count < len(dataset):
         import torch.utils.data as data_utils
-        perm = torch.randperm(torch.arange(len(dataset)))
+        perm = torch.randperm(len(dataset))
         indices = perm[:example_count]
         dataset = data_utils.Subset(dataset, indices)
         print(f"Modified dataset, new dataset has {len(dataset)} examples")
