@@ -377,6 +377,19 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 if stop_training:
                     break
 
+        # end of epoch eval
+        writer.add_scalar("Training Loss/train",
+                          np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
+        writer.add_scalar("Training Acc/train",
+                          np.mean(accuracy[-print_every:]), total_steps)
+        layout_net.set_eval()
+        # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
+        acc = eval_acc(valid_data, layout_net, count=1000)
+        # writer.add_scalar("Training MRR/valid", mrr, writer_it)
+        # for pre, ki in zip(p_at_ks, k):
+        #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
+        writer.add_scalar("Training Acc/valid", acc, total_steps)
+
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
          valid_file_name, num_negatives, adamw,
