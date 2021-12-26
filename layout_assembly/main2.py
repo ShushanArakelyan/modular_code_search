@@ -34,8 +34,8 @@ def compute_alignment(a, b):
 
 def make_prediction(output_list):
     output_tensor = torch.cat(output_list[0], dim=1)
-    # for i in range(1, len(output_list)):
-    #     output_tensor = torch.cat((output_tensor, *output_list[i]), dim=1)
+    for i in range(1, len(output_list)):
+        output_tensor = torch.cat((output_tensor, *output_list[i]), dim=1)
     alignment_scores = torch.sigmoid(torch.dot(output_tensor[:, 0], output_tensor[:, 1]))
     pred = torch.prod(alignment_scores)
     return pred
@@ -159,7 +159,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
     return np.mean(accs), np.mean(f1_scores)
 
 
-def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count, device,
+def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count_per_epoch, device,
              print_every, writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size,
              skip_negatives, override_negatives):
     loss_func = torch.nn.BCEWithLogitsLoss()
@@ -170,17 +170,19 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    writer_it = 0
+    total_steps = 0
     best_accuracy = (-1.0, -1.0)
     wait_step = 0
     stop_training = False
 
     for epoch in range(num_epochs):
+        if stop_training:
+            break
         cumulative_loss = []
         accuracy = []
         f1_scores = []
         loss = None
-        steps = 0
+        epoch_steps = 0
         for x in layout_net.parameters():
             x.grad = None
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
@@ -219,9 +221,9 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
                                    binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
 
-            steps += 1
-            writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
-            if steps % batch_size == 0:
+            epoch_steps += 1
+            total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
+            if epoch_steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
@@ -230,18 +232,18 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-            if steps % print_every == 0:
+            if epoch_steps % print_every == 0:
                 writer.add_scalar("Pretraining Loss/pretraining",
-                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
+                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
                 writer.add_scalar("Pretraining Acc/train pretraining",
-                                  np.mean(accuracy[-print_every:]), writer_it)
+                                  np.mean(accuracy[-print_every:]), total_steps)
                 writer.add_scalar("Pretraining F1/pretraining",
-                                  np.mean(f1_scores[-print_every:]), writer_it)
+                                  np.mean(f1_scores[-print_every:]), total_steps)
                 layout_net.set_eval()
                 acc, f1 = eval_acc_f1_pretraining_task(valid_data, layout_net, override_negatives=override_negatives,
                                                        count=1000)
-                writer.add_scalar("Pretraining F1/valid pretraining", f1, writer_it)
-                writer.add_scalar("Pretraining Acc/valid pretraining", acc, writer_it)
+                writer.add_scalar("Pretraining F1/valid pretraining", f1, total_steps)
+                writer.add_scalar("Pretraining Acc/valid pretraining", acc, total_steps)
                 cur_perf = (f1, acc)
                 print("Best pretraining performance: ", best_accuracy)
                 print("Current pretraining performance: ", cur_perf)
@@ -250,7 +252,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print(
                         "Saving model with best pretraining accuracy performance: %s -> %s on epoch=%d, global_step=%d" %
-                        (best_accuracy, cur_perf, epoch, steps))
+                        (best_accuracy, cur_perf, epoch, epoch_steps))
                     best_accuracy = cur_perf
                     wait_step = 0
                     stop_training = False
@@ -262,11 +264,11 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
-            if steps >= example_count:
+            if epoch_steps >= example_count_per_epoch:
                 break
 
 
-def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count,
+def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, example_count_per_epoch,
           use_lr_scheduler, writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
     loss_func = torch.nn.BCEWithLogitsLoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -280,16 +282,18 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     positive_label = torch.tensor(1, dtype=float).to(device)
     negative_label = torch.tensor(0, dtype=float).to(device)
 
-    writer_it = 0
+    total_steps = 0
     best_accuracy = (-1.0, -1.0, -1.0)
     wait_step = 0
     stop_training = False
 
     for epoch in range(num_epochs):
+        if stop_training:
+            break
         cumulative_loss = []
         accuracy = []
         loss = None
-        steps = 0
+        epoch_steps = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             for param in layout_net.parameters():
                 param.grad = None
@@ -321,11 +325,11 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     stop_training = True
                     break
                 loss += l
-            steps += 1
-            writer_it += 1  # this way the number in tensorboard will correspond to the actual number of iterations
+            epoch_steps += 1
+            total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             binarized_pred = binarize(torch.sigmoid(pred))
             accuracy.append((binarized_pred == label).cpu().detach().numpy())
-            if steps % batch_size == 0:
+            if epoch_steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
@@ -334,27 +338,25 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
-            if steps % print_every == 0:
+            if epoch_steps % print_every == 0:
                 writer.add_scalar("Training Loss/train",
-                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), writer_it)
+                                  np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
                 writer.add_scalar("Training Acc/train",
-                                  np.mean(accuracy[-print_every:]), writer_it)
+                                  np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
                 # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
                 acc = eval_acc(valid_data, layout_net, count=1000)
                 # writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 # for pre, ki in zip(p_at_ks, k):
                 #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
-                writer.add_scalar("Training Acc/valid", acc, writer_it)
+                writer.add_scalar("Training Acc/valid", acc, total_steps)
                 # cur_perf = (mrr, acc, p_at_ks[0])
                 cur_perf = (0, acc, 0)
-                print("Best performance: ", best_accuracy)
-                print("Current performance: ", cur_perf)
-                print("best < current: ", best_accuracy < cur_perf)
+                print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print("Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
-                          (best_accuracy, cur_perf, epoch, steps))
+                          (best_accuracy, cur_perf, epoch, epoch_steps))
                     best_accuracy = cur_perf
                     wait_step = 0
                     stop_training = False
@@ -368,9 +370,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
                 if stop_training:
                     break
-            if steps >= example_count:
-                print(f"Stop training because maximum number of steps {steps} has been performed")
-                stop_training = True
+            if epoch_steps >= example_count_per_epoch:
+                print(f"Continue to next epoch because maximum number of examples per epoch: {example_count_per_epoch} "
+                      f"has been exceeded")
                 break
 
 
@@ -410,7 +412,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
 
     if do_pretrain:
         pretrain(layout_net=layout_net, adamw=adamw, checkpoint_dir=checkpoint_dir, num_epochs=num_epochs_pretraining,
-                 data_loader=data_loader, clip_grad_value=clip_grad_value, example_count=example_count, device=device,
+                 data_loader=data_loader, clip_grad_value=clip_grad_value, example_count_per_epoch=example_count, device=device,
                  lr=lr, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size, override_negatives=override_negatives_in_pretraining,
@@ -428,7 +430,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                 layout_net.load_from_checkpoint(pretraining_best_checkpoint)
         train(layout_net=layout_net, device=device, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
-              example_count=example_count, use_lr_scheduler=use_lr_scheduler,
+              example_count_per_epoch=example_count, use_lr_scheduler=use_lr_scheduler,
               writer=writer, valid_data=valid_data, k=k, distractor_set_size=distractor_set_size,
               print_every=print_every, patience=patience, batch_size=batch_size, finetune_scoring=finetune_scoring)
 
