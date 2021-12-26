@@ -96,6 +96,7 @@ def eval_acc(dataset, layout_net, count):
     negative_label = torch.tensor(0, dtype=torch.float).cpu()
     with torch.no_grad():
         i = 0
+        print("Len dataset: ", len(dataset))
         for sample in range(len(dataset)):
             sample, _, _, label = dataset[i]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
