@@ -84,12 +84,9 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
 
 def eval_acc(dataset, layout_net, count):
     def get_acc_for_one_sample(sample, label):
-        print("valid sample: ", sample[-1][1:-1])
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
-        print("made prediction")
         binarized_pred = binarize(pred).cpu()
-        print("valid pred: ", pred, ", label: ", label, ", binarized_pred: ", binarized_pred)
         return (binarized_pred == label).detach().numpy()
 
     accs = []
@@ -98,23 +95,20 @@ def eval_acc(dataset, layout_net, count):
     negative_label = torch.tensor(0, dtype=torch.float).cpu()
     with torch.no_grad():
         i = 0
-        print("Len dataset: ", len(dataset))
-        for sample in range(len(dataset)):
-            sample, _, _, label = dataset[i]
+        for j in range(len(dataset)):
+            sample, _, _, label = dataset[j]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
                 accs.append(get_acc_for_one_sample(sample, label=positive_label))
             except ProcessingException:
-                print("skipping + example")
                 continue
             # Create a negative example
-            np.random.seed(22222 + i)
+            np.random.seed(22222 + j)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
-            neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
+            neg_sample = create_neg_sample(dataset[j][0], dataset[neg_idx][0])
             try:
                 accs.append(get_acc_for_one_sample(neg_sample, label=negative_label))
             except ProcessingException:
-                print("skipping - example")
                 continue
             if i >= count:
                 print("breaking because i > count: ", i, count)
