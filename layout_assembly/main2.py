@@ -42,7 +42,7 @@ def make_prediction(output_list):
             alignment_scores = s
             print("alignment_scores.shape: ", alignment_scores.shape)
         else:
-            alignment_scores = torch.cat((alignment_scores, s))
+            alignment_scores = torch.cat((alignment_scores.unsqueeze(dim=0), s.unsqueeze(dim=0)))
             print("alignment_scores.shape: ", alignment_scores.shape)
     pred = torch.prod(alignment_scores)
     return pred
