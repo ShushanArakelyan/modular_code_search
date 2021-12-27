@@ -341,7 +341,15 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
+                all_param_norm = 0.
+                for x in layout_net.parameters():
+                    all_param_norm += np.linalg.norm(x.detach().cpu().numpy())
+                print("Norm before optim: ", all_param_norm)
                 op.step()
+                all_param_norm = 0.
+                for x in layout_net.parameters():
+                    all_param_norm += np.linalg.norm(x.detach().cpu().numpy())
+                print("Norm after optim: ", all_param_norm)
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
