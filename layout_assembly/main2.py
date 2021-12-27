@@ -41,7 +41,7 @@ def make_prediction(output_list):
         else:
             alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
-    pred = torch.sigmoid(pred)
+    pred = (torch.sigmoid(pred) - 0.5)*2
     return pred
 
 
