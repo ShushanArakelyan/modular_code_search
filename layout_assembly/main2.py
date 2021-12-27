@@ -41,7 +41,6 @@ def make_prediction(output_list):
         else:
             alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
-    print(pred, torch.sigmoid(pred))
     pred = torch.sigmoid(pred)
     return pred
 
@@ -114,11 +113,9 @@ def eval_acc(dataset, layout_net, count):
             except ProcessingException:
                 continue
             if i >= count:
-                print("breaking because i > count: ", i, count)
                 break
             i += 1
     layout_net.set_train()
-    print("eval: ", accs)
     return np.mean(accs)
 
 
@@ -255,9 +252,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 writer.add_scalar("Pretraining F1/valid pretraining", f1, total_steps)
                 writer.add_scalar("Pretraining Acc/valid pretraining", acc, total_steps)
                 cur_perf = (f1, acc)
-                print("Best pretraining performance: ", best_accuracy)
-                print("Current pretraining performance: ", cur_perf)
-                print("best < current: ", best_accuracy < cur_perf)
+                print("Current pretraining performance: ", cur_perf, ", best pretraining performance: ", best_accuracy)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
                     print(
@@ -277,9 +272,14 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
-          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
+          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring, optim_type='adam'):
     loss_func = torch.nn.BCELoss()
-    op = torch.optim.SGD(layout_net.parameters(), lr=lr)
+    if optim_type == 'sgd':
+        op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
+    elif optim_type == 'adam':
+        op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+    else:
+        raise Exception("Unknown optimizer type!! ", optim_type)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
     if finetune_scoring:
@@ -332,7 +332,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     stop_training = True
                     break
                 loss += l
-            print('loss ', loss)
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             binarized_pred = binarize(pred)
@@ -353,8 +352,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
-                # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-                acc = eval_acc(valid_data, layout_net, count=10)
+                # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=100)
+                acc = eval_acc(valid_data, layout_net, count=1000)
                 # writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 # for pre, ki in zip(p_at_ks, k):
                 #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
@@ -388,7 +387,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                           np.mean(accuracy[-print_every:]), total_steps)
         layout_net.set_eval()
         # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-        acc = eval_acc(valid_data, layout_net, count=10)
+        acc = eval_acc(valid_data, layout_net, count=1000)
         
         # writer.add_scalar("Training MRR/valid", mrr, writer_it)
         # for pre, ki in zip(p_at_ks, k):
