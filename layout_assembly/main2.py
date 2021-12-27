@@ -419,7 +419,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         indices = perm[:example_count]
         dataset = data_utils.Subset(dataset, indices)
         print(f"Modified dataset, new dataset has {len(dataset)} examples")
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
