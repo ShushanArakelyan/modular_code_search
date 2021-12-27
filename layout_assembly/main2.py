@@ -35,12 +35,14 @@ def compute_alignment(a, b):
 def make_prediction(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
-        s = (torch.sigmoid(torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())) - 0.5) * 2
+        s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
             alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
+    print(pred, torch.sigmoid(pred))
+    pred = torch.sigmoid(pred)
     return pred
 
 
@@ -341,15 +343,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
-                all_param_norm = 0.
-                for x in layout_net.parameters():
-                    all_param_norm += np.linalg.norm(x.detach().cpu().numpy())
-                print("Norm before optim: ", all_param_norm)
                 op.step()
-                all_param_norm = 0.
-                for x in layout_net.parameters():
-                    all_param_norm += np.linalg.norm(x.detach().cpu().numpy())
-                print("Norm after optim: ", all_param_norm)
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
