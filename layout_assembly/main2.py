@@ -395,11 +395,22 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/valid", acc, total_steps)
 
 
+def eval(layout_net, data, k, distractor_set_size, count=100):
+    layout_net.set_eval()
+    mrr, p_at_ks = eval_mrr_and_p_at_k(data, layout_net, k, distractor_set_size, count=count)
+    acc = eval_acc(data, layout_net, count=count)
+
+    print("MRR: ", mrr)
+    for pre, ki in zip(p_at_ks, k):
+        print(f"P@{k}", pre)
+    print("Acc", acc)
+
+
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
-         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action):
+         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval):
     shard_range = num_negatives
     dataset = ConcatDataset(
         [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
@@ -442,22 +453,25 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
                  override_negatives=override_negatives_in_pretraining)
+    if layout_net_training_ckp is not None:
+        layout_net.load_from_checkpoint(layout_net_training_ckp)
+    else:
+        pretraining_best_checkpoint = checkpoint_dir + '/pretrain/best_model.tar'
+        if os.path.exists(pretraining_best_checkpoint):
+            layout_net.load_from_checkpoint(pretraining_best_checkpoint)
     if do_train:
         if use_dummy_action:
             from action2.dummy_action import DummyActionModule
             action_module = DummyActionModule(device, dim_size=embedder.dim, dropout=dropout)
             layout_net = LayoutNet(scoring_module, action_module, device)
-        if layout_net_training_ckp is not None:
-            layout_net.load_from_checkpoint(layout_net_training_ckp)
-        else:
-            pretraining_best_checkpoint = checkpoint_dir + '/pretrain/best_model.tar'
-            if os.path.exists(pretraining_best_checkpoint):
-                layout_net.load_from_checkpoint(pretraining_best_checkpoint)
         train(device=device, layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
               batch_size=batch_size, finetune_scoring=finetune_scoring)
+    if do_eval:
+        eval(layout_net, valid_data, k, distractor_set_size, count=100)
+
 
 
 if __name__ == '__main__':
@@ -490,6 +504,7 @@ if __name__ == '__main__':
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
+    parser.add_argument('--do_eval', dest='do_eval', default=False, action='store_true')
     parser.add_argument('--finetune_scoring', dest='finetune_scoring', default=False, action='store_true')
     parser.add_argument('--layout_net_training_ckp', dest='layout_net_training_ckp', type=str)
     parser.add_argument('--override_negatives_in_pretraining', dest='override_negatives_in_pretraining', default=False,
@@ -520,6 +535,7 @@ if __name__ == '__main__':
          distractor_set_size=args.distractor_set_size,
          do_pretrain=args.do_pretrain,
          do_train=args.do_train,
+         do_eval=args.do_eval,
          batch_size=args.batch_size,
          layout_net_training_ckp=args.layout_net_training_ckp,
          finetune_scoring=args.finetune_scoring,
