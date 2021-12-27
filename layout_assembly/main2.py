@@ -35,7 +35,7 @@ def compute_alignment(a, b):
 def make_prediction(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
-        s = torch.sigmoid(torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze()))
+        s = (torch.sigmoid(torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())) - 0.5) * 2
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -88,7 +88,7 @@ def eval_acc(dataset, layout_net, count):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
         binarized_pred = binarize(pred).cpu()
-        return (binarized_pred == label).detach().numpy()
+        return int((binarized_pred == label).detach().numpy())
 
     accs = []
     layout_net.set_eval()
@@ -116,6 +116,7 @@ def eval_acc(dataset, layout_net, count):
                 break
             i += 1
     layout_net.set_train()
+    print("eval: ", accs)
     return np.mean(accs)
 
 
@@ -276,7 +277,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
           writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring):
     loss_func = torch.nn.BCELoss()
-    op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+    op = torch.optim.SGD(layout_net.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
     if finetune_scoring:
@@ -286,7 +287,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
 
     positive_label = torch.tensor(1, dtype=torch.float).to(device)
     negative_label = torch.tensor(0, dtype=torch.float).to(device)
-
     total_steps = 0
     best_accuracy = (-1.0, -1.0, -1.0)
     wait_step = 0
@@ -330,10 +330,12 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     stop_training = True
                     break
                 loss += l
+            print('loss ', loss)
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             binarized_pred = binarize(pred)
-            accuracy.append((binarized_pred == label).cpu().detach().numpy())
+            
+            accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
             if epoch_steps % batch_size == 0:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
@@ -350,7 +352,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                                   np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
                 # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-                acc = eval_acc(valid_data, layout_net, count=1000)
+                acc = eval_acc(valid_data, layout_net, count=10)
                 # writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 # for pre, ki in zip(p_at_ks, k):
                 #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
@@ -384,7 +386,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                           np.mean(accuracy[-print_every:]), total_steps)
         layout_net.set_eval()
         # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-        acc = eval_acc(valid_data, layout_net, count=1000)
+        acc = eval_acc(valid_data, layout_net, count=10)
+        
         # writer.add_scalar("Training MRR/valid", mrr, writer_it)
         # for pre, ki in zip(p_at_ks, k):
         #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
@@ -415,7 +418,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         indices = perm[:example_count]
         dataset = data_utils.Subset(dataset, indices)
         print(f"Modified dataset, new dataset has {len(dataset)} examples")
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
