@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import torch
 from natsort import natsorted
-# from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import codebert_embedder as embedder
@@ -237,7 +237,7 @@ def main():
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
-    # writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
+    writer = SummaryWriter(f'/home/shushan/modular_code_search/runs/{dt_string}')
     print("Writing to tensorboard: ", dt_string)
 
     if not embedder.initialized:
