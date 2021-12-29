@@ -65,7 +65,6 @@ class LayoutNetWS2(LayoutNet):
             scoring_forward_method = self.scoring_module.forward_batch
         else:
             scoring_forward_method = self.scoring_module.forward_batch_no_grad
-
         scoring_outputs = scoring_forward_method(scoring_inputs[0], scoring_inputs[1])
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
         outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],

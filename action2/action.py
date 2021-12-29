@@ -27,7 +27,8 @@ class ActionModule(object):
                 torch.nn.Linear(dim, int(dim / 2)),
                 torch.nn.Dropout(dropout),
                 torch.nn.ReLU(),
-                torch.nn.Linear(int(dim / 2), 1)
+                torch.nn.Linear(int(dim / 2), 1),
+                torch.nn.Sigmoid(),
             ).to(self.device)
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):
@@ -101,7 +102,6 @@ class ActionModule(object):
         self.max_inputs_allowed = len(save_dict) - 3
         print("Loading from checkpoint, max inputs allowed ", self.max_inputs_allowed)
         self.init_networks(self.dim_size, self.dropout)
-        print("Loading from checkpoint, modules: ", self.modules)
         self.verb_embedder.load_state_dict(save_dict['verb_embedder'])
         for i in range(self.max_inputs_allowed):
             self.modules[i].load_state_dict(save_dict[i])
