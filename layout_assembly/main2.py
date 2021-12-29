@@ -9,6 +9,8 @@ from sklearn.metrics import f1_score
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from matplotlib import pyplot as plt
+
 import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
 from eval.dataset import CodeSearchNetDataset_wShards, CodeSearchNetDataset_NotPrecomputed
