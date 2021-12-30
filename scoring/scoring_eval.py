@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-import codebert_embedder as embedder
+import scoring as embedder
 from scoring.scoring_eval_utils import find_split_point, eval_example
 
 
