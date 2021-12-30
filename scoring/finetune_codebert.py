@@ -9,7 +9,7 @@ from natsort import natsorted
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-import codebert_embedder as embedder
+import scoring as embedder
 from .utils import get_ground_truth_matches, get_noun_phrases, embed_pair
 
 P = 0.7
@@ -169,7 +169,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
 
 
 def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, checkpoint_prefix, save_every=None,
-              print_every=1000, valid_data=None):
+              print_every=500, valid_data=None):
     cumulative_loss = []
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, 
@@ -291,7 +291,7 @@ def main():
     if args.use_mean:
         global VERSION
         VERSION = "MEAN"
-        
+
     if args.include_mismatched_pair:
         global INCLUDE_MISMATCHED_PAIR
         INCLUDE_MISMATCHED_PAIR = True
@@ -328,8 +328,9 @@ def main():
                 datafile_to_start = -1
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
+            valid_data = pd.read_json(args.valid_data, lines=True)
             total_loss, total_steps = run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps,
-                                                device, save_every=None, valid_data=args.valid_data,
+                                                device, save_every=None, valid_data=valid_data,
                                                 checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
         datafile_to_start = -1
 
