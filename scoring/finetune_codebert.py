@@ -168,7 +168,8 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
     return cumulative_loss
 
 
-def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device, checkpoint_prefix, save_every=None):
+def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, checkpoint_prefix, save_every=None,
+              print_every=1000, valid_data=None):
     cumulative_loss = []
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, 
@@ -178,6 +179,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
         else:
             pairs = ['correct_pair']
         for pair in pairs:
+            total_steps += 1
             if pair == 'correct_pair':
                 doc = data['docstring_tokens'][it]
                 code = data['alt_code_tokens'][it]
@@ -198,9 +200,16 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
             out = train_one_example(sample, scorer, embedder, op, bceloss, device)
             if out is not None:
                 cumulative_loss.append(out)
-        if it > 0 and it % 100 == 0:
-            writer_epoch += 1
-            writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), writer_epoch)
+        if (it + 1) % print_every == 0:
+            writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), total_steps)
+            if valid_data is not None:
+                from scoring.scoring_eval import run_eval_epoch
+                f1_scores, precisions, recalls = run_eval_epoch(data, scorer, embedder, EMBED_SEPARATELY, VERSION,
+                                                                normalize=False, split_point=0.5)
+                writer.add_scalar("Valid/f1", np.mean(f1_scores), total_steps)
+                writer.add_scalar("Valid/precision", np.mean(precisions), total_steps)
+                writer.add_scalar("Valid/recall", np.mean(recalls), total_steps)
+
         if save_every:
             if it > 0 and (it + 1) % save_every == 0:
                 torch.save({"scorer": scorer.state_dict(),
@@ -209,7 +218,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, writer_epoch, device,
     torch.save({"scorer": scorer.state_dict(),
                 "embedder": embedder.model.state_dict(),
                 "optimizer": op.state_dict()}, checkpoint_prefix + '.tar')
-    return cumulative_loss, writer_epoch
+    return cumulative_loss, total_steps
 
 
 def main():
@@ -220,6 +229,8 @@ def main():
                         help='device to run on')
     parser.add_argument('--data_dir', dest='data_dir', type=str,
                         help='training data directory', required=True)
+    parser.add_argument('--valid_data', dest='valid_data', type=str,
+                        help='validation data file', required=True)
     parser.add_argument('--scorer_only', default=False, action='store_true')
     parser.add_argument('--include_mismatched_pair', default=False, action='store_true')
     parser.add_argument('--num_epochs', dest='num_epochs', type=int,
@@ -298,7 +309,7 @@ def main():
     else:
         num_epochs = 10
 
-    train_writer_epoch = 0
+    total_steps = 0
 
     train_files = []
     for file in glob.glob(args.data_dir + '/*'):
@@ -317,9 +328,9 @@ def main():
                 datafile_to_start = -1
             print("Processing file: ", input_file_name)
             data = pd.read_json(input_file_name, lines=True)
-            total_loss, train_writer_epoch = run_epoch(data, scorer, embedder, op, bceloss, writer, train_writer_epoch,
-                                                       device, save_every=None,
-                                                       checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
+            total_loss, total_steps = run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps,
+                                                device, save_every=None, valid_data=args.valid_data,
+                                                checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
         datafile_to_start = -1
 
 
