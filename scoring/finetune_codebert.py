@@ -169,7 +169,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
 
 
 def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, checkpoint_prefix, save_every=None,
-              print_every=1000, valid_data=None):
+              print_every=500, valid_data=None):
     cumulative_loss = []
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
         # sample some query and some code, half the cases will have the correct pair, 
