@@ -204,7 +204,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, 
             writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), total_steps)
             if valid_data is not None:
                 from scoring.scoring_eval import run_eval_epoch
-                f1_scores, precisions, recalls = run_eval_epoch(valid_data, scorer, embedder, EMBED_SEPARATELY, VERSION,
+                f1_scores, precisions, recalls = run_eval_epoch(valid_data.head(500), scorer, embedder, EMBED_SEPARATELY, VERSION,
                                                                 normalize=False, split_point=0.5)
                 writer.add_scalar("Valid/f1", np.mean(f1_scores), total_steps)
                 writer.add_scalar("Valid/precision", np.mean(precisions), total_steps)
