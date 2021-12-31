@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+from layout_assembly.precompute_scoring_in_shards import CodeSearchNetDataset_Random_NegOnly
 
 
 def transform_sample(sample):
@@ -117,8 +118,18 @@ class CodeSearchNetDataset_NotPrecomputed(Dataset):
                   self.data['regex_tags'][idx],
                   self.data['ccg_parse'][idx])
         return sample, None, None, self.positive_label
-#
-#
+
+
+class CodeSearchNetDataset_NotPrecomputed_RandomNeg(CodeSearchNetDataset_Random_NegOnly):
+    def __init__(self, filename, device, range, length=30000):
+        super.__init__(filename, device, 9, length)
+        self.r = range
+    def __getitem__(self, idx):
+        all_samples = []
+        all_samples.extend(self.get_random_idxs(idx, all_samples))
+        sample = all_samples[self.r]
+        return sample, None, None, self.negative_label
+
 # class CodeSearchNetDataset_TFIDFOracle(Dataset):
 #     def __init__(self, filename, device, neg_count, oracle_neg_count):
 #         self.data = pd.read_json(filename, lines=True)
