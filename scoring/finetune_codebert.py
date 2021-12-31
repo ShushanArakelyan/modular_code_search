@@ -211,7 +211,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, 
                 writer.add_scalar("Valid/recall", np.mean(recalls), total_steps)
 
         if save_every:
-            if it > 0 and (it + 1) % save_every == 0:
+            if (it + 1) % save_every == 0:
                 torch.save({"scorer": scorer.state_dict(),
                             "embedder": embedder.model.state_dict(),
                             "optimizer": op.state_dict()}, checkpoint_prefix + f'{it + 1}.tar')
@@ -235,6 +235,8 @@ def main():
     parser.add_argument('--include_mismatched_pair', default=False, action='store_true')
     parser.add_argument('--num_epochs', dest='num_epochs', type=int,
                         help='number of epochs to train')
+    parser.add_argument('--save_every', dest='save_every', type=int,
+                        help='When to save a checkpoint')
     parser.add_argument('--embed_separately', dest='embed_separately', default=False, action='store_true',
                         help='Whether to embed the query and code in a single instance or separate instances')
     parser.add_argument('--downsample_gt', dest='downsample_gt', default=False, action='store_true',
@@ -332,7 +334,7 @@ def main():
             data = pd.read_json(input_file_name, lines=True)
             valid_data = pd.read_json(args.valid_data, lines=True)
             total_loss, total_steps = run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps,
-                                                device, save_every=None, valid_data=valid_data,
+                                                device, save_every=args.save_every, valid_data=valid_data,
                                                 checkpoint_prefix=checkpoint_dir + f'/model_{epoch}_ep_{i}')
         datafile_to_start = -1
 
