@@ -122,7 +122,7 @@ class CodeSearchNetDataset_NotPrecomputed(Dataset):
 
 class CodeSearchNetDataset_NotPrecomputed_RandomNeg(CodeSearchNetDataset_Random_NegOnly):
     def __init__(self, filename, device, range, length=30000):
-        CodeSearchNetDataset_Random_NegOnly.__init__(filename=filename, device=device, neg_count=9, length=length)
+        CodeSearchNetDataset_Random_NegOnly.__init__(self, filename=filename, device=device, neg_count=9, length=length)
         self.r = range
     def __getitem__(self, idx):
         all_samples = []
