@@ -140,8 +140,8 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
     layout_net.set_eval()
     with torch.no_grad():
         i = 0
-        for sample in range(len(dataset)):
-            sample, _, _, label = dataset[i]
+        for j in range(len(dataset)):
+            sample, _, _, label = dataset[j]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
                 acc, f1 = get_acc_and_f1_for_one_sample(sample, label)
@@ -150,9 +150,9 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             except ProcessingException:
                 continue
             # Create a negative example
-            np.random.seed(22222 + i)
+            np.random.seed(22222 + j)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
-            neg_sample = create_neg_sample(dataset[i][0], dataset[neg_idx][0])
+            neg_sample = create_neg_sample(dataset[j][0], dataset[neg_idx][0])
             try:
                 acc, f1 = get_acc_and_f1_for_one_sample(neg_sample, label=0)
                 accs.append(acc)
