@@ -3,6 +3,7 @@ from itertools import chain
 import torch
 
 from layout_assembly.utils import ProcessingException, FC2
+import numpy as np
 
 
 class ActionModule(object):
@@ -50,6 +51,8 @@ class ActionModule(object):
             if indx == masking_indx:
                 # mask this index
                 true_scores = scores
+                if not np.any(true_scores.detach().cpu().numpy()):
+                    print("all output scores are zeros")
                 scores = torch.zeros_like(scores).to(self.device)
             fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1)
             out = self.verb_embedder(fwd_input)
@@ -77,7 +80,7 @@ class ActionModule(object):
                      self.verb_embedder.parameters())
 
     def named_parameters(self):
-        return chain([(f"{i}_module.{name}", param) for i in self.modules.items() for name, param in self.modules[i].named_parameters()],
+        return chain([(f"{i}_module.{name}", param) for i, m in self.modules.items() for name, param in m.named_parameters()],
                      [(f"verb_embedder.{name}", param) for name, param in self.verb_embedder.named_parameters()])
 
     def state_dict(self):
