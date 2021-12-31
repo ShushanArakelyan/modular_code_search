@@ -413,8 +413,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval):
+    print("Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device),] +
-                            [CodeSearchNetDataset_NotPrecomputed_RandomNeg(data_dir, device, range=r) for r in range(1)])
+                            [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
+                                                                           range=r) for r in range(1)])
     print("Dataset read, the length of the dataset is: ", len(dataset))
     pos = 0
     neg = 0
