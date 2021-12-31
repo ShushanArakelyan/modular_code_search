@@ -168,7 +168,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
     return cumulative_loss
 
 
-def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, checkpoint_prefix, save_every=5000,
+def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, checkpoint_prefix, save_every=None,
               print_every=500, valid_data=None):
     cumulative_loss = []
     for it in tqdm(range(len(data)), total=len(data), desc="Row: "):
@@ -200,7 +200,7 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, 
             out = train_one_example(sample, scorer, embedder, op, bceloss, device)
             if out is not None:
                 cumulative_loss.append(out)
-        if (total_steps + 1) % print_every == 0:
+        if (it + 1) % print_every == 0:
             writer.add_scalar("Loss/train", np.mean(cumulative_loss[-100:]), total_steps)
             if valid_data is not None:
                 from scoring.scoring_eval import run_eval_epoch
@@ -209,11 +209,12 @@ def run_epoch(data, scorer, embedder, op, bceloss, writer, total_steps, device, 
                 writer.add_scalar("Valid/f1", np.mean(f1_scores), total_steps)
                 writer.add_scalar("Valid/precision", np.mean(precisions), total_steps)
                 writer.add_scalar("Valid/recall", np.mean(recalls), total_steps)
+
         if save_every:
-            if (total_steps + 1) % save_every == 0:
+            if (it + 1) % save_every == 0:
                 torch.save({"scorer": scorer.state_dict(),
                             "embedder": embedder.model.state_dict(),
-                            "optimizer": op.state_dict()}, checkpoint_prefix + f'{total_steps + 1}.tar')
+                            "optimizer": op.state_dict()}, checkpoint_prefix + f'{it + 1}.tar')
     torch.save({"scorer": scorer.state_dict(),
                 "embedder": embedder.model.state_dict(),
                 "optimizer": op.state_dict()}, checkpoint_prefix + '.tar')
