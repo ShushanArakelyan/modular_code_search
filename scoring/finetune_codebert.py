@@ -241,6 +241,8 @@ def main():
                         help='Whether to downsample ground truth example neighboring `def` and `return` tokens')
     parser.add_argument('--use_mean', dest='use_mean', default=False, action='store_true',
                         help='Whether to average embeddings or use CLS token')
+    parser.add_argument('--lr', dest='lr', type=float, required=True,
+                        help='Whether to average embeddings or use CLS token')
 
     args = parser.parse_args()
 
@@ -257,9 +259,9 @@ def main():
                                  torch.nn.ReLU(),
                                  torch.nn.Linear(embedder.dim, 1)).to(device)
     if args.scorer_only:
-        op = torch.optim.Adam(list(scorer.parameters()), lr=1e-8)
+        op = torch.optim.Adam(list(scorer.parameters()), lr=args.lr)
     else:
-        op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=1e-8)
+        op = torch.optim.Adam(list(scorer.parameters()) + list(embedder.model.parameters()), lr=args.lr)
     bceloss = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
     if args.checkpoint:
