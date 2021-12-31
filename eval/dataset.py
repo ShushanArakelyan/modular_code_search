@@ -128,7 +128,6 @@ class CodeSearchNetDataset_NotPrecomputed_RandomNeg(CodeSearchNetDataset_Random_
         all_samples = []
         all_samples.extend(self.get_random_idxs(idx, all_samples))
         sample = all_samples[self.r]
-        print(sample, self.r)
         return sample, 1, 1, self.negative_label
 
 # class CodeSearchNetDataset_TFIDFOracle(Dataset):
