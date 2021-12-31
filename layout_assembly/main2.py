@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
-from eval.dataset import CodeSearchNetDataset_wShards, CodeSearchNetDataset_NotPrecomputed
+from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_NotPrecomputed_RandomNeg
 from eval.dataset import transform_sample, filter_neg_samples
 from eval.utils import mrr, p_at_k
 from layout_assembly.layout_ws2 import LayoutNetWS2 as LayoutNet
@@ -411,11 +411,17 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval):
-    shard_range = num_negatives
-    dataset = ConcatDataset(
-        [CodeSearchNetDataset_wShards(data_dir, r, shard_it, device) for r in range(1) for shard_it in
-         range(shard_range + 1)])
-
+    dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device),] +
+                            [CodeSearchNetDataset_NotPrecomputed_RandomNeg(data_dir, device, range=r) for r in range(1)])
+    print("Dataset read, the length of the dataset is: ", len(dataset))
+    pos = 0
+    neg = 0
+    for i in range(len(dataset)):
+        if dataset[i][-1] == 1:
+            pos += 1
+        elif dataset[i][-1] == 0:
+            neg += 1
+    print(f"Total positives: {pos}, total negatives: {neg}")
     if valid_file_name != "None":
         valid_data = CodeSearchNetDataset_NotPrecomputed(filename=valid_file_name, device=device)
     else:
