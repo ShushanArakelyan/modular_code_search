@@ -311,9 +311,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 label = positive_label
             # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
             # an extra dimension
-            if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
-                continue
-            layout_net.scoring_outputs = scores[0]
+            # if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
+            #     continue
+            # layout_net.scoring_outputs = scores[0]
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
