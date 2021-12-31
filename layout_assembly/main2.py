@@ -29,7 +29,7 @@ def binarize(a):
 
 
 def compute_alignment(a, b):
-    return torch.sigmoid(torch.dot(a, b))
+    return torch.dot(a, b)
 
 
 def make_prediction(output_list):
@@ -130,7 +130,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
                 if label == 0:
                     true_out = torch.zeros_like(true_out)
             labels = binarize(true_out).cpu().detach().numpy()
-            binarized_preds = binarize(torch.sigmoid(pred_out)).cpu().detach().numpy()
+            binarized_preds = binarize(pred_out).cpu().detach().numpy()
             accs.append(sum(binarized_preds == labels) * 1. / labels.shape[0])
             f1s.append(f1_score(labels, binarized_preds, zero_division=1))
         return np.mean(accs), np.mean(f1s)
@@ -169,7 +169,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, device, print_every,
              writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size, skip_negatives,
              override_negatives):
-    loss_func = torch.nn.BCEWithLogitsLoss()
+    loss_func = torch.nn.BCELoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     layout_net.set_train()
@@ -223,7 +223,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                binarized_preds = binarize(torch.sigmoid(pred_out))
+                binarized_preds = binarize(pred_out)
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
                                           binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
