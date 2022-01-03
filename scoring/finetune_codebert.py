@@ -85,6 +85,23 @@ def mean_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, devic
     return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
 
 
+def mean_scoring_v2(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
+    word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
+    code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
+    if len(pos_idxs_for_phrase) == 0:
+        return None
+    
+    labels = np.zeros(len(code_embedding))
+    labels[pos_idxs_for_phrase] = 1
+    ground_truth_scores = torch.FloatTensor(labels).unsqueeze(dim=1).to(device)
+    emb = torch.mean(word_token_embeddings, dim=0, keepdim=True)
+    tiled_emb = emb.repeat(len(labels), 1)
+    forward_input = torch.cat((tiled_emb, code_embedding), dim=1)
+    scorer_out = scorer.forward(forward_input)
+    loss = bceloss(scorer_out, ground_truth_scores)
+    return loss, len(labels)
+
+
 def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
     word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
     code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
@@ -112,6 +129,22 @@ def cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device
     scorer_out = scorer.forward(forward_input)
     loss = bceloss(scorer_out, ground_truth_scores)
     return loss, len(pos_idxs_for_phrase) + len(neg_sample_idxs)
+
+
+def cls_scoring_v2(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device):
+    word_token_id_mapping, word_token_embeddings, code_token_id_mapping, \
+    code_embedding, _, truncated_code_tokens, cls_token_embedding = embedder_out
+    if len(pos_idxs_for_phrase) == 0:
+        return None
+
+    labels = np.zeros(len(code_embedding))
+    labels[pos_idxs_for_phrase] = 1
+    tiled_emb = cls_token_embedding.repeat(len(labels), 1)
+    ground_truth_scores = torch.FloatTensor(labels).unsqueeze(dim=1).to(device)
+    forward_input = torch.cat((tiled_emb, code_embedding), dim=1)
+    scorer_out = scorer.forward(forward_input)
+    loss = bceloss(scorer_out, ground_truth_scores)
+    return loss, len(labels)
 
 
 def train_one_example(sample, scorer, embedder, op, bceloss, device):
@@ -142,7 +175,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
         # version 2 - average word_token_embeddings to get a phrase embedding
         # version 3 - tile word_token_embeddings and make pair-wise predictions
         if VERSION == 'CLS':
-            scoring_out = cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device)
+            scoring_out = cls_scoring_v2(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device)
             if scoring_out is None:
                 continue
             loss_i, batch_size = scoring_out
@@ -152,7 +185,7 @@ def train_one_example(sample, scorer, embedder, op, bceloss, device):
                 loss += loss_i
             loss_normalization += batch_size
         elif VERSION == "MEAN":
-            scoring_out = cls_scoring(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device)
+            scoring_out = mean_scoring_v2(code, bceloss, scorer, embedder_out, pos_idxs_for_phrase, device)
             if scoring_out is None:
                 continue
             loss_i, batch_size = scoring_out
