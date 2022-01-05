@@ -38,8 +38,7 @@ def make_prediction(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
-        print(sum(output_list[i][0]), s.shape)
-        s /= sum(output_list[i][0]).unsqueeze(0)
+        s /= sum(output_list[i][0]).squeeze()
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
