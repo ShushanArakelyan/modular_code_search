@@ -34,7 +34,7 @@ def compute_alignment(a, b):
     return torch.dot(a, b)
 
 
-def make_prediction(output_list):
+def make_prediction_dot(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
@@ -48,7 +48,21 @@ def make_prediction(output_list):
     return pred
 
 
-def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, count=250):
+def make_prediction_cosine(output_list):
+    cos = torch.nn.CosineSimilarity
+    alignment_scores = None
+    for i in range(len(output_list)):
+        s = cos(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    print("final prediction is: ", pred)
+    return pred
+
+
+def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_set_size=100, count=250):
     def get_mrr_for_one_sample(dataset, idx, idxs_to_eval, layout_net, k):
         ranks = []
         sample, _, _, _ = dataset[idx]
@@ -87,7 +101,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, k=[1], distractor_set_size=100, cou
     return np.mean(results['MRR']), [np.mean(results[f'P@{ki}']) for ki in k]
 
 
-def eval_acc(dataset, layout_net, count):
+def eval_acc(dataset, layout_net, make_prediction, count):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
@@ -275,7 +289,8 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
-          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring, optim_type='adam'):
+          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring,
+          alignment_function, optim_type='adam'):
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -296,6 +311,12 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     best_accuracy = (-1.0, -1.0, -1.0)
     wait_step = 0
     stop_training = False
+    if alignment_function == 'dot':
+        make_prediction = make_prediction_dot
+    elif alignment_function == 'cosine':
+        make_prediction = make_prediction_cosine
+    else:
+        raise Exception("Unknown alignment type")
 
     for epoch in range(num_epochs):
         if stop_training:
@@ -355,8 +376,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
-                # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=100)
-                acc = eval_acc(valid_data, layout_net, count=1000)
+                # mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                # distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=100)
+                acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=1000)
                 # writer.add_scalar("Training MRR/valid", mrr, writer_it)
                 # for pre, ki in zip(p_at_ks, k):
                 #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
@@ -389,8 +411,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/train",
                           np.mean(accuracy[-print_every:]), total_steps)
         layout_net.set_eval()
-        # mrr, p_at_ks = eval_mrr_and_p_at_k(valid_data, layout_net, k, distractor_set_size, count=10)
-        acc = eval_acc(valid_data, layout_net, count=1000)
+        # mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+        # distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=100)
+        acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=1000)
         
         # writer.add_scalar("Training MRR/valid", mrr, writer_it)
         # for pre, ki in zip(p_at_ks, k):
@@ -398,10 +421,11 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/valid", acc, total_steps)
 
 
-def eval(layout_net, data, k, distractor_set_size, count=100):
+def eval(layout_net, data, k, distractor_set_size, make_prediction, count=100):
     layout_net.set_eval()
-    mrr, p_at_ks = eval_mrr_and_p_at_k(data, layout_net, k, distractor_set_size, count=count)
-    acc = eval_acc(data, layout_net, count=count)
+    mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=data, layout_net=layout_net, make_prediction=make_prediction,
+                                       k=k, distractor_set_size=distractor_set_size, count=count)
+    acc = eval_acc(dataset=data, layout_net=layout_net, count=count, make_prediction=make_prediction)
 
     print("MRR: ", mrr)
     for pre, ki in zip(p_at_ks, k):
@@ -413,7 +437,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          valid_file_name, num_negatives, adamw,
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
-         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval):
+         finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
+         alignment_function):
     print(f"Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device),] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
@@ -479,9 +504,9 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, finetune_scoring=finetune_scoring)
+              batch_size=batch_size, finetune_scoring=finetune_scoring, alignment_function=alignment_function)
     if do_eval:
-        eval(layout_net, valid_data, k, distractor_set_size, count=100)
+        eval(layout_net, valid_data, k, distractor_set_size, count=100, make_prediction=alignment_function)
 
 
 
@@ -523,6 +548,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip_negatives_in_pretraining', dest='skip_negatives_in_pretraining', default=False,
                         action='store_true')
     parser.add_argument('--use_dummy_action', dest='use_dummy_action', default=False, action='store_true')
+    parser.add_argument('--alignment_function', dest='alignment_function', type=str)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -552,4 +578,5 @@ if __name__ == '__main__':
          finetune_scoring=args.finetune_scoring,
          override_negatives_in_pretraining=args.override_negatives_in_pretraining,
          skip_negatives_in_pretraining=args.skip_negatives_in_pretraining,
-         use_dummy_action=args.use_dummy_action)
+         use_dummy_action=args.use_dummy_action,
+         alignment_function=args.alignment_function)
