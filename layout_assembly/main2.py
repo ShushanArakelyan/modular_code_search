@@ -27,7 +27,7 @@ def create_neg_sample(orig, distr):
 
 def binarize(a):
     with torch.no_grad():
-        return torch.where(a < 0.5, torch.zeros_like(a), torch.ones_like(a))
+        return torch.where(a < 0.1, torch.zeros_like(a), torch.ones_like(a))
 
 
 def compute_alignment(a, b):
@@ -38,6 +38,7 @@ def make_prediction(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        s /= sum(output_list[i][0])
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
