@@ -43,6 +43,8 @@ class ActionModule(object):
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
+            if masking_indx >= num_inputs:
+                masking_indx = num_inputs - 1
             prep_embedding, scores = i
             if isinstance(scores, tuple):
                 _, scores = scores

@@ -72,7 +72,7 @@ class LayoutNetWS2(LayoutNet):
         return outs[-1]
 
     def get_masking_idx(self):
-        return 0
+        return 1
 
     def process_node(self, node, scoring_emb, verb_emb, code_emb, output_list, scoring_it=0, action_it=0,
                      parent_module=None):
