@@ -7,7 +7,7 @@ import numpy as np
 
 
 class ActionModule(object):
-    def __init__(self, device, dim_size, dropout=0, max_inputs_allowed=3):
+    def __init__(self, device, dim_size, dropout=0, max_inputs_allowed=2):
         self.device = device
         hidden_input_dims = [dim_size * 2, 512]
         hidden_output_dims = [512, 7]
