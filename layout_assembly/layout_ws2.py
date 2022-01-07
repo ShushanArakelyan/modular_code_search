@@ -56,11 +56,9 @@ class LayoutNetWS2(LayoutNet):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        print(ccg_parse)
         if len(code) == 0:  # erroneous example
             raise ProcessingException()
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-        print('Scoring inputs: ', scoring_inputs)
         if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
             raise ProcessingException()
         if self.finetune_scoring:
@@ -68,7 +66,6 @@ class LayoutNetWS2(LayoutNet):
         else:
             scoring_forward_method = self.scoring_module.forward_batch_no_grad
         scoring_outputs = scoring_forward_method(scoring_inputs[0], scoring_inputs[1])
-        print("Scoring outputs: ", scoring_outputs)
         verb_embeddings, code_embeddings = embedder.embed_in_list(verb_embeddings[0], verb_embeddings[1])
         outs = self.process_node(tree, scoring_outputs, verb_embeddings, code_embeddings, output_list=[],
                                  scoring_it=0, action_it=0)
@@ -95,14 +92,12 @@ class LayoutNetWS2(LayoutNet):
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
-            print('do we have inputs? ', len(action_module_wrapper.inputs))
             outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
             output_list.append(outputs)
             return parent_module, scoring_it, action_it, output_list
         elif node.node_type == 'scoring':
             output = scoring_emb[scoring_it]
-            print("add input as scoring output: ", output)
             if output.shape[0] == 0:
                 raise ProcessingException()
             scoring_it += 1
