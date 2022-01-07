@@ -7,7 +7,7 @@ import numpy as np
 
 
 class ActionModule(object):
-    def __init__(self, device, dim_size, dropout=0, max_inputs_allowed=2):
+    def __init__(self, device, dim_size, dropout=0, max_inputs_allowed=3):
         self.device = device
         hidden_input_dims = [dim_size * 2, 512]
         hidden_output_dims = [512, 7]
@@ -37,11 +37,11 @@ class ActionModule(object):
         if num_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
-        if masking_indx >= num_inputs:
-            masking_indx = num_inputs - 1
+        masking_indx = min(masking_indx, num_inputs - 1)
         for indx, i in enumerate(inputs):
             if len(i) < 2:
                 num_inputs -= 1
+                masking_indx = min(masking_indx, num_inputs - 1)
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
