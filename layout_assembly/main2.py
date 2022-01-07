@@ -25,9 +25,9 @@ def create_neg_sample(orig, distr):
     return (orig[0], distr[1], distr[2], distr[3], orig[4])
 
 
-def binarize(a):
+def binarize(a, threshold):
     with torch.no_grad():
-        return torch.where(a < 0.1, torch.zeros_like(a), torch.ones_like(a))
+        return torch.where(a < threshold, torch.zeros_like(a), torch.ones_like(a))
 
 
 def compute_alignment(a, b):
@@ -44,7 +44,6 @@ def make_prediction_dot(output_list):
         else:
             alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
-    # pred = (torch.sigmoid(pred) - 0.5)*2
     return pred
 
 
@@ -58,7 +57,6 @@ def make_prediction_cosine(output_list):
         else:
             alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
-    print("final prediction is: ", pred)
     return pred
 
 
@@ -105,7 +103,7 @@ def eval_acc(dataset, layout_net, make_prediction, count):
     def get_acc_for_one_sample(sample, label):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         pred = make_prediction(output_list)
-        binarized_pred = binarize(pred).cpu()
+        binarized_pred = binarize(pred, threshold=0.5).cpu()
         return int((binarized_pred == label).detach().numpy())
 
     accs = []
@@ -137,7 +135,7 @@ def eval_acc(dataset, layout_net, make_prediction, count):
 
 
 def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives):
-    def get_acc_and_f1_for_one_sample(sample, label):
+    def get_acc_and_f1_for_one_sample(sample, label, threshold=0.1):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         accs = []
         f1s = []
@@ -146,8 +144,8 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             if override_negatives:
                 if label == 0:
                     true_out = torch.zeros_like(true_out)
-            labels = binarize(true_out).cpu().detach().numpy()
-            binarized_preds = binarize(pred_out).cpu().detach().numpy()
+            labels = binarize(true_out, threshold=threshold).cpu().detach().numpy()
+            binarized_preds = binarize(pred_out, threshold=threshold).cpu().detach().numpy()
             accs.append(sum(binarized_preds == labels) * 1. / labels.shape[0])
             f1s.append(f1_score(labels, binarized_preds, zero_division=1))
         return np.mean(accs), np.mean(f1s)
@@ -225,7 +223,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 if override_negatives:
                     if label == 0:
                         true_out = torch.zeros_like(true_out)
-                labels = binarize(true_out).to(device)
+                labels = binarize(true_out, threshold=0.1).to(device)
                 l = loss_func(pred_out, labels)
                 if loss is None:
                     if torch.isnan(l).data:
@@ -240,7 +238,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         break
                     loss += l
 
-                binarized_preds = binarize(pred_out)
+                binarized_preds = binarize(pred_out, threshold=0.1)
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
                                           binarized_preds.cpu().detach().numpy().flatten(), zero_division=1))
@@ -333,11 +331,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 label = negative_label
             else:
                 label = positive_label
-            # data loader tries to put the scores, verbs and code_embeddings into a batch, thus
-            # an extra dimension
-            # if scores[0].shape[0] == 0 or verbs[0].shape[0] == 0:
-            #     continue
-            # layout_net.scoring_outputs = scores[0]
             try:
                 output_list = layout_net.forward(*transform_sample(sample))
             except ProcessingException:
@@ -358,7 +351,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 loss += l
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
-            binarized_pred = binarize(pred)
+            binarized_pred = binarize(pred, threshold=0.5)
             
             accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
             if epoch_steps % batch_size == 0:
