@@ -37,14 +37,14 @@ class ActionModule(object):
         if num_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
+        if masking_indx >= num_inputs:
+            masking_indx = num_inputs - 1
         for indx, i in enumerate(inputs):
             if len(i) < 2:
                 num_inputs -= 1
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
-            if masking_indx >= num_inputs:
-                masking_indx = num_inputs - 1
             prep_embedding, scores = i
             if isinstance(scores, tuple):
                 _, scores = scores
