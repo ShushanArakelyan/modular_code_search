@@ -33,18 +33,18 @@ class ActionModule(object):
 
     def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
-        num_inputs = len(inputs) - 1
-        if num_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
+        num_unmasked_inputs = len(inputs) - 1
+        if num_unmasked_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
-        masking_indx = min(masking_indx, num_inputs - 1)
+        masking_indx = min(masking_indx, num_unmasked_inputs)
         print("masking indx: ", masking_indx)
-        print("num_inputs: ", num_inputs)
+        print("num_inputs: ", num_unmasked_inputs)
         for indx, i in enumerate(inputs):
             if len(i) < 2:
-                num_inputs -= 1
-                masking_indx = min(masking_indx, num_inputs - 1)
-                print("num_inputs: ", num_inputs, " masking indx: ", masking_indx)
+                num_unmasked_inputs -= 1
+                masking_indx = min(masking_indx, num_unmasked_inputs)
+                print("num_inputs: ", num_unmasked_inputs, " masking indx: ", masking_indx)
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
@@ -64,9 +64,9 @@ class ActionModule(object):
             repl_out = out.repeat(len(scores), 1)
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
-        if num_inputs < 0:
+        if num_unmasked_inputs < 0:
             raise ProcessingException()
-        module = self.modules[num_inputs]
+        module = self.modules[num_unmasked_inputs]
         N = min([u.shape[0] for u in updated_inputs])
         N = min(N, code_embedding.shape[0])
         # scores might be of different sizes depending on the query they were embedded with.

@@ -95,6 +95,7 @@ class LayoutNetWS2(LayoutNet):
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
+            print('do we have inputs? ', len(action_module_wrapper.inputs))
             outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
             output_list.append(outputs)
