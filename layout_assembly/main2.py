@@ -287,7 +287,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
-          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size, finetune_scoring,
+          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
           alignment_function, optim_type='adam'):
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
@@ -298,8 +298,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         raise Exception("Unknown optimizer type!! ", optim_type)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
-    if finetune_scoring:
-        layout_net.finetune_scoring = True
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
@@ -482,6 +480,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
                  override_negatives=override_negatives_in_pretraining)
+    if finetune_scoring:
+        layout_net.finetune_scoring = finetune_scoring
     if layout_net_training_ckp is not None:
         layout_net.load_from_checkpoint(layout_net_training_ckp)
     else:
@@ -497,7 +497,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, finetune_scoring=finetune_scoring, alignment_function=alignment_function)
+              batch_size=batch_size, alignment_function=alignment_function)
     if do_eval:
         eval(layout_net, valid_data, k, distractor_set_size, count=100, make_prediction=alignment_function)
 

@@ -140,8 +140,11 @@ class LayoutNetWS2(LayoutNet):
 
     def load_from_checkpoint(self, checkpoint):
         self.action_module.load_from_checkpoint(checkpoint + '.action_module')
-        if self.finetune_scoring:
+        try:
             self.scoring_module.load_from_checkpoint(checkpoint + '.scoring_module')
+            print("Successfully loaded scoring module checkpoint")
+        except:
+            print("Could not load scoring module from checkpoint")
         models = torch.load(checkpoint, map_location=self.device)
         embedder.model.load_state_dict(models['codebert.model'])
 
