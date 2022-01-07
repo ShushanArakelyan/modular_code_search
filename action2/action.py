@@ -38,13 +38,10 @@ class ActionModule(object):
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
         masking_indx = min(masking_indx, num_unmasked_inputs)
-        print("masking indx: ", masking_indx)
-        print("num_inputs: ", num_unmasked_inputs)
         for indx, i in enumerate(inputs):
             if len(i) < 2:
                 num_unmasked_inputs -= 1
                 masking_indx = min(masking_indx, num_unmasked_inputs)
-                print("num_inputs: ", num_unmasked_inputs, " masking indx: ", masking_indx)
                 # we are skipping some arguments, e.g. action-s, so it is possible
                 # to have a preposition without its corresponding scores
                 continue
