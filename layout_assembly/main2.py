@@ -48,7 +48,7 @@ def make_prediction_dot(output_list):
 
 
 def make_prediction_cosine(output_list):
-    cos = torch.nn.CosineSimilarity
+    cos = torch.nn.CosineSimilarity(dim=0)
     alignment_scores = None
     for i in range(len(output_list)):
         s = cos(output_list[i][0].squeeze(), output_list[i][1].squeeze())
