@@ -56,7 +56,7 @@ class LayoutNetWS2(LayoutNet):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
-        # print("new example: ", ccg_parse)
+        print("new example: ", ccg_parse)
         if len(code) == 0:  # erroneous example
             raise ProcessingException()
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
