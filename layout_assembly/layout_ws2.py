@@ -22,6 +22,7 @@ class ActionModuleWrapper(object):
         return self.module.forward(self.param, self.inputs, code, verb_embedding)
 
     def add_input(self, input):
+        print("adding input!")
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
             self.inputs[-1].append(input)
         else:
@@ -56,6 +57,7 @@ class LayoutNetWS2(LayoutNet):
         tree = self.construct_layout(ccg_parse)
         tree = self.remove_concats(tree)
         code = sample[1]
+        print("new example: ", ccg_parse)
         if len(code) == 0:  # erroneous example
             raise ProcessingException()
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
@@ -92,6 +94,7 @@ class LayoutNetWS2(LayoutNet):
             if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
+            print("Num of inputs passed to action: ", len(action_module_wrapper.inputs))
             outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
             output_list.append(outputs)
