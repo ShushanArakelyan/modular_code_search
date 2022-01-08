@@ -47,6 +47,8 @@ class ActionModule(object):
         masking_indx = min(masking_indx, num_unmasked_inputs)
         # print("Masking indx: ", masking_indx)
         for indx, i in enumerate(inputs):
+            if len(i) < 2: # check if there are any action arguments, which we don't include as argument
+                continue
             prep_embedding, scores = i
             if isinstance(scores, tuple):
                 _, scores = scores
