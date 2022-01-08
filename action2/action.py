@@ -57,7 +57,7 @@ class ActionModule(object):
                 # mask this index
                 true_scores = scores
                 if not np.any(true_scores.detach().cpu().numpy()):
-                    # print("all output scores are zeros")
+                    print("all output scores are zeros")
                 scores = torch.zeros_like(scores).to(self.device)
             fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1)
             out = self.verb_embedder(fwd_input)
