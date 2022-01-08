@@ -22,7 +22,6 @@ class ActionModuleWrapper(object):
         return self.module.forward(self.param, self.inputs, code, verb_embedding)
 
     def add_input(self, input):
-        print("adding input!")
         if len(self.inputs) > 0 and len(self.inputs[-1]) == 1:
             self.inputs[-1].append(input)
         else:
