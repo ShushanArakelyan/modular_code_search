@@ -134,8 +134,8 @@ def eval_acc(dataset, layout_net, make_prediction, count):
     return np.mean(accs)
 
 
-def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives):
-    def get_acc_and_f1_for_one_sample(sample, label, threshold=0.1):
+def eval_acc_f1_pretraining_task(dataset, layout_net, threshold, count, override_negatives):
+    def get_acc_and_f1_for_one_sample(sample, label, threshold=threshold):
         output_list = layout_net.forward(sample[-1][1:-1], sample)
         accs = []
         f1s = []
@@ -159,7 +159,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             sample, _, _, label = dataset[j]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
-                acc, f1 = get_acc_and_f1_for_one_sample(sample, label)
+                acc, f1 = get_acc_and_f1_for_one_sample(sample, label, threshold=threshold)
                 accs.append(acc)
                 f1_scores.append(f1)
             except ProcessingException:
@@ -169,7 +169,7 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, count, override_negatives)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
             neg_sample = create_neg_sample(dataset[j][0], dataset[neg_idx][0])
             try:
-                acc, f1 = get_acc_and_f1_for_one_sample(neg_sample, label=0)
+                acc, f1 = get_acc_and_f1_for_one_sample(neg_sample, label=0, threshold=threshold)
                 accs.append(acc)
                 f1_scores.append(f1)
             except ProcessingException:
@@ -263,7 +263,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                                   np.mean(f1_scores[-print_every:]), total_steps)
                 layout_net.set_eval()
                 acc, f1 = eval_acc_f1_pretraining_task(valid_data, layout_net, override_negatives=override_negatives,
-                                                       count=1000)
+                                                       threshold=threshold, count=1000)
                 writer.add_scalar("Pretraining F1/valid pretraining", f1, total_steps)
                 writer.add_scalar("Pretraining Acc/valid pretraining", acc, total_steps)
                 cur_perf = (f1, acc)
