@@ -50,6 +50,7 @@ class LayoutNetWS2(LayoutNet):
         self.device = device
         self.finetune_codebert = True
         self.finetune_scoring = False
+        self.code_in_output = False
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
@@ -96,6 +97,8 @@ class LayoutNetWS2(LayoutNet):
             # print("Num of inputs passed to action: ", len(action_module_wrapper.inputs))
             outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
+            if self.code_in_output:
+                outputs = outputs + (code_emb[action_it],)
             output_list.append(outputs)
             return parent_module, scoring_it, action_it, output_list
         elif node.node_type == 'scoring':

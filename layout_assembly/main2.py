@@ -34,6 +34,22 @@ def compute_alignment(a, b):
     return torch.dot(a, b)
 
 
+def make_prediction_weighted_embedding(output_list):
+    alignment_scores = None
+    cos = torch.nn.CosineSimilarity(dim=0)
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+        weighted_code_a = torch.dot(a, code)
+        weighted_code_b = torch.dot(b, code)
+        s = cos(weighted_code_a, weighted_code_b)
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_dot(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
@@ -311,6 +327,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         make_prediction = make_prediction_dot
     elif alignment_function == 'cosine':
         make_prediction = make_prediction_cosine
+    elif alignment_function == 'weighted_emb':
+        make_prediction = make_prediction_weighted_embedding
+        layout_net.code_in_output = True
     else:
         raise Exception("Unknown alignment type")
 
