@@ -98,7 +98,7 @@ class LayoutNetWS2(LayoutNet):
             outputs = self.action_module.forward(action_module_wrapper.inputs, self.get_masking_idx(),
                                                  precomputed_embeddings)
             if self.code_in_output:
-                outputs = outputs + (code_emb[action_it],)
+                outputs = outputs + (code_emb[action_it-1],)
             output_list.append(outputs)
             return parent_module, scoring_it, action_it, output_list
         elif node.node_type == 'scoring':
