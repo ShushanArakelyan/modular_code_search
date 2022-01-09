@@ -34,7 +34,7 @@ class ActionModule(object):
     def forward(self, inputs, masking_indx, precomputed_embeddings):
         updated_inputs = []
         num_unmasked_inputs = len(inputs) - 1
-        print("Num unmasked inputs: ", num_unmasked_inputs)
+        # print("Num unmasked inputs: ", num_unmasked_inputs)
         if num_unmasked_inputs > self.max_inputs_allowed - 1 or precomputed_embeddings is None:
             raise ProcessingException()
         verb_embedding, code_embedding = precomputed_embeddings
@@ -45,7 +45,8 @@ class ActionModule(object):
                 num_unmasked_inputs -= 1
                 continue
         masking_indx = min(masking_indx, num_unmasked_inputs)
-        print("Masking indx: ", masking_indx)
+        # print("Masking indx: ", masking_indx)
+        masked = False
         for indx, i in enumerate(inputs):
             if len(i) < 2: # check if there are any action arguments, which we don't include as argument
                 continue
@@ -55,7 +56,8 @@ class ActionModule(object):
             if len(scores.shape) == 1:
                 scores = scores.unsqueeze(dim=1)
             if indx == masking_indx:
-                print("Masking current idx: ", indx)
+                masked = True
+                # print("Masking current idx: ", indx)
                 # mask this index
                 true_scores = scores
                 if not np.any(true_scores.detach().cpu().numpy()):
@@ -66,6 +68,8 @@ class ActionModule(object):
             repl_out = out.repeat(len(scores), 1)
             updated_i = torch.cat((repl_out, scores), dim=1)
             updated_inputs.append(updated_i)
+        if not masked: # stupid workaround
+            raise ProcessingException()
         if num_unmasked_inputs < 0:
             raise ProcessingException()
         module = self.modules[num_unmasked_inputs]
