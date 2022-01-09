@@ -45,6 +45,7 @@ def make_prediction_weighted_embedding(output_list):
         weighted_code_b = torch.mm(b[:N, :].T, code[:N, :]).squeeze()
         print("weighted a, b: ", weighted_code_a.shape, weighted_code_b.shape)
         s = cos(weighted_code_a, weighted_code_b)
+        s = torch.sigmoid(s)
         print("alignment score s:", s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
@@ -72,6 +73,7 @@ def make_prediction_cosine(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = cos(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
