@@ -523,7 +523,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
               batch_size=batch_size, alignment_function=alignment_function)
     if do_eval:
-        eval(layout_net=layout_net, valid_data=valid_data, k=k, distractor_set_size=distractor_set_size,
+        eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
              count=100, make_prediction=alignment_function)
 
 
