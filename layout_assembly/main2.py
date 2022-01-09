@@ -106,13 +106,15 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
     with torch.no_grad():
         np.random.seed(123)
         examples = np.random.choice(range(len(dataset)), count, replace=False)
-        for ex in examples:
+        for j, ex in enumerate(examples):
             np.random.seed(ex)
             idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
             cur_mrr, p_at_ks = get_mrr_for_one_sample(dataset, ex, idxs, layout_net, k)
             if cur_mrr is None or p_at_ks is None:
                 continue
             results['MRR'].append(cur_mrr)
+            if (j+1) % 10 == 0:
+                print(np.mean(results['MRR']))
             for ki, pre in zip(k, p_at_ks):
                 results[f'P@{ki}'].append(pre)
     return np.mean(results['MRR']), [np.mean(results[f'P@{ki}']) for ki in k]
@@ -521,7 +523,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
               batch_size=batch_size, alignment_function=alignment_function)
     if do_eval:
-        eval(layout_net, valid_data, k, distractor_set_size, count=100, make_prediction=alignment_function)
+        eval(layout_net=layout_net, valid_data=valid_data, k=k, distractor_set_size=distractor_set_size,
+             count=100, make_prediction=alignment_function)
 
 
 
