@@ -211,7 +211,7 @@ class ScoringModule:
 
     def load_from_checkpoint(self, checkpoint):
         model_dict = torch.load(checkpoint, map_location=self.device)
-        self.scorer.load_from_state_dict(model_dict['scorer'])
+        self.scorer.load_state_dict(model_dict['scorer'])
         embedder.model.load_state_dict(model_dict['embedder'])
 
 
