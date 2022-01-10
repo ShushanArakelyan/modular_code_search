@@ -110,6 +110,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
             np.random.seed(ex)
             idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
             cur_mrr, p_at_ks = get_mrr_for_one_sample(dataset, ex, idxs, layout_net, k)
+            print(cur_mrr, p_at_ks)
             if cur_mrr is None or p_at_ks is None:
                 continue
             results['MRR'].append(cur_mrr)
