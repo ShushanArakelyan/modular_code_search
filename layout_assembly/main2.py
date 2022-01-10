@@ -99,12 +99,14 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
             except ProcessingException:
                 np.random.seed(neg_idx)
                 ranks.append(np.random.rand(1)[0])
+        print("Len ranks: ", len(ranks))
         return mrr(ranks), [p_at_k(ranks, ki) for ki in k]
 
+    layout_net.set_eval()
     results = {f'P@{ki}': [] for ki in k}
     results['MRR'] = []
     with torch.no_grad():
-        np.random.seed(123)
+        np.random.seed(122)
         examples = np.random.choice(range(len(dataset)), count, replace=False)
         for j, ex in enumerate(examples):
             np.random.seed(ex)
@@ -118,6 +120,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
                 print(np.mean(results['MRR']))
             for ki, pre in zip(k, p_at_ks):
                 results[f'P@{ki}'].append(pre)
+    layout_net.set_train()
     return np.mean(results['MRR']), [np.mean(results[f'P@{ki}']) for ki in k]
 
 
@@ -440,6 +443,7 @@ def eval(layout_net, data, k, distractor_set_size, make_prediction, count=100):
     for pre, ki in zip(p_at_ks, k):
         print(f"P@{k}", pre)
     print("Acc", acc)
+    layout_net.set_train()
 
 
 def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
