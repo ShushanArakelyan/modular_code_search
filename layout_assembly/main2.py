@@ -555,7 +555,7 @@ if __name__ == '__main__':
     parser.add_argument('--patience', dest='patience', type=int, default=10)
     parser.add_argument('--p_at_k', dest='p_at_k', action='append')
     parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
-    parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=1000)
+    parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=999)
     parser.add_argument('--do_pretrain', dest='do_pretrain', default=False, action='store_true')
     parser.add_argument('--do_train', dest='do_train', default=False, action='store_true')
     parser.add_argument('--do_eval', dest='do_eval', default=False, action='store_true')
