@@ -309,7 +309,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
           writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
-          alignment_function, optim_type='adam'):
+          make_prediction, optim_type='adam'):
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -328,15 +328,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     best_accuracy = (-1.0, -1.0, -1.0)
     wait_step = 0
     stop_training = False
-    if alignment_function == 'dot':
-        make_prediction = make_prediction_dot
-    elif alignment_function == 'cosine':
-        make_prediction = make_prediction_cosine
-    elif alignment_function == 'weighted_emb':
-        make_prediction = make_prediction_weighted_embedding
-        layout_net.code_in_output = True
-    else:
-        raise Exception("Unknown alignment type")
 
     for epoch in range(num_epochs):
         if stop_training:
@@ -486,6 +477,16 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
+    if alignment_function == 'dot':
+        make_prediction = make_prediction_dot
+    elif alignment_function == 'cosine':
+        make_prediction = make_prediction_cosine
+    elif alignment_function == 'weighted_emb':
+        make_prediction = make_prediction_weighted_embedding
+        layout_net.code_in_output = True
+    else:
+        raise Exception("Unknown alignment type")
+
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
@@ -513,10 +514,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, alignment_function=alignment_function)
+              batch_size=batch_size, make_prediction=make_prediction)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
-             count=100, make_prediction=alignment_function)
+             count=100, make_prediction=make_prediction)
 
 
 
