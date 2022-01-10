@@ -220,6 +220,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     stop_training = False
 
     for epoch in range(num_epochs):
+        layout_net.set_train()
         if stop_training:
             break
         cumulative_loss = []
