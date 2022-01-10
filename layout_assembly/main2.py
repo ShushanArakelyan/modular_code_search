@@ -459,14 +459,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
                                                                            range=r) for r in range(1)])
     print("Dataset read, the length of the dataset is: ", len(dataset))
-    pos = 0
-    neg = 0
-    for i in range(len(dataset)):
-        if dataset[i][-1] == 1:
-            pos += 1
-        elif dataset[i][-1] == 0:
-            neg += 1
-    print(f"Total positives: {pos}, total negatives: {neg}")
     if valid_file_name != "None":
         valid_data = CodeSearchNetDataset_NotPrecomputed(filename=valid_file_name, device=device)
     else:
