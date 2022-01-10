@@ -107,7 +107,10 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
     results['MRR'] = []
     with torch.no_grad():
         np.random.seed(122)
-        examples = np.random.choice(range(len(dataset)), count, replace=False)
+        if count > 0 and count <= len(dataset):
+            examples = np.random.choice(range(len(dataset)), count, replace=False)
+        else:
+            examples = np.arange(len(dataset))
         for j, ex in enumerate(examples):
             np.random.seed(ex)
             idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
@@ -136,25 +139,26 @@ def eval_acc(dataset, layout_net, make_prediction, count):
     positive_label = torch.tensor(1, dtype=torch.float).cpu()
     negative_label = torch.tensor(0, dtype=torch.float).cpu()
     with torch.no_grad():
-        i = 0
-        for j in range(len(dataset)):
-            sample, _, _, label = dataset[j]
+        np.random.seed(122)
+        if count > 0 and count <= len(dataset):
+            examples = np.random.choice(range(len(dataset)), count, replace=False)
+        else:
+            examples = np.arange(len(dataset))
+        for ex in examples:
+            sample, _, _, label = dataset[ex]
             assert label == 1, 'Mismatching example sampled from dataset, but expected matching examples only'
             try:
                 accs.append(get_acc_for_one_sample(sample, label=positive_label))
             except ProcessingException:
                 continue
             # Create a negative example
-            np.random.seed(22222 + j)
+            np.random.seed(ex)
             neg_idx = np.random.choice(range(len(dataset)), 1)[0]
-            neg_sample = create_neg_sample(dataset[j][0], dataset[neg_idx][0])
+            neg_sample = create_neg_sample(dataset[ex][0], dataset[neg_idx][0])
             try:
                 accs.append(get_acc_for_one_sample(neg_sample, label=negative_label))
             except ProcessingException:
                 continue
-            if i >= count:
-                break
-            i += 1
     layout_net.set_train()
     return np.mean(accs)
 
@@ -433,7 +437,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/valid", acc, total_steps)
 
 
-def eval(layout_net, data, k, distractor_set_size, make_prediction, count=100):
+def eval(layout_net, data, k, distractor_set_size, make_prediction, count):
     layout_net.set_eval()
     mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=data, layout_net=layout_net, make_prediction=make_prediction,
                                        k=k, distractor_set_size=distractor_set_size, count=count)
@@ -451,7 +455,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold):
+         alignment_function, pretrain_bin_threshold, eval_count):
     print(f"Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device),] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
@@ -524,7 +528,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               batch_size=batch_size, make_prediction=make_prediction)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
-             count=100, make_prediction=make_prediction)
+             count=eval_count, make_prediction=make_prediction)
 
 
 
@@ -568,6 +572,8 @@ if __name__ == '__main__':
     parser.add_argument('--use_dummy_action', dest='use_dummy_action', default=False, action='store_true')
     parser.add_argument('--alignment_function', dest='alignment_function', type=str)
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
+    parser.add_argument('--eval_count', dest='eval_count', type=int, default=100, help='How many examples to use in ' \
+                          'evaluation, pass -1 for evaluating on the entire validation set')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -599,4 +605,5 @@ if __name__ == '__main__':
          skip_negatives_in_pretraining=args.skip_negatives_in_pretraining,
          use_dummy_action=args.use_dummy_action,
          alignment_function=args.alignment_function,
-         pretrain_bin_threshold=args.pretrain_bin_threshold)
+         pretrain_bin_threshold=args.pretrain_bin_threshold,
+         eval_count=args.eval_count)
