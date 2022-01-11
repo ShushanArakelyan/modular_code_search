@@ -9,8 +9,6 @@ from sklearn.metrics import f1_score
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from matplotlib import pyplot as plt
-
 import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
 from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_NotPrecomputed_RandomNeg
@@ -119,7 +117,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
             if cur_mrr is None or p_at_ks is None:
                 continue
             results['MRR'].append(cur_mrr)
-            if (j+1) % 10 == 0:
+            if (j + 1) % 10 == 0:
                 print(np.mean(results['MRR']))
             for ki, pre in zip(k, p_at_ks):
                 results[f'P@{ki}'].append(pre)
@@ -375,7 +373,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
             binarized_pred = binarize(pred, threshold=0.5)
-            
+
             accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
             if epoch_steps % batch_size == 0:
                 loss.backward()
@@ -393,7 +391,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                                   np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
                 mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
-                distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=20)
+                                                   distractor_set_size=distractor_set_size,
+                                                   make_prediction=make_prediction, count=20)
                 acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
                 writer.add_scalar("Training MRR/valid", mrr, total_steps)
                 for pre, ki in zip(p_at_ks, k):
@@ -426,13 +425,14 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/train",
                           np.mean(accuracy[-print_every:]), total_steps)
         layout_net.set_eval()
-        # mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
-        # distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=100)
-        acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=1000)
-        
-        # writer.add_scalar("Training MRR/valid", mrr, writer_it)
-        # for pre, ki in zip(p_at_ks, k):
-        #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
+        mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                                           distractor_set_size=distractor_set_size, make_prediction=make_prediction,
+                                           count=20)
+        acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
+
+        writer.add_scalar("Training MRR/valid", mrr, total_steps)
+        for pre, ki in zip(p_at_ks, k):
+            writer.add_scalar(f"Training P@{k}/valid", pre, total_steps)
         writer.add_scalar("Training Acc/valid", acc, total_steps)
 
 
@@ -456,7 +456,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
          alignment_function, pretrain_bin_threshold, eval_count):
     print(f"Loading dataset from {data_dir}")
-    dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device),] +
+    dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
                                                                            range=r) for r in range(1)])
     print("Dataset read, the length of the dataset is: ", len(dataset))
@@ -530,7 +530,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
              count=eval_count, make_prediction=make_prediction)
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='End-to-end training of neural module network')
     parser.add_argument('--device', dest='device', type=str, help='device to run on')
@@ -572,7 +571,7 @@ if __name__ == '__main__':
     parser.add_argument('--alignment_function', dest='alignment_function', type=str)
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
     parser.add_argument('--eval_count', dest='eval_count', type=int, default=100, help='How many examples to use in ' \
-                          'evaluation, pass -1 for evaluating on the entire validation set')
+                                                                                       'evaluation, pass -1 for evaluating on the entire validation set')
 
     args = parser.parse_args()
     main(device=args.device,
