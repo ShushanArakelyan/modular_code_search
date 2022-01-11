@@ -148,7 +148,7 @@ class LayoutNetWS2(LayoutNet):
             parameters = parameters + (self.scoring_module.parameters(),)
         if self.weighted_cosine:
             print("4: self.weight is leaf: ", self.weight.is_leaf)
-            parameters = parameters + (self.weight,)
+            # parameters = parameters + (self.weight,)
         return chain(*parameters)
 
     def named_parameters(self):

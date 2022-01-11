@@ -343,8 +343,12 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
+        if layout_net.weighted_cosine:
+            op.add_param_group({"cosine_weight": layout_net.weight})
     elif optim_type == 'adam':
         op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+        if layout_net.weighted_cosine: # try a hack?
+            op.add_param_group({"cosine_weight": layout_net.weight})
     else:
         raise Exception("Unknown optimizer type!! ", optim_type)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
