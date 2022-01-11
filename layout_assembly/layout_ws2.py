@@ -54,7 +54,7 @@ class LayoutNetWS2(LayoutNet):
         self.weighted_cosine = weighted_cosine
         if self.weighted_cosine:
             # self.weight = torch.FloatTensor((768, 1), requires_grad=True, device=self.device)
-            self.weight = torch.autograd.Variable(torch.empty(768, 1).type(float), requires_grad=True,
+            self.weight = torch.autograd.Variable(torch.empty(768, 1), requires_grad=True,
                                                   device=self.device)
             print("1: self.weight is leaf: ", self.weight.is_leaf)
             torch.nn.init.xavier_uniform_(self.weight)
