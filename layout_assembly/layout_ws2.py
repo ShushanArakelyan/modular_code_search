@@ -54,7 +54,7 @@ class LayoutNetWS2(LayoutNet):
         self.weighted_cosine = weighted_cosine
         if self.weighted_cosine:
             from torch.nn import Parameter
-            self.weight = Parameter(torch.empty((768, 1)))
+            self.weight = Parameter(torch.empty((768, 1)), requires_grad=True)
             torch.nn.init.xavier_uniform_(self.weight)
         embedder.init_embedder(device)
 
