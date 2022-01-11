@@ -123,9 +123,13 @@ class LayoutNetWS2(LayoutNet):
 
     def set_eval(self):
         self.action_module.set_eval()
+        self.scoring_module.set_eval()
+        embedder.model.eval()
 
     def set_train(self):
         self.action_module.set_train()
+        self.scoring_module.set_train()
+        embedder.model.train()
 
     def parameters(self):
         parameters = (self.action_module.parameters(),)

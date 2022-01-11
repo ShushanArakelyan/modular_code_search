@@ -214,4 +214,11 @@ class ScoringModule:
         self.scorer.load_state_dict(model_dict['scorer'])
         embedder.model.load_state_dict(model_dict['embedder'])
 
+    def set_train(self):
+        self.scorer.train()
+        embedder.model.train()
+
+    def set_eval(self):
+        self.scorer.eval()
+        embedder.model.eval()
 
