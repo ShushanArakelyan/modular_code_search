@@ -59,10 +59,8 @@ def make_prediction_weighted_cosine(output_list):
         N = min(a.shape[0], b.shape[0], code.shape[0])
         weighted_code_a = torch.mm(a[:N, :].T, code[:N, :]).squeeze()
         weighted_a = v.squeeze() * weighted_code_a
-        print("weighted_a: ", weighted_a.shape)
         weighted_code_b = torch.mm(b[:N, :].T, code[:N, :]).squeeze()
         weighted_b = v.squeeze() * weighted_code_b
-        print("weighted_b: ", weighted_b.shape)
         s = cos(weighted_a, weighted_b)
         s = (s + 1) * 0.5
         if alignment_scores is None:
