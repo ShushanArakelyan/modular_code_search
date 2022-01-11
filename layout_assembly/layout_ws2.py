@@ -53,8 +53,12 @@ class LayoutNetWS2(LayoutNet):
         self.code_in_output = code_in_output
         self.weighted_cosine = weighted_cosine
         if self.weighted_cosine:
-            self.weight = torch.empty((768, 1), requires_grad=True, device=self.device)
+            # self.weight = torch.FloatTensor((768, 1), requires_grad=True, device=self.device)
+            self.weight = torch.autograd.Variable(torch.empty(768, 1).type(float), requires_grad=True,
+                                                  device=self.device)
+            print("1: self.weight is leaf: ", self.weight.is_leaf)
             torch.nn.init.xavier_uniform_(self.weight)
+            print("2: self.weight is leaf: ", self.weight.is_leaf)
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
@@ -144,6 +148,7 @@ class LayoutNetWS2(LayoutNet):
         if self.finetune_scoring:
             parameters = parameters + (self.scoring_module.parameters(),)
         if self.weighted_cosine:
+            print("4: self.weight is leaf: ", self.weight.is_leaf)
             parameters = parameters + (self.weight,)
         return chain(*parameters)
 
@@ -170,6 +175,8 @@ class LayoutNetWS2(LayoutNet):
             self.weight = torch.FloatTensor(models["weighted_cosine_weight"], requires_grad=True, device=self.device)
         else:
             print("LayoutNet: Could not load weighted cosine weight from the checkpoint!")
+
+        print("3: self.weight is leaf: ", self.weight.is_leaf)
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module.save_to_checkpoint(checkpoint + '.action_module')
