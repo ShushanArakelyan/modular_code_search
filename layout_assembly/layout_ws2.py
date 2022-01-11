@@ -43,17 +43,16 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNetWS2(LayoutNet):
-    def __init__(self, scoring_module, action_module, device, weighted_cosine):
+    def __init__(self, scoring_module, action_module, device, code_in_output, weighted_cosine):
         print("in layout net: ", device)
         self.scoring_module = scoring_module
         self.action_module = action_module
         self.device = device
         self.finetune_codebert = True
         self.finetune_scoring = False
-        self.code_in_output = False
-        self.weighted_cosine = False
-        if weighted_cosine:
-            self.weighted_cosine = True
+        self.code_in_output = code_in_output
+        self.weighted_cosine = weighted_cosine
+        if self.weighted_cosine:
             from torch.nn import Parameter
             self.weight = Parameter(torch.empty((768, 1)))
             torch.nn.init.xavier_uniform_(self.weight)

@@ -501,8 +501,6 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
-    layout_net = LayoutNet(scoring_module, action_module, device)
-
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y %H:%M:%S")
     writer = SummaryWriter(summary_writer_dir + f'/{dt_string}')
@@ -510,16 +508,22 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
+    code_in_output = False
+    weighted_cosine=False
     if alignment_function == 'dot':
         make_prediction = make_prediction_dot
     elif alignment_function == 'cosine':
         make_prediction = make_prediction_cosine
     elif alignment_function == 'weighted_emb':
         make_prediction = make_prediction_weighted_embedding
-        layout_net.code_in_output = True
+        code_in_output = True
+    elif alignment_function == "weighted_cosine":
+        make_prediction = make_prediction_weighted_cosine
+        code_in_output = True
+        weighted_cosine = True
     else:
         raise Exception("Unknown alignment type")
-
+    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
