@@ -50,6 +50,29 @@ def make_prediction_weighted_embedding(output_list):
     return pred
 
 
+def make_prediction_weighted_cosine(output_list):
+    alignment_scores = None
+    cos = torch.nn.CosineSimilarity(dim=0)
+    output_list, v = output_list
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+        N = min(a.shape[0], b.shape[0], code.shape[0])
+        weighted_code_a = torch.mm(a[:N, :].T, code[:N, :]).squeeze()
+        weighted_a = v.squeeze() * weighted_code_a
+        print("weighted_a: ", weighted_a.shape)
+        weighted_code_b = torch.mm(b[:N, :].T, code[:N, :]).squeeze()
+        weighted_b = v.squeeze() * weighted_code_b
+        print("weighted_b: ", weighted_b.shape)
+        s = cos(weighted_a, weighted_b)
+        s = (s + 1) * 0.5
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_dot(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
