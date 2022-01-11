@@ -53,7 +53,6 @@ class LayoutNetWS2(LayoutNet):
         self.code_in_output = code_in_output
         self.weighted_cosine = weighted_cosine
         if self.weighted_cosine:
-            from torch.nn import Parameter
             self.weight = torch.empty((768, 1), requires_grad=True, device=self.device)
             torch.nn.init.xavier_uniform_(self.weight)
         embedder.init_embedder(device)
@@ -167,10 +166,10 @@ class LayoutNetWS2(LayoutNet):
             print("LayoutNet: Could not load scoring module from checkpoint")
         models = torch.load(checkpoint, map_location=self.device)
         embedder.model.load_state_dict(models['codebert.model'])
-        try:
-            self.weight = models['weighted_cosine_weight']
-        except:
-            print("LayoutNet: Could not weighted cosine weight from the checkpoint!")
+        if 'weighted_cosine_weight' in models:
+            self.weight = torch.FloatTensor(models["weighted_cosine_weight"], requires_grad=True, device=self.device)
+        else:
+            print("LayoutNet: Could not load weighted cosine weight from the checkpoint!")
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module.save_to_checkpoint(checkpoint + '.action_module')
