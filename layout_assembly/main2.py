@@ -392,15 +392,14 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), total_steps)
                 layout_net.set_eval()
-                # mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
-                # distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=100)
-                acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=1000)
-                # writer.add_scalar("Training MRR/valid", mrr, writer_it)
-                # for pre, ki in zip(p_at_ks, k):
-                #     writer.add_scalar(f"Training P@{k}/valid", pre, writer_it)
+                mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                distractor_set_size=distractor_set_size, make_prediction=make_prediction, count=20)
+                acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
+                writer.add_scalar("Training MRR/valid", mrr, total_steps)
+                for pre, ki in zip(p_at_ks, k):
+                    writer.add_scalar(f"Training P@{k}/valid", pre, total_steps)
                 writer.add_scalar("Training Acc/valid", acc, total_steps)
-                # cur_perf = (mrr, acc, p_at_ks[0])
-                cur_perf = (0, acc, 0)
+                cur_perf = (mrr, acc, p_at_ks[0])
                 print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
                 if best_accuracy < cur_perf:
                     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
