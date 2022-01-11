@@ -374,6 +374,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
             for param in layout_net.parameters():
                 param.grad = None
+            if layout_net.weighted_cosine:
+                layout_net.weight.grad = None
             sample, scores, verbs, label = datum
             if int(label) == 0:
                 label = negative_label
@@ -407,10 +409,14 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
+                    if layout_net.weighted_cosine:
+                        torch.nn.utils.clip_grad_value_(layout_net.weight, clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
+                if layout_net.weighted_cosine:
+                    layout_net.weight.grad = None
             if epoch_steps % print_every == 0:
                 writer.add_scalar("Training Loss/train",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
