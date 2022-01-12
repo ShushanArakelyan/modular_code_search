@@ -135,7 +135,9 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
             examples = np.arange(len(dataset))
         for j, ex in enumerate(examples):
             np.random.seed(ex)
-            idxs = np.random.choice(range(len(dataset)), distractor_set_size, replace=False)
+            idxs = np.random.choice(range(len(dataset)), distractor_set_size+1, replace=False)
+            idxs = idxs[idxs != ex]
+            idxs = idxs[:distractor_set_size]
             cur_mrr, p_at_ks = get_mrr_for_one_sample(dataset, ex, idxs, layout_net, k)
             print(cur_mrr, p_at_ks)
             if cur_mrr is None or p_at_ks is None:
