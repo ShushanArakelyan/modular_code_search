@@ -168,7 +168,7 @@ class LayoutNetWS2(LayoutNet):
         models = torch.load(checkpoint, map_location=self.device)
         embedder.model.load_state_dict(models['codebert.model'])
         if 'weighted_cosine_weight' in models:
-            self.weight = torch.FloatTensor(models["weighted_cosine_weight"], requires_grad=True, device=self.device)
+            self.weight = models["weighted_cosine_weight"]
         else:
             print("LayoutNet: Could not load weighted cosine weight from the checkpoint!")
 
