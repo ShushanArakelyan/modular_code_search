@@ -259,8 +259,13 @@ def eval_acc_f1_pretraining_task(dataset, layout_net, threshold, count, override
 
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, device, print_every,
              writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size, skip_negatives,
-             override_negatives, threshold):
-    loss_func = torch.nn.BCELoss()
+             override_negatives, threshold, loss_type):
+    if loss_type == 'bce_loss':
+        loss_func = torch.nn.BCELoss()
+    elif loss_type == 'kldiv_loss':
+        loss_func = torch.nn.KLDivLoss()
+    elif loss_type == 'mse_loss':
+        loss_func = torch.nn.MSELoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     layout_net.set_train()
@@ -300,8 +305,14 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 if override_negatives:
                     if label == 0:
                         true_out = torch.zeros_like(true_out)
-                labels = binarize(true_out, threshold=threshold).to(device)
-                l = loss_func(pred_out, labels)
+                if loss_type == 'bce_loss':
+                    labels = binarize(true_out, threshold=threshold).to(device)
+                elif loss_type == 'kldiv_loss':
+                    labels = true_out/torch.sum(true_out) # normalize to probability
+                    pred_out = torch.logit(pred_out) #reverse sigmoid?
+                elif loss_type == 'mse_loss':
+                    labels = true_out
+                l = loss_func(pred_out, true_out)
                 if loss is None:
                     if torch.isnan(l).data:
                         print("Stop pretraining because loss=%s" % (l.data))
@@ -513,7 +524,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold, eval_count):
+         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count):
     print(f"Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
@@ -569,7 +580,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  device=device, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
-                 override_negatives=override_negatives_in_pretraining, threshold=pretrain_bin_threshold)
+                 override_negatives=override_negatives_in_pretraining, threshold=pretrain_bin_threshold,
+                 loss_type=pretrain_loss_type)
     if finetune_scoring:
         layout_net.finetune_scoring = finetune_scoring
     if layout_net_training_ckp is not None:
@@ -633,8 +645,9 @@ if __name__ == '__main__':
     parser.add_argument('--use_dummy_action', dest='use_dummy_action', default=False, action='store_true')
     parser.add_argument('--alignment_function', dest='alignment_function', type=str)
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
-    parser.add_argument('--eval_count', dest='eval_count', type=int, default=100, help='How many examples to use in ' \
-                                                                                       'evaluation, pass -1 for evaluating on the entire validation set')
+    parser.add_argument('--pretrain_loss_type', dest='pretrain_loss_type', type=str)
+    parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
+                        help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -667,4 +680,5 @@ if __name__ == '__main__':
          use_dummy_action=args.use_dummy_action,
          alignment_function=args.alignment_function,
          pretrain_bin_threshold=args.pretrain_bin_threshold,
-         eval_count=args.eval_count)
+         pretrain_loss_type=args.pretrain_loss_type,
+         eval_count=args.eval_count, )
