@@ -308,8 +308,10 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 if loss_type == 'bce_loss':
                     labels = binarize(true_out, threshold=threshold).to(device)
                 elif loss_type == 'kldiv_loss':
-                    labels = true_out/torch.sum(true_out) # normalize to probability
-                    pred_out = torch.logit(pred_out) #reverse sigmoid?
+                    print()
+                    labels = true_out/(torch.sum(true_out)) # normalize to probability
+                    norm_pred_out = pred_out / (torch.sum(pred_out))
+                    pred_out = torch.logit(norm_pred_out) #reverse sigmoid?
                 elif loss_type == 'mse_loss':
                     labels = true_out
                 l = loss_func(pred_out, true_out)

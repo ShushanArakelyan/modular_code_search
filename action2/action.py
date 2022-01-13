@@ -62,7 +62,7 @@ class ActionModule(object):
                 true_scores = scores
                 if not np.any(true_scores.detach().cpu().numpy()):
                     print("all output scores are zeros")
-                scores = torch.zeros_like(scores).to(self.device)
+                scores = torch.ones_like(scores).to(self.device) * 1e-8
             fwd_input = torch.cat((verb_embedding, prep_embedding), dim=1)
             out = self.verb_embedder(fwd_input)
             repl_out = out.repeat(len(scores), 1)
