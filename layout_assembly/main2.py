@@ -575,6 +575,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         os.makedirs(checkpoint_dir)
 
     if do_pretrain:
+        cio = code_in_output
+        wc = weighted_cosine
+        layout_net.weighted_cosine = False
+        layout_net.code_in_output = False
         pretrain(layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
                  num_epochs=num_epochs_pretraining, data_loader=data_loader, clip_grad_value=clip_grad_value,
                  device=device, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
@@ -582,6 +586,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
                  override_negatives=override_negatives_in_pretraining, threshold=pretrain_bin_threshold,
                  loss_type=pretrain_loss_type)
+        layout_net.weighted_cosine = wc
+        layout_net.code_in_output = cio
     if finetune_scoring:
         layout_net.finetune_scoring = finetune_scoring
     if layout_net_training_ckp is not None:
