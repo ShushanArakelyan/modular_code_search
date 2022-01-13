@@ -78,11 +78,11 @@ def make_prediction_weighted_cosine_v2(output_list):
     for i in range(len(output_list)):
         a, b, code = output_list[i]
         N = min(a.shape[0], b.shape[0], code.shape[0])
-        a /= torch.sum(a[:N, :])
-        b /= torch.sum(b[:N, :])
-        weighted_code_a = torch.mm(a[:N, :].T, code[:N, :]).squeeze()
+        a_norm = a/torch.sum(a[:N, :])
+        b_norm = b/torch.sum(b[:N, :])
+        weighted_code_a = torch.mm(a_norm[:N, :].T, code[:N, :]).squeeze()
         weighted_a = v.squeeze() * weighted_code_a
-        weighted_code_b = torch.mm(b[:N, :].T, code[:N, :]).squeeze()
+        weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
         weighted_b = v.squeeze() * weighted_code_b
         s = cos(weighted_a, weighted_b)
         s = (s + 1) * 0.5
