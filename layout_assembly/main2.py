@@ -131,6 +131,7 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
         except ProcessingException:
             return None, None
         ranks.append(float(pred.cpu().numpy()))
+        print('correct rank: ', ranks)
         for neg_idx in idxs_to_eval:
             distractor, _, _, _ = dataset[neg_idx]
             neg_sample = create_neg_sample(sample, distractor)
@@ -139,8 +140,11 @@ def eval_mrr_and_p_at_k(dataset, layout_net, make_prediction, k=[1], distractor_
                 pred = make_prediction(output_list)
                 ranks.append(float(pred.cpu().numpy()))
             except ProcessingException:
-                np.random.seed(neg_idx)
-                ranks.append(np.random.rand(1)[0])
+                pass
+                #np.random.seed(neg_idx)
+                #ranks.append(np.random.rand(1)[0])
+                #print("Adding random rank: ", ranks[-1])
+        #print("all ranks: ", ranks)
         return mrr(ranks), [p_at_k(ranks, ki) for ki in k]
 
     layout_net.set_eval()
@@ -451,7 +455,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                 acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
                 writer.add_scalar("Training MRR/valid", mrr, total_steps)
                 for pre, ki in zip(p_at_ks, k):
-                    writer.add_scalar(f"Training P@{k}/valid", pre, total_steps)
+                    writer.add_scalar(f"Training P@{ki}/valid", pre, total_steps)
                 writer.add_scalar("Training Acc/valid", acc, total_steps)
                 cur_perf = (mrr, acc, p_at_ks[0])
                 print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
