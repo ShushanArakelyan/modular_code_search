@@ -139,11 +139,7 @@ class ScoringModule:
             self.scorer.eval()
         self.device = device
         if checkpoint:
-            models = torch.load(checkpoint, map_location=device)
-            self.scorer.load_state_dict(models['scorer'])
-            self.scorer = self.scorer.to(device)
-            embedder.model.load_state_dict(models['embedder'])
-            embedder.model = embedder.model.to(device)
+            self.load_from_checkpoint(checkpoint)
 
     def forward_batch(self, queries, codes, separate_embedding=False):
         if separate_embedding:
@@ -213,4 +209,16 @@ class ScoringModule:
         model_dict['scorer'] = self.scorer.state_dict()
         torch.save(model_dict, checkpoint)
 
+    def load_from_checkpoint(self, checkpoint):
+        model_dict = torch.load(checkpoint, map_location=self.device)
+        self.scorer.load_state_dict(model_dict['scorer'])
+        embedder.model.load_state_dict(model_dict['embedder'])
+
+    def set_train(self):
+        self.scorer.train()
+        embedder.model.train()
+
+    def set_eval(self):
+        self.scorer.eval()
+        embedder.model.eval()
 
