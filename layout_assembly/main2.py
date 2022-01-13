@@ -263,7 +263,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
     if loss_type == 'bce_loss':
         loss_func = torch.nn.BCELoss()
     elif loss_type == 'kldiv_loss':
-        loss_func = torch.nn.KLDivLoss()
+        loss_func = torch.nn.KLDivLoss(reduction='batchmean')
     elif loss_type == 'mse_loss':
         loss_func = torch.nn.MSELoss()
     op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
