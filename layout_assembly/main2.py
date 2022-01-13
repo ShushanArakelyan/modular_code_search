@@ -304,18 +304,19 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 true_out, pred_out = out
                 if override_negatives:
                     if label == 0:
-                        true_out = torch.zeros_like(true_out)
+                        true_out = torch.ones_like(true_out) * 1e-8
                 if loss_type == 'bce_loss':
                     labels = binarize(true_out, threshold=threshold).to(device)
                 elif loss_type == 'kldiv_loss':
-                    print("is true_out before norm: ", torch.isnan(true_out))
+                    # print("is true_out before norm: ", torch.isnan(true_out))
                     labels = true_out/(torch.sum(true_out)) # normalize to probability
                     print("is true_out after norm: ", torch.isnan(labels))
-                    print("is pred_out before norm: ", torch.isnan(pred_out))
+                    print("norm value: ", torch.sum(true_out))
+                    # print("is pred_out before norm: ", torch.isnan(pred_out))
                     norm_pred_out = pred_out / (torch.sum(pred_out))
-                    print("is pred_out after norm: ", torch.isnan(norm_pred_out))
+                    # print("is pred_out after norm: ", torch.isnan(norm_pred_out))
                     pred_out = torch.logit(norm_pred_out) #reverse sigmoid?
-                    print("is pred_out after logits: ", torch.isnan(pred_out))
+                    # print("is pred_out after logits: ", torch.isnan(pred_out))
                 elif loss_type == 'mse_loss':
                     labels = true_out
                 l = loss_func(pred_out, true_out)
@@ -331,7 +332,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         stop_training = True
                         break
                     loss += l
-
+                labels = binarize(labels, threshold=threshold)
                 binarized_preds = binarize(pred_out, threshold=threshold)
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
