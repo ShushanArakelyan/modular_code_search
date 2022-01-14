@@ -305,15 +305,16 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                 if override_negatives:
                     if label == 0:
                         true_out = torch.ones_like(true_out) * 1e-8
+
+                labels = binarize(true_out, threshold=threshold).to(device)
                 if loss_type == 'bce_loss':
-                    labels = binarize(true_out, threshold=threshold).to(device)
+                    l = loss_func(pred_out, labels)
                 elif loss_type == 'kldiv_loss':
-                    labels = true_out/(torch.sum(true_out)) # normalize to probability
-                    norm_pred_out = pred_out / (torch.sum(pred_out))
-                    pred_out = torch.logit(norm_pred_out) #reverse sigmoid?
+                    norm_true_out = true_out/(torch.sum(true_out)) # normalize to probability
+                    norm_pred_out = torch.logit(pred_out / (torch.sum(pred_out)))
+                    l = loss_func(norm_pred_out, norm_true_out)
                 elif loss_type == 'mse_loss':
-                    labels = true_out
-                l = loss_func(pred_out, true_out)
+                    l = loss_func(pred_out, true_out)
                 if loss is None:
                     if torch.isnan(l).data:
                         print("Stop pretraining because loss=%s" % (l.data))
@@ -326,7 +327,6 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
                         stop_training = True
                         break
                     loss += l
-                labels = binarize(labels, threshold=threshold)
                 binarized_preds = binarize(pred_out, threshold=threshold)
                 accuracy.append(sum((binarized_preds == labels).cpu().detach().numpy()) * 1. / labels.shape[0])
                 f1_scores.append(f1_score(labels.cpu().detach().numpy().flatten(),
