@@ -109,11 +109,11 @@ def make_prediction_weighted_cosine_v3(output_list):
         weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
         weighted_b = v.squeeze() * weighted_code_b
         s = cos(weighted_a, weighted_b)
-        s = 0.125*(s+1)^3
+        norm_s = 0.125 * torch.pow(s + 1, 3)
         if alignment_scores is None:
-            alignment_scores = s.unsqueeze(0)
+            alignment_scores = norm_s.unsqueeze(0)
         else:
-            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+            alignment_scores = torch.cat((alignment_scores, norm_s.unsqueeze(dim=0)))
     pred = torch.prod(alignment_scores)
     return pred
 
