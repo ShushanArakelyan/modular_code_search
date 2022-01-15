@@ -94,6 +94,30 @@ def make_prediction_weighted_cosine_v2(output_list):
     return pred
 
 
+
+def make_prediction_weighted_cosine_v3(output_list):
+    alignment_scores = None
+    cos = torch.nn.CosineSimilarity(dim=0)
+    output_list, v = output_list
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+        N = min(a.shape[0], b.shape[0], code.shape[0])
+        a_norm = a/torch.sum(a[:N, :])
+        b_norm = b/torch.sum(b[:N, :])
+        weighted_code_a = torch.mm(a_norm[:N, :].T, code[:N, :]).squeeze()
+        weighted_a = v.squeeze() * weighted_code_a
+        weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
+        weighted_b = v.squeeze() * weighted_code_b
+        s = cos(weighted_a, weighted_b)
+        s = 0.125*(s+1)^3
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_dot(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
@@ -112,7 +136,7 @@ def make_prediction_cosine(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = cos(output_list[i][0].squeeze(), output_list[i][1].squeeze())
-        s = (s + 1) * 0.5
+        # s = (s + 1) * 0.5 # our scores are all non-negative, so cosine will be positive
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -566,7 +590,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         make_prediction = make_prediction_weighted_embedding
         code_in_output = True
     elif alignment_function == "weighted_cosine":
-        make_prediction = make_prediction_weighted_cosine_v2
+        make_prediction = make_prediction_weighted_cosine_v3
         code_in_output = True
         weighted_cosine = True
     else:
