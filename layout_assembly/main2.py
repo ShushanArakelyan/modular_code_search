@@ -135,8 +135,8 @@ def make_prediction_weighted_cosine_v4(output_list):
         weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
         weighted_b = v.squeeze() * weighted_code_b
         s = cos(weighted_a, weighted_b)
-        # norm_s = 0.125 * torch.pow(s + 1, 3)
-        norm_s = torch.sigmoid(s)
+        norm_s = 0.125 * torch.pow(s + 1, 3)
+        # norm_s = torch.sigmoid(s)
         final_score = dot_score * norm_s
         if alignment_scores is None:
             alignment_scores = final_score.unsqueeze(0)
