@@ -94,7 +94,6 @@ def make_prediction_weighted_cosine_v2(output_list):
     return pred
 
 
-
 def make_prediction_weighted_cosine_v3(output_list):
     alignment_scores = None
     cos = torch.nn.CosineSimilarity(dim=0)
@@ -109,7 +108,8 @@ def make_prediction_weighted_cosine_v3(output_list):
         weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
         weighted_b = v.squeeze() * weighted_code_b
         s = cos(weighted_a, weighted_b)
-        norm_s = 0.125 * torch.pow(s + 1, 3)
+        # norm_s = 0.125 * torch.pow(s + 1, 3)
+        norm_s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = norm_s.unsqueeze(0)
         else:
