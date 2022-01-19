@@ -772,7 +772,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', dest='data_dir', type=str,
                         help='training data directory', required=True)
     parser.add_argument('--scoring_checkpoint', dest='scoring_checkpoint', type=str,
-                        help='Scoring module checkpoint', required=True)
+                        help='Scoring module checkpoint')
     parser.add_argument('--num_epochs', dest='num_epochs', type=int, help='number of epochs to train', default=50)
     parser.add_argument('--num_epochs_pretraining', dest='num_epochs_pretraining', type=int,
                         help='number of epochs to train', default=50)
