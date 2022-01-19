@@ -187,6 +187,8 @@ class LayoutNetWS2(LayoutNet):
             self.weight = models["weighted_cosine_weight"]
         else:
             print("LayoutNet: Could not load weighted cosine weight from the checkpoint!")
+        if "distance_mlp" in models:
+            self.distance_mlp.load_state_dict(models['distance_mlp'])
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module.save_to_checkpoint(checkpoint + '.action_module')
@@ -195,6 +197,9 @@ class LayoutNetWS2(LayoutNet):
         model_dict = {'codebert.model': embedder.model.state_dict()}
         if self.weighted_cosine:
             model_dict['weighted_cosine_weight'] = self.weight
+        if self.weighted_cosine:
+            model_dict['distance_mlp'] = self.distance_mlp.state_dict()
+
         torch.save(model_dict, checkpoint)
 
     def state_dict(self):
