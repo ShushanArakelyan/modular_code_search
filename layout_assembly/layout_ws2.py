@@ -87,6 +87,8 @@ class LayoutNetWS2(LayoutNet):
                                  scoring_it=0, action_it=0)
         if self.weighted_cosine:
             return (outs[-1], self.weight)
+        if self.mlp_prediction:
+            return (outs[-1], self.distance_mlp)
         return outs[-1]
 
     def get_masking_idx(self):
