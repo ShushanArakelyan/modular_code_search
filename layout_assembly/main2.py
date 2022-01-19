@@ -209,9 +209,12 @@ def make_prediction_mlp(output_list):
         N = min(a.shape[0], b.shape[0], code.shape[0])
         a_norm = a / torch.sum(a[:N, :])
         b_norm = b / torch.sum(b[:N, :])
-        weighted_code_a = torch.mm(a_norm[:N, :].T, code[:N, :]).squeeze()
-        weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
-        final_score = mlp(weighted_code_a, weighted_code_b)
+        weighted_code_a = torch.mm(a_norm[:N, :].T, code[:N, :])
+        weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :])
+        print("weighted code shape: ", weighted_code_a.shape)
+        input = torch.cat((weighted_code_a, weighted_code_b), dim=1)
+        print("Input dim: ", input.shape)
+        final_score = mlp(input)
         if alignment_scores is None:
             alignment_scores = final_score.unsqueeze(0)
         else:
