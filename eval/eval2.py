@@ -12,7 +12,6 @@ from utils import get_alignment_function
 from layout_assembly.modules import ScoringModule
 
 HOME_DIR = '/home/shushan'
-DIR_NAME = f"{HOME_DIR}/codebert_1000/"
 IS_VALID = False
 IS_TEST = True
 
@@ -80,6 +79,7 @@ def main():
         global HOME_DIR
         HOME_DIR = args.home_dir
 
+    dir_name = f"{HOME_DIR}/codebert_1000/"
     if IS_VALID and IS_TEST:
         raise Exception("Should be only one of two!")
     if IS_VALID:
@@ -117,7 +117,7 @@ def main():
         with torch.no_grad():
             for file_i in range(8):
                 print(f"\n\n\nFile: {file_i}")
-                filename = DIR_NAME + f"{file_i}_batch_result.txt"
+                filename = dir_name + f"{file_i}_batch_result.txt"
                 offset = file_i * 1000
                 with open(filename, 'r') as f:
                     for j in range(1000):
