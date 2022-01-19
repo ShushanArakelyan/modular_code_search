@@ -89,7 +89,7 @@ def main():
     else:
         raise Exception("Either is_valid or is_test should be set to true")
     data = pd.read_json(valid_file_name, lines=True)
-    valid_data_map = create_map_from_url2idx()
+    valid_data_map = create_map_from_url2idx(data)
 
     scoring_checkpoint = f"{HOME_DIR}/finetuned_scoring_models/03-01-2022 17:33:42/model_0_ep_03000.tar"
     scoring_module = ScoringModule(device, scoring_checkpoint)
