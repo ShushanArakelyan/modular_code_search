@@ -96,7 +96,7 @@ def main():
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=0.1)
 
     code_in_output, weighted_cosine, mlp_prediction, make_prediction = get_alignment_function(alignment_function)
-    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine)
+    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine, mlp_prediction)
 
     layout_net.finetune_scoring = True
     layout_net_training_ckp = f"{HOME_DIR}/modular_code_search/model_checkpoints/action/{model_name}/train/best_model.tar"
