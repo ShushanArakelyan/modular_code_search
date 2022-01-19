@@ -157,7 +157,7 @@ class LayoutNetWS2(LayoutNet):
             pass
             # parameters = parameters + (self.weight,)
         if self.mlp_prediction:
-            parameters = parameters + (self.distance_mlp.parameters())
+            parameters = parameters + (self.distance_mlp.parameters(),)
         return chain(*parameters)
 
     def named_parameters(self):
