@@ -617,8 +617,20 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     elif alignment_function == 'weighted_emb':
         make_prediction = make_prediction_weighted_embedding
         code_in_output = True
-    elif alignment_function == "weighted_cosine":
+    elif alignment_function == "weighted_cosine_v1":
+        make_prediction = make_prediction_weighted_cosine
+        code_in_output = True
+        weighted_cosine = True
+    elif alignment_function == "weighted_cosine_v2":
+        make_prediction = make_prediction_weighted_cosine_v2
+        code_in_output = True
+        weighted_cosine = True
+    elif alignment_function == "weighted_cosine_v3":
         make_prediction = make_prediction_weighted_cosine_v3
+        code_in_output = True
+        weighted_cosine = True
+    elif alignment_function == "weighted_cosine_v4":
+        make_prediction = make_prediction_weighted_cosine_v4
         code_in_output = True
         weighted_cosine = True
     else:
