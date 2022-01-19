@@ -146,6 +146,80 @@ def make_prediction_weighted_cosine_v4(output_list):
     return pred
 
 
+def make_prediction_kldiv(output_list):
+    alignment_scores = None
+    for i in range(len(output_list)):
+        a, b = output_list[i]
+        N = min(a.shape[0], b.shape[0])
+        a_norm = a[:N, :] / torch.sum(a[:N, :])
+        b_norm = b[:N, :] / torch.sum(b[:N, :])
+
+        kldiv = torch.nn.functional.kl_div(a_norm.squeeze(), b_norm.squeeze(), reduction='batchmean')
+        final_score = 1. / (1. + kldiv)
+        if alignment_scores is None:
+            alignment_scores = final_score.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, final_score.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_l2norm(output_list):
+    alignment_scores = None
+    for i in range(len(output_list)):
+        a, b = output_list[i]
+        N = min(a.shape[0], b.shape[0])
+        truncated_a = a[:N, :].squeeze()
+        truncated_b = b[:N, :].squeeze()
+        l2norm = torch.linalg.norm(truncated_a, truncated_b)
+        final_score = 1./(1. + l2norm)
+        if alignment_scores is None:
+            alignment_scores = final_score.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, final_score.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_l2norm_weighted(output_list):
+    alignment_scores = None
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+        N = min(a.shape[0], b.shape[0], code.shape[0])
+        truncated_a = a[:N, :]
+        truncated_b = b[:N, :]
+        truncated_code = code[:N, :]
+        weighted_code_a = torch.mm(truncated_a.T, truncated_code).squeeze()
+        weighted_code_b = torch.mm(truncated_b.T, truncated_code).squeeze()
+        l2norm = torch.linalg.norm(weighted_code_a, weighted_code_b)
+        final_score = 1./(1. + l2norm)
+        if alignment_scores is None:
+            alignment_scores = final_score.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, final_score.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_mlp(output_list):
+    alignment_scores = None
+    output_list, mlp = output_list
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+        N = min(a.shape[0], b.shape[0], code.shape[0])
+        a_norm = a / torch.sum(a[:N, :])
+        b_norm = b / torch.sum(b[:N, :])
+        weighted_code_a = torch.mm(a_norm[:N, :].T, code[:N, :]).squeeze()
+        weighted_code_b = torch.mm(b_norm[:N, :].T, code[:N, :]).squeeze()
+        final_score = mlp(weighted_code_a, weighted_code_b)
+        if alignment_scores is None:
+            alignment_scores = final_score.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, final_score.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_dot(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
@@ -609,7 +683,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     print("Checkpoints will be saved in ", checkpoint_dir)
 
     code_in_output = False
-    weighted_cosine=False
+    weighted_cosine = False
+    mlp_prediction = False
     if alignment_function == 'dot':
         make_prediction = make_prediction_dot
     elif alignment_function == 'cosine':
@@ -633,17 +708,30 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         make_prediction = make_prediction_weighted_cosine_v4
         code_in_output = True
         weighted_cosine = True
+    elif alignment_function == "kldiv":
+        make_prediction = make_prediction_kldiv
+    elif alignment_function == "l2norm":
+        make_prediction = make_prediction_l2norm
+    elif alignment_function == "l2norm_weighted":
+        code_in_output = True
+        make_prediction = make_prediction_l2norm
+    elif alignment_function == "mlp":
+        make_prediction = make_prediction_mlp
+        code_in_output = True
+        mlp_prediction = True
     else:
         raise Exception("Unknown alignment type")
-    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine)
+    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine, mlp_prediction)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
     if do_pretrain:
         cio = code_in_output
         wc = weighted_cosine
+        mp = mlp_prediction
         layout_net.weighted_cosine = False
         layout_net.code_in_output = False
+        layout_net.mlp_prediction = False
         pretrain(layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
                  num_epochs=num_epochs_pretraining, data_loader=data_loader, clip_grad_value=clip_grad_value,
                  device=device, print_every=print_every, writer=writer, k=k, valid_data=valid_data,
@@ -653,6 +741,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  loss_type=pretrain_loss_type)
         layout_net.weighted_cosine = wc
         layout_net.code_in_output = cio
+        layout_net.mlp_prediction = mp
     if finetune_scoring:
         layout_net.finetune_scoring = finetune_scoring
     if layout_net_training_ckp is not None:

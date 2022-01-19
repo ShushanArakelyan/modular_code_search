@@ -43,7 +43,7 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNetWS2(LayoutNet):
-    def __init__(self, scoring_module, action_module, device, code_in_output, weighted_cosine):
+    def __init__(self, scoring_module, action_module, device, code_in_output, weighted_cosine, mlp_prediction):
         print("in layout net: ", device)
         self.scoring_module = scoring_module
         self.action_module = action_module
@@ -52,9 +52,19 @@ class LayoutNetWS2(LayoutNet):
         self.finetune_scoring = False
         self.code_in_output = code_in_output
         self.weighted_cosine = weighted_cosine
+        self.mlp_prediction = mlp_prediction
         if self.weighted_cosine:
             self.weight = torch.autograd.Variable(torch.empty((768, 1), device=self.device), requires_grad=True)
             torch.nn.init.xavier_uniform_(self.weight)
+        if self.mlp_prediction:
+            dim = embedder.dim
+            self.distance_mlp = torch.nn.Sequential(
+                torch.nn.Linear(dim * 2, int(dim / 2)),
+                torch.nn.Dropout(0.1),
+                torch.nn.ReLU(),
+                torch.nn.Linear(int(dim / 2), 1),
+                torch.nn.Sigmoid(),
+            ).to(self.device)
         embedder.init_embedder(device)
 
     def forward(self, ccg_parse, sample):
@@ -146,6 +156,8 @@ class LayoutNetWS2(LayoutNet):
         if self.weighted_cosine:
             pass
             # parameters = parameters + (self.weight,)
+        if self.mlp_prediction:
+            parameters = parameters + (self.distance_mlp.parameters())
         return chain(*parameters)
 
     def named_parameters(self):
@@ -156,6 +168,8 @@ class LayoutNetWS2(LayoutNet):
             parameters = parameters + (self.scoring_module.named_parameters(),)
         if self.weighted_cosine:
             parameters = parameters + (("weighted cosine weight", self.weight),)
+        if self.mlp_prediction:
+            parameters = parameters + (self.distance_mlp.named_parameters())
         return chain(*parameters)
 
     def load_from_checkpoint(self, checkpoint):
