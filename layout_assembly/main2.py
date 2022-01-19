@@ -714,7 +714,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         make_prediction = make_prediction_l2norm
     elif alignment_function == "l2norm_weighted":
         code_in_output = True
-        make_prediction = make_prediction_l2norm
+        make_prediction = make_prediction_l2norm_weighted
     elif alignment_function == "mlp":
         make_prediction = make_prediction_mlp
         code_in_output = True
