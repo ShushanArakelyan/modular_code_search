@@ -172,3 +172,5 @@ def main():
         out_file.write('\n')
         out_file.flush()
 
+if __name__ == "__main__":
+    main()
