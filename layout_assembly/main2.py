@@ -171,7 +171,7 @@ def make_prediction_l2norm(output_list):
         N = min(a.shape[0], b.shape[0])
         truncated_a = a[:N, :].squeeze()
         truncated_b = b[:N, :].squeeze()
-        l2norm = torch.linalg.norm(truncated_a, truncated_b)
+        l2norm = torch.linalg.norm(truncated_a - truncated_b)
         final_score = 1./(1. + l2norm)
         if alignment_scores is None:
             alignment_scores = final_score.unsqueeze(0)
@@ -191,7 +191,7 @@ def make_prediction_l2norm_weighted(output_list):
         truncated_code = code[:N, :]
         weighted_code_a = torch.mm(truncated_a.T, truncated_code).squeeze()
         weighted_code_b = torch.mm(truncated_b.T, truncated_code).squeeze()
-        l2norm = torch.linalg.norm(weighted_code_a, weighted_code_b)
+        l2norm = torch.linalg.norm(weighted_code_a - weighted_code_b)
         final_score = 1./(1. + l2norm)
         if alignment_scores is None:
             alignment_scores = final_score.unsqueeze(0)
