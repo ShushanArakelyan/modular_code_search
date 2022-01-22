@@ -143,11 +143,15 @@ class LayoutNetWS2(LayoutNet):
         self.action_module.set_eval()
         self.scoring_module.set_eval()
         embedder.model.eval()
+        if self.mlp_prediction:
+            self.distance_mlp.eval()
 
     def set_train(self):
         self.action_module.set_train()
         self.scoring_module.set_train()
         embedder.model.train()
+        if self.mlp_prediction:
+            self.distance_mlp.train()
 
     def parameters(self):
         parameters = (self.action_module.parameters(),)
@@ -189,6 +193,8 @@ class LayoutNetWS2(LayoutNet):
             print("LayoutNet: Could not load weighted cosine weight from the checkpoint!")
         if "distance_mlp" in models:
             self.distance_mlp.load_state_dict(models['distance_mlp'])
+        else:
+            print("LayoutNet: Could not load distance mlp from the checkpoint!")
 
     def save_to_checkpoint(self, checkpoint):
         self.action_module.save_to_checkpoint(checkpoint + '.action_module')
@@ -197,7 +203,7 @@ class LayoutNetWS2(LayoutNet):
         model_dict = {'codebert.model': embedder.model.state_dict()}
         if self.weighted_cosine:
             model_dict['weighted_cosine_weight'] = self.weight
-        if self.weighted_cosine:
+        if self.distance_mlp:
             model_dict['distance_mlp'] = self.distance_mlp.state_dict()
 
         torch.save(model_dict, checkpoint)
