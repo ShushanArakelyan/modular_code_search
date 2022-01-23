@@ -75,8 +75,8 @@ class LayoutNetWS2(LayoutNet):
         if len(code) == 0:  # erroneous example
             raise ProcessingException()
         scoring_inputs, verb_embeddings = self.precompute_inputs(tree, code, [[], [], []], [[], []], '')
-        if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
-            raise ProcessingException()
+        #if np.any(np.unique(verb_embeddings[0], return_counts=True)[1] > 1):
+        #    raise ProcessingException()
         if self.finetune_scoring:
             scoring_forward_method = self.scoring_module.forward_batch
         else:
@@ -109,7 +109,9 @@ class LayoutNetWS2(LayoutNet):
                                                                                               output_list=output_list,
                                                                                               parent_module=action_module_wrapper)
             precomputed_embeddings = (verb_emb[action_it], code_emb[action_it])
-            if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
+            if precomputed_embeddings[0].shape[0] == 0:
+                raise ProcessingException()
+            if precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
             # print("Num of inputs passed to action: ", len(action_module_wrapper.inputs))
