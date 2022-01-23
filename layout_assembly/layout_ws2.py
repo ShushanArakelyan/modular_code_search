@@ -109,9 +109,7 @@ class LayoutNetWS2(LayoutNet):
                                                                                               output_list=output_list,
                                                                                               parent_module=action_module_wrapper)
             precomputed_embeddings = (verb_emb[action_it], code_emb[action_it])
-            if precomputed_embeddings[0].shape[0] == 0:
-                raise ProcessingException()
-            if precomputed_embeddings[1].shape[0] == 0:
+            if precomputed_embeddings[0].shape[0] == 0 or precomputed_embeddings[1].shape[0] == 0:
                 raise ProcessingException()
             action_it += 1
             # print("Num of inputs passed to action: ", len(action_module_wrapper.inputs))
@@ -205,7 +203,7 @@ class LayoutNetWS2(LayoutNet):
         model_dict = {'codebert.model': embedder.model.state_dict()}
         if self.weighted_cosine:
             model_dict['weighted_cosine_weight'] = self.weight
-        if self.distance_mlp:
+        if self.mlp_prediction:
             model_dict['distance_mlp'] = self.distance_mlp.state_dict()
 
         torch.save(model_dict, checkpoint)
