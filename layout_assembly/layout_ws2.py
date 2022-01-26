@@ -8,6 +8,9 @@ from layout_assembly.layout import LayoutNet
 from layout_assembly.utils import ProcessingException
 
 
+
+
+
 class ActionModuleWrapper(object):
     def __init__(self, action_module_facade, device):
         self.empty_emb = None

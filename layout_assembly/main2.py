@@ -377,7 +377,7 @@ if __name__ == '__main__':
                         help='print to tensorboard after this many iterations', default=1000)
     parser.add_argument('--lr', dest='lr', type=float, help='learning rate', required=True)
     parser.add_argument('--valid_file_name', dest='valid_file_name', type=str,
-                        help='Validation data file', required=True)
+                        help='Validation data file')
     parser.add_argument('--num_negatives', dest='num_negatives', type=int,
                         help='Number of distractors to use in training')
     parser.add_argument('--adamw', dest='adamw', type=float, default=0)
