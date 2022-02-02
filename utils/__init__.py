@@ -129,6 +129,28 @@ def make_prediction_weighted_cosine_v4(output_list):
     return pred
 
 
+def make_prediction_weighted_cosine_v5(output_list):
+    alignment_scores = None
+    cos = torch.nn.CosineSimilarity(dim=0)
+    output_list, v = output_list
+    for i in range(len(output_list)):
+        a, b, code = output_list[i]
+
+        N = min(a.shape[0], b.shape[0], code.shape[0])
+        a_norm = a[:N, :]
+        b_norm = b[:N, :]
+        weighted_a = v.squeeze() * a_norm.squeeze()
+        print(weighted_a.shape)
+        weighted_b = v.squeeze() * b_norm.squeeze()
+        s = cos(weighted_a, weighted_b)
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_kldiv(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
@@ -205,10 +227,52 @@ def make_prediction_mlp(output_list):
 
 
 def make_prediction_dot(output_list):
+    # normalize by scoring module vector
     alignment_scores = None
     for i in range(len(output_list)):
         s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
         s /= sum(output_list[i][0]).squeeze()
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_dot_v2(output_list):
+    # normalize by action module vector
+    alignment_scores = None
+    for i in range(len(output_list)):
+        s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        s /= sum(output_list[i][1]).squeeze()
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_dot_v3(output_list):
+    # normalize by both scoring and action module vectors
+    alignment_scores = None
+    for i in range(len(output_list)):
+        s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        s /= (sum(output_list[i][0]).squeeze() + sum(output_list[i][1]).squeeze())
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_dot_v4(output_list):
+    # do not normalize
+    alignment_scores = None
+    for i in range(len(output_list)):
+        s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -237,6 +301,12 @@ def get_alignment_function(alignment_function):
     mlp_prediction = False
     if alignment_function == 'dot':
         make_prediction = make_prediction_dot
+    elif alignment_function == 'dot_v2':
+        make_prediction = make_prediction_dot_v2
+    elif alignment_function == 'dot_v3':
+        make_prediction = make_prediction_dot_v3
+    elif alignment_function == 'dot_v4':
+        make_prediction = make_prediction_dot_v4
     elif alignment_function == 'cosine':
         make_prediction = make_prediction_cosine
     elif alignment_function == 'weighted_emb':
@@ -256,6 +326,10 @@ def get_alignment_function(alignment_function):
         weighted_cosine = True
     elif alignment_function == "weighted_cosine_v4":
         make_prediction = make_prediction_weighted_cosine_v4
+        code_in_output = True
+        weighted_cosine = True
+    elif alignment_function == "weighted_cosine_v5":
+        make_prediction = make_prediction_weighted_cosine_v5
         code_in_output = True
         weighted_cosine = True
     elif alignment_function == "kldiv":
