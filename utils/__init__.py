@@ -134,9 +134,9 @@ def make_prediction_weighted_cosine_v5(output_list):
     cos = torch.nn.CosineSimilarity(dim=0)
     output_list, v = output_list
     for i in range(len(output_list)):
-        a, b, code = output_list[i]
+        a, b = output_list[i]
 
-        N = min(a.shape[0], b.shape[0], code.shape[0])
+        N = min(a.shape[0], b.shape[0])
         a_norm = a[:N, :]
         b_norm = b[:N, :]
         weighted_a = v.squeeze() * a_norm.squeeze()
@@ -330,7 +330,6 @@ def get_alignment_function(alignment_function):
         weighted_cosine = True
     elif alignment_function == "weighted_cosine_v5":
         make_prediction = make_prediction_weighted_cosine_v5
-        code_in_output = True
         weighted_cosine = True
     elif alignment_function == "kldiv":
         make_prediction = make_prediction_kldiv
