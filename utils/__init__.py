@@ -139,6 +139,7 @@ def make_prediction_weighted_cosine_v5(output_list):
         N = min(a.shape[0], b.shape[0])
         a_norm = a[:N, :]
         b_norm = b[:N, :]
+        print(a_norm.shape, b_norm.shape)
         weighted_a = v.squeeze() * a_norm.squeeze()
         print(weighted_a.shape)
         weighted_b = v.squeeze() * b_norm.squeeze()
