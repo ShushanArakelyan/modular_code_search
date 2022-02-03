@@ -72,7 +72,7 @@ class LayoutNetWS2(LayoutNet):
             ).to(self.device)
         embedder.init_embedder(device)
         if self.weighted_cosine_v2:
-            self.weight = torch.nn.Embedding(embedder.tokenizer.vocab_size(), 1)
+            self.weight = torch.nn.Embedding(embedder.tokenizer.vocab_size, 1)
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
