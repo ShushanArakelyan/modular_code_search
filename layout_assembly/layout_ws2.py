@@ -95,6 +95,7 @@ class LayoutNetWS2(LayoutNet):
         if self.weighted_cosine:
             return (outs[-1], self.weight)
         if self.weighted_cosine_v2:
+            print(code)
             return (outs[-1], self.weight(code))
         if self.mlp_prediction:
             return (outs[-1], self.distance_mlp)
