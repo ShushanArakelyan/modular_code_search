@@ -97,7 +97,6 @@ class LayoutNetWS2(LayoutNet):
         if self.weighted_cosine_v2:
             code_tokens = embedder.tokenizer.convert_tokens_to_ids(embedder.tokenizer.tokenize(' '.join(code)))
             code_tokens = torch.LongTensor(code_tokens).to(self.device)
-            # print(code_tokens)
             return (outs[-1], self.weight(code_tokens))
         if self.mlp_prediction:
             return (outs[-1], self.distance_mlp)
