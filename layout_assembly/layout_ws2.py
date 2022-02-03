@@ -95,7 +95,7 @@ class LayoutNetWS2(LayoutNet):
         if self.weighted_cosine:
             return (outs[-1], self.weight)
         if self.weighted_cosine_v2:
-            code_tokens = embedder.tokenizer.tokenize(code)
+            code_tokens = embedder.tokenizer.tokenize(' '.join(code))
             print(code_tokens)
             return (outs[-1], self.weight(code_tokens))
         if self.mlp_prediction:
