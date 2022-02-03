@@ -139,10 +139,11 @@ def make_prediction_weighted_cosine_v5(output_list):
         N = min(a.shape[0], b.shape[0])
         a_norm = a[:N, :]
         b_norm = b[:N, :]
+        v_norm = v[:N, :].squeeze()
         print(a_norm.shape, b_norm.shape)
-        weighted_a = v.squeeze() * a_norm.squeeze()
+        weighted_a = v_norm * a_norm.squeeze()
         print(weighted_a.shape)
-        weighted_b = v.squeeze() * b_norm.squeeze()
+        weighted_b = v_norm * b_norm.squeeze()
         s = cos(weighted_a, weighted_b)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
