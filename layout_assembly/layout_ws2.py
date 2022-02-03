@@ -96,7 +96,7 @@ class LayoutNetWS2(LayoutNet):
             return (outs[-1], self.weight)
         if self.weighted_cosine_v2:
             code_tokens = embedder.tokenizer.convert_tokens_to_ids(embedder.tokenizer.tokenize(' '.join(code)))
-            code_tokens = torch.LongTensor(code_tokens)
+            code_tokens = torch.LongTensor(code_tokens).to(self.device)
             print(code_tokens)
             return (outs[-1], self.weight(code_tokens))
         if self.mlp_prediction:
