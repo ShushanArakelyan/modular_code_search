@@ -274,6 +274,7 @@ def make_prediction_dot_v4(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         s = torch.dot(output_list[i][0].squeeze(), output_list[i][1].squeeze())
+        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
