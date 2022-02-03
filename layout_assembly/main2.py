@@ -143,14 +143,14 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
-        if layout_net.weighted_cosine:
-            op.add_param_group({"params": layout_net.weight})
     elif optim_type == 'adam':
         op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
-        if layout_net.weighted_cosine: # try a hack?
-            op.add_param_group({"params": layout_net.weight})
     else:
         raise Exception("Unknown optimizer type!! ", optim_type)
+    if layout_net.weighted_cosine:  # try a hack?
+        op.add_param_group({"params": layout_net.weight})
+    if layout_net.weighted_cosine_v2:  # try a hack?
+        op.add_param_group({"params": layout_net.weight.parameters()})
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
     checkpoint_dir += '/train'
     if not os.path.exists(checkpoint_dir):
@@ -211,12 +211,17 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
                     if layout_net.weighted_cosine:
                         torch.nn.utils.clip_grad_value_(layout_net.weight, clip_grad_value)
+                    if layout_net.weighted_cosine_v2:
+                        torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
                 op.step()
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
                 if layout_net.weighted_cosine:
                     layout_net.weight.grad = None
+                if layout_net.weighted_cosine_v2:
+                    for x in layout_net.weight.parameters():
+                        x.grad = None
             if epoch_steps % print_every == 0:
                 writer.add_scalar("Training Loss/train",
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
@@ -318,16 +323,20 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     checkpoint_dir = checkpoint_dir + f'/{dt_string}'
     print("Checkpoints will be saved in ", checkpoint_dir)
 
-    code_in_output, weighted_cosine, mlp_prediction, make_prediction = get_alignment_function(alignment_function)
-    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine, mlp_prediction)
+    code_in_output, weighted_cosine, weighted_cosine_v2, mlp_prediction, make_prediction = \
+        get_alignment_function(alignment_function)
+    layout_net = LayoutNet(scoring_module, action_module, device, code_in_output, weighted_cosine, weighted_cosine_v2,
+                           mlp_prediction)
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
     if do_pretrain:
         cio = code_in_output
         wc = weighted_cosine
+        wc_2 = weighted_cosine_v2
         mp = mlp_prediction
         layout_net.weighted_cosine = False
+        layout_net.weighted_cosine_v2 = False
         layout_net.code_in_output = False
         layout_net.mlp_prediction = False
         pretrain(layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
@@ -338,6 +347,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  override_negatives=override_negatives_in_pretraining, threshold=pretrain_bin_threshold,
                  loss_type=pretrain_loss_type)
         layout_net.weighted_cosine = wc
+        layout_net.weighted_cosine_v2 = wc_2
         layout_net.code_in_output = cio
         layout_net.mlp_prediction = mp
     if finetune_scoring:

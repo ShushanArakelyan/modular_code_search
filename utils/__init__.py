@@ -300,6 +300,7 @@ def make_prediction_cosine(output_list):
 def get_alignment_function(alignment_function):
     code_in_output = False
     weighted_cosine = False
+    weighted_cosine_v2 = False
     mlp_prediction = False
     if alignment_function == 'dot':
         make_prediction = make_prediction_dot
@@ -332,7 +333,7 @@ def get_alignment_function(alignment_function):
         weighted_cosine = True
     elif alignment_function == "weighted_cosine_v5":
         make_prediction = make_prediction_weighted_cosine_v5
-        weighted_cosine = True
+        weighted_cosine_v2 = True
     elif alignment_function == "kldiv":
         make_prediction = make_prediction_kldiv
     elif alignment_function == "l2norm":
@@ -346,7 +347,7 @@ def get_alignment_function(alignment_function):
         mlp_prediction = True
     else:
         raise Exception("Unknown alignment type")
-    return code_in_output, weighted_cosine, mlp_prediction, make_prediction
+    return code_in_output, weighted_cosine, weighted_cosine_v2, mlp_prediction, make_prediction
 
 
 

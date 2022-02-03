@@ -46,7 +46,8 @@ class ActionModuleWrapper(object):
 
 
 class LayoutNetWS2(LayoutNet):
-    def __init__(self, scoring_module, action_module, device, code_in_output, weighted_cosine, mlp_prediction):
+    def __init__(self, scoring_module, action_module, device, code_in_output, weighted_cosine, weighted_cosine_v2,
+                 mlp_prediction):
         print("in layout net: ", device)
         self.scoring_module = scoring_module
         self.action_module = action_module
@@ -55,10 +56,13 @@ class LayoutNetWS2(LayoutNet):
         self.finetune_scoring = False
         self.code_in_output = code_in_output
         self.weighted_cosine = weighted_cosine
+        self.weighted_cosine_v2 = weighted_cosine_v2
         self.mlp_prediction = mlp_prediction
         if self.weighted_cosine:
             self.weight = torch.autograd.Variable(torch.empty((768, 1), device=self.device), requires_grad=True)
             torch.nn.init.xavier_uniform_(self.weight)
+        if self.weighted_cosine_v2:
+            self.weight = torch.nn.Embedding(embedder.tokenizer.vocab_size(), 1)
         if self.mlp_prediction:
             dim = embedder.dim
             self.distance_mlp = torch.nn.Sequential(
@@ -90,6 +94,8 @@ class LayoutNetWS2(LayoutNet):
                                  scoring_it=0, action_it=0)
         if self.weighted_cosine:
             return (outs[-1], self.weight)
+        if self.weighted_cosine_v2:
+            return (outs[-1], self.weight[code])
         if self.mlp_prediction:
             return (outs[-1], self.distance_mlp)
         return outs[-1]
