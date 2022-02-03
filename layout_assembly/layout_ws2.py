@@ -72,7 +72,7 @@ class LayoutNetWS2(LayoutNet):
             ).to(self.device)
         embedder.init_embedder(device)
         if self.weighted_cosine_v2:
-            self.weight = torch.nn.Embedding(embedder.tokenizer.vocab_size, 1)
+            self.weight = torch.nn.Embedding(embedder.tokenizer.vocab_size, 1).to(self.device)
 
     def forward(self, ccg_parse, sample):
         tree = self.construct_layout(ccg_parse)
@@ -97,7 +97,7 @@ class LayoutNetWS2(LayoutNet):
         if self.weighted_cosine_v2:
             code_tokens = embedder.tokenizer.convert_tokens_to_ids(embedder.tokenizer.tokenize(' '.join(code)))
             code_tokens = torch.LongTensor(code_tokens).to(self.device)
-            print(code_tokens)
+            # print(code_tokens)
             return (outs[-1], self.weight(code_tokens))
         if self.mlp_prediction:
             return (outs[-1], self.distance_mlp)
