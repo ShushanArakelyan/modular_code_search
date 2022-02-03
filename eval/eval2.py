@@ -18,8 +18,12 @@ IS_TEST = True
 # create a map from url to data index
 def create_map_from_url2idx(data):
     validation_data_map = {}
-    for i in range(len(data)):
-        validation_data_map[data['url'][i]] = i
+    if 'url' in data.columns:
+        for i in range(len(data)):
+            validation_data_map[data['url'][i]] = i
+    else:
+        for i in range(len(data)):
+            validation_data_map[data['code'][i].replace(" ", "").replace("\n", "")] = i
     return validation_data_map
 
 def p_at_k(rs, k):
@@ -68,7 +72,8 @@ def main():
     parser.add_argument('--top', dest='top', type=int, required=True)
     parser.add_argument('--alignment_func', dest='alignment_func', type=str, required=True)
     parser.add_argument('--home_dir', dest='home_dir', type=str)
-
+    parser.add_argument('--codebert_dir', dest="codebert_dir", type=str, required=True)
+    parser.add_argument('--valid_file', dest='valid_file', type=str)
     args = parser.parse_args()
 
     model_name = args.model_name
@@ -79,10 +84,12 @@ def main():
         global HOME_DIR
         HOME_DIR = args.home_dir
 
-    dir_name = f"{HOME_DIR}/codebert_1000/"
+    dir_name = f"{HOME_DIR}/{args.codebert_dir}"
     if IS_VALID and IS_TEST:
         raise Exception("Should be only one of two!")
-    if IS_VALID:
+    if args.valid_file:
+        valid_file_name = args.valid_file
+    elif IS_VALID:
         valid_file_name = f'{HOME_DIR}/CodeSearchNet/resources/ccg_parses_only_v2/python/final/jsonl/valid/ccg_python_valid_0.jsonl.gz'
     elif IS_TEST:
         valid_file_name = f'{HOME_DIR}/CodeSearchNet/resources/ccg_parses_only_v2/python/final/jsonl/test/ccg_python_test_0.jsonl.gz'
@@ -118,17 +125,27 @@ def main():
             for file_i in range(8):
                 print(f"\n\n\nFile: {file_i}")
                 filename = dir_name + f"{file_i}_batch_result.txt"
-                offset = file_i * 1000
+                offset = file_i * min(1000, len(data))
                 with open(filename, 'r') as f:
-                    for j in range(1000):
+                    for j in range(min(1000, len(data))):
                         scores = []
                         sample_idxs = []
-                        for i in range(1000):
+                        for i in range(min(1000, len(data))):
                             line = f.readline()
                             parts = line.split('<CODESPLIT>')
-                            score = float(parts[-1].strip('\n'))
+                            
+                            score = parts[-1].strip('\n')
+                            if score:
+                                score = float(score)
+                            else:
+                                continue
                             scores.append(score)
-                            sample_idxs.append(valid_data_map[parts[2]])
+                            if 'url' in data.columns:
+                                key = parts[2]
+                            else:
+                                key = parts[4].replace(" ", "")
+                            if key in valid_data_map:
+                                sample_idxs.append(valid_data_map[key])
                         scores = np.asarray(scores)
                         codebert_mrr.append(1. / (np.sum(scores >= scores[j])))
                         codebert_p_1.append(1 if np.sum(scores >= scores[j]) == 1 else 0)
