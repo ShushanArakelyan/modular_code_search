@@ -289,7 +289,6 @@ def make_prediction_dot_v5(output_list):
         a = torch.softmax(output_list[i][0].squeeze(), 0)
         b = torch.softmax(output_list[i][1].squeeze(), 0)
         s = torch.dot(a, b)
-        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -305,7 +304,6 @@ def make_prediction_dot_v6(output_list):
         a = output_list[i][0].squeeze()/torch.sum(output_list[i][0])
         b = output_list[i][1].squeeze()/torch.sum(output_list[i][1])
         s = torch.dot(a, b)
-        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
