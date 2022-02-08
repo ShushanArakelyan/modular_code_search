@@ -286,7 +286,6 @@ def make_prediction_dot_v5(output_list):
     # normalize with softmax
     alignment_scores = None
     for i in range(len(output_list)):
-        print(output_list[i][0].squeeze().shape)
         a = torch.softmax(output_list[i][0].squeeze(), 0)
         b = torch.softmax(output_list[i][1].squeeze(), 0)
         s = torch.dot(a, b)
