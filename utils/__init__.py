@@ -302,8 +302,8 @@ def make_prediction_dot_v6(output_list):
     # normalize both v2
     alignment_scores = None
     for i in range(len(output_list)):
-        a = output_list[i][0].squeeze()/torch.sum(a)
-        b = output_list[i][1].squeeze()/torch.sum(b)
+        a = output_list[i][0].squeeze()/torch.sum(output_list[i][0])
+        b = output_list[i][1].squeeze()/torch.sum(output_list[i][1])
         s = torch.dot(a, b)
         s = torch.sigmoid(s)
         if alignment_scores is None:
