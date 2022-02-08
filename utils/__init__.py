@@ -282,6 +282,38 @@ def make_prediction_dot_v4(output_list):
     return pred
 
 
+def make_prediction_dot_v5(output_list):
+    # normalize with softmax
+    alignment_scores = None
+    for i in range(len(output_list)):
+        a = torch.softmax(output_list[i][0].squeeze())
+        b = torch.softmax(output_list[i][1].squeeze())
+        s = torch.dot(a, b)
+        s = torch.sigmoid(s)
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
+def make_prediction_dot_v6(output_list):
+    # normalize both v2
+    alignment_scores = None
+    for i in range(len(output_list)):
+        a = output_list[i][0].squeeze()/torch.sum(a)
+        b = output_list[i][1].squeeze()/torch.sum(b)
+        s = torch.dot(a, b)
+        s = torch.sigmoid(s)
+        if alignment_scores is None:
+            alignment_scores = s.unsqueeze(0)
+        else:
+            alignment_scores = torch.cat((alignment_scores, s.unsqueeze(dim=0)))
+    pred = torch.prod(alignment_scores)
+    return pred
+
+
 def make_prediction_cosine(output_list):
     cos = torch.nn.CosineSimilarity(dim=0)
     alignment_scores = None
