@@ -341,6 +341,10 @@ def get_alignment_function(alignment_function):
         make_prediction = make_prediction_dot_v3
     elif alignment_function == 'dot_v4':
         make_prediction = make_prediction_dot_v4
+    elif alignment_function == 'dot_v5':
+        make_prediction = make_prediction_dot_v5
+    elif alignment_function == 'dot_v6':
+        make_prediction = make_prediction_dot_v6
     elif alignment_function == 'cosine':
         make_prediction = make_prediction_cosine
     elif alignment_function == 'weighted_emb':
