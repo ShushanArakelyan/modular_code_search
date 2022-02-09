@@ -287,6 +287,8 @@ def make_prediction_dot_v5(output_list):
     alignment_scores = None
     for i in range(len(output_list)):
         a = torch.softmax(output_list[i][0].squeeze(), 0)
+        print("before: ", output_list[i][0])
+        print("after: ", a)
         b = torch.softmax(output_list[i][1].squeeze(), 0)
         s = torch.dot(a, b)
         if alignment_scores is None:
