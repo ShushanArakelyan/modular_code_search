@@ -83,9 +83,9 @@ class ActionModule(object):
         out_scores = module.forward(final_fwd_input).squeeze(dim=1)
         N = min(len(true_scores), len(out_scores))
         truncated_true_scores = true_scores[:N, :]
-        print("true scores in action: ", truncated_true_scores)
+        # print("true scores in action: ", truncated_true_scores)
         truncated_out_scores = out_scores[:N, :]
-        print("out scores in action: ", truncated_out_scores)
+        # print("out scores in action: ", truncated_out_scores)
         return truncated_true_scores, truncated_out_scores
 
     def parameters(self):
