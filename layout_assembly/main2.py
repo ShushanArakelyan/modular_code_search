@@ -294,7 +294,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count):
+         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type):
     print(f"Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
@@ -369,7 +369,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, make_prediction=make_prediction)
+              batch_size=batch_size, make_prediction=make_prediction, optim_type=optim_type)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
              count=eval_count, make_prediction=make_prediction)
