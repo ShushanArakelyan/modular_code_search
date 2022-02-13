@@ -416,6 +416,7 @@ if __name__ == '__main__':
     parser.add_argument('--alignment_function', dest='alignment_function', type=str)
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
     parser.add_argument('--pretrain_loss_type', dest='pretrain_loss_type', type=str)
+    parser.add_argument('--optim_type', dest='optim_type', type=str, default='adam')
     parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
 
@@ -451,4 +452,5 @@ if __name__ == '__main__':
          alignment_function=args.alignment_function,
          pretrain_bin_threshold=args.pretrain_bin_threshold,
          pretrain_loss_type=args.pretrain_loss_type,
-         eval_count=args.eval_count, )
+         eval_count=args.eval_count,
+         optim_type=args.optim_type)
