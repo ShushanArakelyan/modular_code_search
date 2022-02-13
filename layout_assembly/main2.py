@@ -172,6 +172,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         loss = None
         epoch_steps = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
+            if i == 100:
+                break
             for param in layout_net.parameters():
                 param.grad = None
             if layout_net.weighted_cosine:
@@ -227,31 +229,31 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                                   np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
                 writer.add_scalar("Training Acc/train",
                                   np.mean(accuracy[-print_every:]), total_steps)
-                layout_net.set_eval()
-                mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
-                                                   distractor_set_size=distractor_set_size,
-                                                   make_prediction=make_prediction, count=20)
-                acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
-                writer.add_scalar("Training MRR/valid", mrr, total_steps)
-                for pre, ki in zip(p_at_ks, k):
-                    writer.add_scalar(f"Training P@{ki}/valid", pre, total_steps)
-                writer.add_scalar("Training Acc/valid", acc, total_steps)
-                cur_perf = (mrr, acc, p_at_ks[0])
-                print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
-                if best_accuracy < cur_perf:
-                    layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
-                    print(
-                        "Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
-                        (best_accuracy, cur_perf, epoch, epoch_steps))
-                    best_accuracy = cur_perf
-                    wait_step = 0
-                    stop_training = False
-                else:
-                    wait_step += 1
-                    if wait_step >= patience:
-                        print("Stopping training because wait steps exceeded: ", wait_step)
-                        stop_training = True
-                layout_net.set_train()
+                # layout_net.set_eval()
+                # mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                #                                    distractor_set_size=distractor_set_size,
+                #                                    make_prediction=make_prediction, count=20)
+                # acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
+                # writer.add_scalar("Training MRR/valid", mrr, total_steps)
+                # for pre, ki in zip(p_at_ks, k):
+                #     writer.add_scalar(f"Training P@{ki}/valid", pre, total_steps)
+                # writer.add_scalar("Training Acc/valid", acc, total_steps)
+                # cur_perf = (mrr, acc, p_at_ks[0])
+                # print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
+                # if best_accuracy < cur_perf:
+                #     layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+                #     print(
+                #         "Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
+                #         (best_accuracy, cur_perf, epoch, epoch_steps))
+                #     best_accuracy = cur_perf
+                #     wait_step = 0
+                #     stop_training = False
+                # else:
+                #     wait_step += 1
+                #     if wait_step >= patience:
+                #         print("Stopping training because wait steps exceeded: ", wait_step)
+                #         stop_training = True
+                # layout_net.set_train()
                 if use_lr_scheduler:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
                 if stop_training:
