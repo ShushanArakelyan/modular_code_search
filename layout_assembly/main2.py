@@ -189,6 +189,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             except ProcessingException:
                 continue  # skip example
             pred = make_prediction(output_list)
+            print(label, pred)
             if loss is None:
                 loss = loss_func(pred, label)
                 if torch.isnan(loss).data:
