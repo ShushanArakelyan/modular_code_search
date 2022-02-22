@@ -21,7 +21,7 @@ from utils import binarize, eval_mrr_and_p_at_k, eval_acc, eval_acc_f1_pretraini
 
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, device, print_every,
              writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size, skip_negatives,
-             override_negatives, threshold, loss_type):
+             override_negatives, threshold, loss_type, debug=False):
     if loss_type == 'bce_loss':
         loss_func = torch.nn.BCELoss()
     elif loss_type == 'kldiv_loss':
@@ -139,7 +139,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
           writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
-          make_prediction, optim_type='adam'):
+          make_prediction, optim_type='adam', debug=False):
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -173,8 +173,9 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         epoch_steps = 0
         # for i, datum in tqdm.tqdm(enumerate(data_loader)):
         for i, datum in enumerate(data_loader):
-            if i == 1:
-                break
+            if debug:
+                if i == 1:
+                    break
             for param in layout_net.parameters():
                 param.grad = None
             if layout_net.weighted_cosine:
@@ -189,7 +190,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             except ProcessingException:
                 continue  # skip example
             pred = make_prediction(output_list)
-            print(label, pred)
+            if debug:
+                print(label, pred)
             if loss is None:
                 loss = loss_func(pred, label)
                 if torch.isnan(loss).data:
@@ -210,7 +212,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
             if epoch_steps % batch_size == 0:
                 loss.backward()
-                print(loss.data)
+                if debug:
+                    print(loss.data)
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
@@ -297,7 +300,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type):
+         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type, debug=False):
     print(f"Loading dataset from {data_dir}")
     dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                             [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
@@ -317,7 +320,10 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         indices = perm[:example_count]
         dataset = data_utils.Subset(dataset, indices)
         print(f"Modified dataset, new dataset has {len(dataset)} examples")
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    shuffle = True
+    if debug:
+        shuffle = False
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=shuffle)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
@@ -350,7 +356,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
                  distractor_set_size=distractor_set_size, patience=patience, use_lr_scheduler=use_lr_scheduler,
                  batch_size=batch_size, skip_negatives=skip_negatives_in_pretraining,
                  override_negatives=override_negatives_in_pretraining, threshold=pretrain_bin_threshold,
-                 loss_type=pretrain_loss_type)
+                 loss_type=pretrain_loss_type, debug=debug)
         layout_net.weighted_cosine = wc
         layout_net.weighted_cosine_v2 = wc_2
         layout_net.code_in_output = cio
@@ -372,7 +378,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, make_prediction=make_prediction, optim_type=optim_type)
+              batch_size=batch_size, make_prediction=make_prediction, optim_type=optim_type, debug=debug)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
              count=eval_count, make_prediction=make_prediction)
@@ -422,6 +428,7 @@ if __name__ == '__main__':
     parser.add_argument('--optim_type', dest='optim_type', type=str, default='adam')
     parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
+    parser.add_argument('--debug', dest='debug', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -456,4 +463,5 @@ if __name__ == '__main__':
          pretrain_bin_threshold=args.pretrain_bin_threshold,
          pretrain_loss_type=args.pretrain_loss_type,
          eval_count=args.eval_count,
-         optim_type=args.optim_type)
+         optim_type=args.optim_type,
+         debug=args.debug)
