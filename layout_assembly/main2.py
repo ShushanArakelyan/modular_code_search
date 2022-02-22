@@ -171,7 +171,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         accuracy = []
         loss = None
         epoch_steps = 0
-        for i, datum in tqdm.tqdm(enumerate(data_loader)):
+        # for i, datum in tqdm.tqdm(enumerate(data_loader)):
+        for i, datum in enumerate(data_loader):
             if i == 1:
                 break
             for param in layout_net.parameters():
