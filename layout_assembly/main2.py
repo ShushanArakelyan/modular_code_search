@@ -171,7 +171,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         accuracy = []
         loss = None
         epoch_steps = 0
-        for i, datum in tqdm.tqdm(enumerate(data_loader)):
+        # for i, datum in tqdm.tqdm(enumerate(data_loader)):
+        for i, datum in enumerate(data_loader):
             if i == 1:
                 break
             for param in layout_net.parameters():
@@ -190,14 +191,12 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             pred = make_prediction(output_list)
             if loss is None:
                 loss = loss_func(pred, label)
-                print(loss)
                 if torch.isnan(loss).data:
                     print("Stop training because loss=%s" % (loss.data))
                     stop_training = True
                     break
             else:
                 l = loss_func(pred, label)
-                print(l)
                 if torch.isnan(l).data:
                     print("Stop training because loss=%s" % (l.data))
                     stop_training = True
@@ -210,7 +209,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
             if epoch_steps % batch_size == 0:
                 loss.backward()
-                print('backwards: ', loss)
+                print(loss.data)
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
                     torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
