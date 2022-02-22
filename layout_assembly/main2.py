@@ -195,15 +195,17 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             if loss is None:
                 loss = loss_func(pred, label)
                 if torch.isnan(loss).data:
-                    print("Stop training because loss=%s" % (loss.data))
-                    stop_training = True
-                    break
+                    # print("Stop training because loss=%s" % (loss.data))
+                    # stop_training = True
+                    # break
+                    continue
             else:
                 l = loss_func(pred, label)
                 if torch.isnan(l).data:
-                    print("Stop training because loss=%s" % (l.data))
-                    stop_training = True
-                    break
+                    # print("Stop training because loss=%s" % (l.data))
+                    # stop_training = True
+                    # break
+                    continue
                 loss += l
             epoch_steps += 1
             total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
