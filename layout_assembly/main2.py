@@ -2,6 +2,7 @@ import argparse
 import os
 from datetime import datetime
 
+import glob
 import numpy as np
 import torch
 import tqdm
@@ -293,10 +294,20 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
          alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type):
-    print(f"Loading dataset from {data_dir}")
-    dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
-                            [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
-                                                                           range=r) for r in range(1)])
+    if os.path.isfile(data_dir):
+        print(f"Loading dataset from {data_dir}")
+        dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
+                                [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
+                                                                               range=r) for r in range(1)])
+    elif os.path.isdir(data_dir):
+        print(f"Loading all files from dataset from {data_dir}")
+        d_list = []
+        for file in glob.glob(os.path.join(data_dir, "/*")):
+            print(f"Loading dataset from {data_dir}")
+            d_list.extend([CodeSearchNetDataset_NotPrecomputed(file, device), ] +
+                                    [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=file, device=device,
+                                                                                   range=r) for r in range(1)])
+        dataset = ConcatDataset(d_list)
     print("Dataset read, the length of the dataset is: ", len(dataset))
     if valid_file_name != "None":
         valid_data = CodeSearchNetDataset_NotPrecomputed(filename=valid_file_name, device=device)
