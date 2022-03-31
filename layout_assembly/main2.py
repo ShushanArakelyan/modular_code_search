@@ -173,8 +173,6 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         loss = None
         epoch_steps = 0
         for i, datum in tqdm.tqdm(enumerate(data_loader)):
-            if i == 100:
-                break
             for param in layout_net.parameters():
                 param.grad = None
             if layout_net.weighted_cosine:

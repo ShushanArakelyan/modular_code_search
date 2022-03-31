@@ -286,11 +286,10 @@ def make_prediction_dot_v5(output_list):
     # normalize with softmax
     alignment_scores = None
     for i in range(len(output_list)):
-        a = torch.softmax(output_list[i][0].squeeze(), 0)
-        print("before: ", output_list[i][0])
-        print("after: ", a)
-        b = torch.softmax(output_list[i][1].squeeze(), 0)
+        a = torch.softmax(output_list[i][0].squeeze())
+        b = torch.softmax(output_list[i][1].squeeze())
         s = torch.dot(a, b)
+        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -303,9 +302,10 @@ def make_prediction_dot_v6(output_list):
     # normalize both v2
     alignment_scores = None
     for i in range(len(output_list)):
-        a = output_list[i][0].squeeze()/torch.sum(output_list[i][0])
-        b = output_list[i][1].squeeze()/torch.sum(output_list[i][1])
+        a = output_list[i][0].squeeze()/torch.sum(a)
+        b = output_list[i][1].squeeze()/torch.sum(b)
         s = torch.dot(a, b)
+        s = torch.sigmoid(s)
         if alignment_scores is None:
             alignment_scores = s.unsqueeze(0)
         else:
@@ -341,10 +341,6 @@ def get_alignment_function(alignment_function):
         make_prediction = make_prediction_dot_v3
     elif alignment_function == 'dot_v4':
         make_prediction = make_prediction_dot_v4
-    elif alignment_function == 'dot_v5':
-        make_prediction = make_prediction_dot_v5
-    elif alignment_function == 'dot_v6':
-        make_prediction = make_prediction_dot_v6
     elif alignment_function == 'cosine':
         make_prediction = make_prediction_cosine
     elif alignment_function == 'weighted_emb':
