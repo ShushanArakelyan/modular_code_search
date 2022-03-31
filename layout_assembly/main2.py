@@ -172,8 +172,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         accuracy = []
         loss = None
         epoch_steps = 0
-        # for i, datum in tqdm.tqdm(enumerate(data_loader)):
-        for i, datum in enumerate(data_loader):
+        for i, datum in tqdm.tqdm(enumerate(data_loader)):
             if i == 1:
                 break
             for param in layout_net.parameters():
@@ -192,12 +191,14 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
             pred = make_prediction(output_list)
             if loss is None:
                 loss = loss_func(pred, label)
+                print(loss)
                 if torch.isnan(loss).data:
                     print("Stop training because loss=%s" % (loss.data))
                     stop_training = True
                     break
             else:
                 l = loss_func(pred, label)
+                print(l)
                 if torch.isnan(l).data:
                     print("Stop training because loss=%s" % (l.data))
                     stop_training = True
@@ -326,7 +327,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         indices = perm[:example_count]
         dataset = data_utils.Subset(dataset, indices)
         print(f"Modified dataset, new dataset has {len(dataset)} examples")
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     scoring_module = ScoringModule(device, scoring_checkpoint)
     action_module = ActionModule(device, dim_size=embedder.dim, dropout=dropout)
