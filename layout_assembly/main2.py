@@ -177,7 +177,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         op.add_param_group({"params": layout_net.weight})
     if layout_net.weighted_cosine_v2:  # try a hack?
         op.add_param_group({"params": layout_net.weight.parameters()})
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True, patience=100, factor=0.85, cooldown=100,
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True, patience=5000, factor=0.85, cooldown=1000,
                                                            min_lr=1e-7)
     if use_warmup_lr:
         scheduler = LearningRateWarmUP(optimizer=op, warmup_iteration=warmup_steps, target_lr=lr,
