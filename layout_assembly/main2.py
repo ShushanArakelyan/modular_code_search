@@ -459,7 +459,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
     parser.add_argument('--pretrain_loss_type', dest='pretrain_loss_type', type=str)
     parser.add_argument('--use_warmup_lr', dest='use_warmup_lr', default=False, action='store_true')
-    parser.add_argument('--warmup_steps', dest='eval_count', type=int, default=100,
+    parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
     parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=1000)
 
