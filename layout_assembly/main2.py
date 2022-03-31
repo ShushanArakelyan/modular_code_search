@@ -333,7 +333,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
     elif os.path.isdir(data_dir):
         print(f"Loading all files from dataset from {data_dir}")
         d_list = []
-        for file in glob.glob(os.path.join(data_dir, "/*")):
+        for file in glob.glob(os.path.join(data_dir, "*")):
             print(f"Loading dataset from {file}")
             d_list.extend([CodeSearchNetDataset_NotPrecomputed(file, device), ] +
                                     [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=file, device=device,
