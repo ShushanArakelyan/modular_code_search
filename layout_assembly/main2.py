@@ -20,6 +20,31 @@ from layout_assembly.utils import ProcessingException
 from utils import binarize, eval_mrr_and_p_at_k, eval_acc, eval_acc_f1_pretraining_task, get_alignment_function
 
 
+class LearningRateWarmUP(object):
+    def __init__(self, optimizer, warmup_iteration, target_lr, after_scheduler=None):
+        self.optimizer = optimizer
+        self.warmup_iteration = warmup_iteration
+        self.target_lr = target_lr
+        self.after_scheduler = after_scheduler
+        self.cur_iteration = 0
+        self.step(1)
+
+    def warmup_learning_rate(self):
+        warmup_lr = self.target_lr * float(self.cur_iteration) / float(self.warmup_iteration)
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = warmup_lr
+
+    def step(self, perf):
+        if self.cur_iteration <= self.warmup_iteration:
+            self.warmup_learning_rate()
+        else:
+            self.after_scheduler.step(perf)
+        self.cur_iteration += 1
+
+    def load_state_dict(self, state_dict):
+        self.after_scheduler.load_state_dict(state_dict)
+
+
 def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, device, print_every,
              writer, k, valid_data, distractor_set_size, patience, use_lr_scheduler, batch_size, skip_negatives,
              override_negatives, threshold, loss_type):
@@ -140,7 +165,7 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
           writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
-          make_prediction, optim_type='adam'):
+          make_prediction, use_warmup_lr, warmup_steps, optim_type='adam'):
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -153,6 +178,10 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
     if layout_net.weighted_cosine_v2:  # try a hack?
         op.add_param_group({"params": layout_net.weight.parameters()})
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True)
+    if use_warmup_lr:
+        scheduler = LearningRateWarmUP(optimizer=op, warmup_iteration=warmup_steps, target_lr=lr,
+                                       after_scheduler=scheduler)
+
     checkpoint_dir += '/train'
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
@@ -215,6 +244,8 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
                     if layout_net.weighted_cosine_v2:
                         torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
                 op.step()
+                if use_warmup_lr:
+                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
                 loss = None
                 for x in layout_net.parameters():
                     x.grad = None
@@ -293,7 +324,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type):
+         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, optim_type, use_warmup_lr,
+         warmup_steps):
     if os.path.isfile(data_dir):
         print(f"Loading dataset from {data_dir}")
         dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
@@ -378,7 +410,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
-              batch_size=batch_size, make_prediction=make_prediction)
+              batch_size=batch_size, make_prediction=make_prediction, use_warmup_lr=use_warmup_lr,
+              warmup_steps=warmup_steps)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
              count=eval_count, make_prediction=make_prediction)
@@ -408,7 +441,7 @@ if __name__ == '__main__':
     parser.add_argument('--summary_writer_dir', dest='summary_writer_dir', type=str)
     parser.add_argument('--use_lr_scheduler', dest='use_lr_scheduler', default=False, action='store_true')
     parser.add_argument('--clip_grad_value', dest='clip_grad_value', default=0, type=float)
-    parser.add_argument('--patience', dest='patience', type=int, default=10)
+    parser.add_argument('--patience', dest='patience', type=int, default=1000)
     parser.add_argument('--p_at_k', dest='p_at_k', action='append')
     parser.add_argument('--batch_size', dest='batch_size', type=int, default=20)
     parser.add_argument('--distractor_set_size', dest='distractor_set_size', type=int, default=999)
@@ -425,8 +458,10 @@ if __name__ == '__main__':
     parser.add_argument('--alignment_function', dest='alignment_function', type=str)
     parser.add_argument('--pretrain_bin_threshold', dest='pretrain_bin_threshold', type=float)
     parser.add_argument('--pretrain_loss_type', dest='pretrain_loss_type', type=str)
-    parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
+    parser.add_argument('--use_warmup_lr', dest='use_warmup_lr', default=False, action='store_true')
+    parser.add_argument('--warmup_steps', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
+    parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=1000)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -460,4 +495,6 @@ if __name__ == '__main__':
          alignment_function=args.alignment_function,
          pretrain_bin_threshold=args.pretrain_bin_threshold,
          pretrain_loss_type=args.pretrain_loss_type,
-         eval_count=args.eval_count, )
+         eval_count=args.eval_count,
+         use_warmup_lr=args.use_warmup_lr,
+         warmup_steps=args.warmup_steps)
