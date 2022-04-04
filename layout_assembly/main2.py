@@ -547,6 +547,7 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
                     if layout_net.weighted_cosine_v2:
                         torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
                 op.step()
+                loss = None
                 if use_warmup_lr:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
             zero_grads(layout_net)
