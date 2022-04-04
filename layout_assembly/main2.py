@@ -490,8 +490,6 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    positive_label = torch.tensor(1, dtype=torch.float).to(device)
-    negative_label = torch.tensor(0, dtype=torch.float).to(device)
     total_steps = 0
     best_accuracy = (-1.0, -1.0, -1.0)
     wait_step = 0
@@ -527,23 +525,18 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
                     continue  # skip example
                 neg_pred = make_prediction(neg_out)
                 if np.random.rand() > 0.5:
-                    tmp = loss_func(pos_pred, neg_pred, 1)
+                    loss = loss_func(pos_pred, neg_pred, 1)
                 else:
-                    tmp = loss_func(neg_pred, pos_pred, -1)
-                if torch.isnan(tmp).data:
-                    print("Stop training because loss=%s" % (tmp.data))
+                    loss = loss_func(neg_pred, pos_pred, -1)
+                if torch.isnan(loss).data:
+                    print("Stop training because loss=%s" % (loss.data))
                     stop_training = True
                     break
-                if loss is None:
-                    loss = tmp
-                else:
-                    loss += tmp
                 epoch_steps += 1
                 batch_size += 1
                 total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
                 binarized_pred = binarize(neg_pred, threshold=0.5)
                 accuracy.append(int((binarized_pred == 0).cpu().detach().numpy()))
-            if loss:
                 loss.backward()
                 cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
                 if clip_grad_value > 0:
@@ -555,7 +548,6 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
                 op.step()
                 if use_warmup_lr:
                     scheduler.step(np.mean(cumulative_loss[-print_every:]))
-            loss = None
             zero_grads(layout_net)
             if epoch_steps % print_every <= batch_size:
                 writer.add_scalar("Training Loss/train",
