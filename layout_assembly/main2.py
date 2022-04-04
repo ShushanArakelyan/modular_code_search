@@ -333,8 +333,8 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
         if oracle_idxs_file:
             dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                                     [CodeSearchNetDataset_NegativeOracleNotPrecomputed(filename=data_dir, device=device,
-                                                                                       num_negatives=num_negatives,
-                                                                                       oracle_file=oracle_idxs_file)])
+                                                                                       neg_count=num_negatives,
+                                                                                       oracle_idxs_file=oracle_idxs_file)])
         else:
             dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                                     [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
