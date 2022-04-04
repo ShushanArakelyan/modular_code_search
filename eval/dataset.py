@@ -239,7 +239,7 @@ class CodeSearchNetDataset_InBatchNegativesOracle(Dataset):
         sample = self.positive_dataset[idx]
         all_samples = [sample]
         for n in range(self.negative_count):
-            neg_idx = n * len(self.negative_dataset) + idx
+            neg_idx = n * len(self.positive_dataset) + idx
             sample = self.negative_dataset[neg_idx]
             all_samples.append(sample)
         return all_samples
