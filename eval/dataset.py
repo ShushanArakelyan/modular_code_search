@@ -1,5 +1,8 @@
+import glob
+import natsort
 import numpy as np
 import pandas as pd
+import os
 import torch
 from torch.utils.data import Dataset
 from layout_assembly.precompute_scoring_in_shards import CodeSearchNetDataset_Random_NegOnly
@@ -187,79 +190,31 @@ class CodeSearchNetDataset_NotPrecomputed_RandomNeg(CodeSearchNetDataset_Random_
 #         return oracle_negative_samples
 #
 #
-# class CodeSearchNetDataset_SavedOracle(Dataset):
-#     def __init__(self, filename, device, neg_count, oracle_idxs):
-#         self.data = pd.read_json(filename, lines=True)
-#         self.neg_data = pd.read_json(filename, lines=True)
-#         self.device = device
-#         self.neg_count = neg_count
-#         self.oracle_idxs = []
-#         self.positive_label = torch.FloatTensor([1]).to(device)
-#         self.negative_label = torch.FloatTensor([0]).to(device)
-#         self.read_oracle_idxs(oracle_idxs)
-#
-#     def __len__(self):
-#         return len(
-#             self.oracle_idxs)  # TODO: currently we sometimes only have the part of all indexes processed and saved
-#
-#     def __getitem__(self, idx):
-#         all_samples = []
-#         sample = (self.data['docstring_tokens'][idx],
-#                   self.data['alt_code_tokens'][idx],
-#                   self.data['static_tags'][idx],
-#                   self.data['regex_tags'][idx],
-#                   self.data['ccg_parse'][idx])
-#         all_samples.append(sample)
-#         all_samples = self.get_oracle_idxs_or_random(idx, all_samples)
-#         return all_samples
-#
-#     # TODO: remove random part when we have finished processing oracle
-#     # indexes for all of the training data
-#     def get_oracle_idxs_or_random(self, idx, samples):
-#         if len(self.oracle_idxs[idx]) == 0:
-#             np.random.seed(idx)
-#             oracle_idxs = []
-#             while len(oracle_idxs) < self.neg_count:
-#                 random_idx = np.random.randint(0, len(self.neg_data), 1)[0]
-#                 if random_idx != idx:
-#                     oracle_idxs.append(random_idx)
-#         else:
-#             oracle_idxs = np.asarray(self.oracle_idxs[idx])
-#             #             oracle_idxs = oracle_idxs[oracle_idxs != 0]
-#             # 9 is the max value for neg_count, but real neg_count can be different
-#             assert len(oracle_idxs) <= (9 + 1)
-#             if len(oracle_idxs) == 9 + 1:
-#                 oracle_idxs = oracle_idxs[:-1]
-#         for i in range(self.neg_count):
-#             neg_idx = oracle_idxs[i]
-#             sample = (self.data['docstring_tokens'][idx],
-#                       self.neg_data['alt_code_tokens'][neg_idx],
-#                       self.neg_data['static_tags'][neg_idx],
-#                       self.neg_data['regex_tags'][neg_idx],
-#                       self.data['ccg_parse'][idx])
-#             samples.append(sample)
-#         return samples
-#
-#     def read_oracle_idxs(self, oracle_idxs):
-#         if os.path.isdir(oracle_idxs):
-#             self.oracle_idxs = [[] for _ in range(30000)]
-#             all_score_files = glob.glob(oracle_idxs + '/*')
-#             all_score_files = natsort.natsorted(all_score_files)
-#             for score_file in all_score_files:
-#                 print("Loading from file: ", score_file)
-#                 parts = score_file.split('/')[-1].split('_')
-#                 start = int(parts[-2])
-#                 end = int(parts[-1].split('.')[0])
-#                 self.read_oracle_idxs_from_file(start, score_file)
-#         else:
-#             self.oracle_idxs = [[] for _ in range(30000)]  # TODO: fix me
-#             lines_read = self.read_oracle_idxs_from_file(0, oracle_idxs)
-#             self.oracle_idxs = self.oracle_idxs[:lines_read]
-#
-#     def read_oracle_idxs_from_file(self, start, filename):
-#         with open(filename, 'r') as f:
-#             for i, line in enumerate(f.readlines()):
-#                 scores = line.strip('\n').split(' ')
-#                 scores = [int(s) for s in scores if len(s) > 0]
-#                 self.oracle_idxs[start + i] = (scores)
-#             return i
+class CodeSearchNetDataset_NegativeOracleNotPrecomputed(Dataset):
+    def __init__(self, filename, device, neg_count, oracle_idxs_file):
+        self.data = pd.read_json(filename, lines=True)
+        self.device = device
+        self.negative_count = neg_count
+        self.negative_samples = {}
+        self.read_oracle_idxs_from_file(oracle_idxs_file)
+        self.negative_label = torch.FloatTensor([0]).to(device)
+
+    def __len__(self):
+        return len(self.negative_samples) * self.negative_count
+
+    def __getitem__(self, idx):
+        neg_idx = idx % len(self.negative_samples)
+        neg_idx = self.negative_samples[idx][neg_idx]
+        sample = (self.data['docstring_tokens'][idx],
+                  self.data['alt_code_tokens'][neg_idx],
+                  self.data['static_tags'][neg_idx],
+                  self.data['regex_tags'][neg_idx],
+                  self.data['ccg_parse'][idx])
+        return sample, 1, 1, self.negative_label
+
+    def read_oracle_idxs_from_file(self, filename):
+        with open(filename, 'r') as f:
+            for i, line in enumerate(f.readlines()):
+                scores = line.strip('\n').split(' ')
+                scores = [int(s) for s in scores if len(s) > 0 and int(s) > 0]
+                self.negative_samples[i] = scores[:self.negative_count]

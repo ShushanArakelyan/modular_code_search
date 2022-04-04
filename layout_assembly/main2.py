@@ -12,7 +12,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
-from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_NotPrecomputed_RandomNeg
+from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_NotPrecomputed_RandomNeg, \
+    CodeSearchNetDataset_NegativeOracleNotPrecomputed
 from eval.dataset import transform_sample, filter_neg_samples
 from layout_assembly.layout_ws2 import LayoutNetWS2 as LayoutNet
 from layout_assembly.modules import ScoringModule
@@ -325,12 +326,19 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
          example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
-         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, use_warmup_lr, warmup_steps):
+         alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, use_warmup_lr, warmup_steps,
+         oracle_idxs_file):
     if os.path.isfile(data_dir):
         print(f"Loading dataset from {data_dir}")
-        dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
-                                [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
-                                                                               range=r) for r in range(1)])
+        if oracle_idxs_file:
+            dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
+                                    [CodeSearchNetDataset_NegativeOracleNotPrecomputed(filename=data_dir, device=device,
+                                                                                       num_negatives=num_negatives,
+                                                                                       oracle_file=oracle_idxs_file)])
+        else:
+            dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
+                                    [CodeSearchNetDataset_NotPrecomputed_RandomNeg(filename=data_dir, device=device,
+                                                                                   range=r) for r in range(1)])
     elif os.path.isdir(data_dir):
         print(f"Loading all files from dataset from {data_dir}")
         d_list = []
@@ -462,6 +470,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
     parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=1000)
+    parser.add_argument('--oracle_idxs_file', dest='oracle_idxs_file', default="", type=str)
 
     args = parser.parse_args()
     main(device=args.device,
@@ -497,4 +506,5 @@ if __name__ == '__main__':
          pretrain_loss_type=args.pretrain_loss_type,
          eval_count=args.eval_count,
          use_warmup_lr=args.use_warmup_lr,
-         warmup_steps=args.warmup_steps)
+         warmup_steps=args.warmup_steps,
+         oracle_idxs_file=args.oracle_idxs_file)
