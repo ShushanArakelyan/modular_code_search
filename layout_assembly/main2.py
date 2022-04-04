@@ -501,9 +501,9 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
             break
         cumulative_loss = []
         accuracy = []
-        loss = None
         epoch_steps = 0
         for i, batch in tqdm.tqdm(enumerate(data_loader)):
+            torch.cuda.empty_cache()
             batch_size = 0
             zero_grads(layout_net)
             sample, scores, verbs, label = batch[0]
@@ -516,6 +516,7 @@ def train_margin_ranking(device, layout_net, lr, adamw, checkpoint_dir, num_epoc
             binarized_pred = binarize(pos_pred, threshold=0.5)
             accuracy.append(int((binarized_pred == 1).cpu().detach().numpy()))
             for datum in batch[1:]:
+                torch.cuda.empty_cache()
                 zero_grads(layout_net)
                 sample, scores, verbs, label = datum
                 assert int(label) == 0
