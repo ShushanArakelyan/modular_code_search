@@ -229,8 +229,6 @@ class CodeSearchNetDataset_InBatchNegativesOracle(Dataset):
                                                                                   neg_count, oracle_idxs_file)
         self.device = device
         self.negative_count = neg_count
-        self.positive_label = torch.FloatTensor([1]).to(device)
-        self.negative_label = torch.FloatTensor([0]).to(device)
 
     def __len__(self):
         return len(self.positive_dataset)
