@@ -469,7 +469,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_warmup_lr', dest='use_warmup_lr', default=False, action='store_true')
     parser.add_argument('--eval_count', dest='eval_count', type=int, default=100,
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
-    parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=1000)
+    parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=500)
     parser.add_argument('--oracle_idxs_file', dest='oracle_idxs_file', default="", type=str)
 
     args = parser.parse_args()
