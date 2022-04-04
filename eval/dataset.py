@@ -190,6 +190,7 @@ class CodeSearchNetDataset_NotPrecomputed_RandomNeg(CodeSearchNetDataset_Random_
 #         return oracle_negative_samples
 #
 #
+
 class CodeSearchNetDataset_NegativeOracleNotPrecomputed(Dataset):
     def __init__(self, filename, device, neg_count, oracle_idxs_file):
         self.data = pd.read_json(filename, lines=True)
@@ -219,3 +220,26 @@ class CodeSearchNetDataset_NegativeOracleNotPrecomputed(Dataset):
                 scores = line.strip('\n').split(' ')
                 scores = [int(s) for s in scores if len(s) > 0 and int(s) > 0]
                 self.negative_samples[i] = scores[:self.negative_count]
+
+
+class CodeSearchNetDataset_InBatchNegativesOracle(Dataset):
+    def __init__(self, filename, device, neg_count, oracle_idxs_file):
+        self.positive_dataset = CodeSearchNetDataset_NotPrecomputed(filename, device)
+        self.negative_dataset = CodeSearchNetDataset_NegativeOracleNotPrecomputed(filename, device,
+                                                                                  neg_count, oracle_idxs_file)
+        self.device = device
+        self.negative_count = neg_count
+        self.positive_label = torch.FloatTensor([1]).to(device)
+        self.negative_label = torch.FloatTensor([0]).to(device)
+
+    def __len__(self):
+        return len(self.positive_dataset)
+
+    def __getitem__(self, idx):
+        sample = self.positive_dataset[idx]
+        all_samples = [sample]
+        for n in range(self.negative_count):
+            neg_idx = n * len(self.negative_dataset) + idx
+            sample = self.negative_dataset[neg_idx]
+            all_samples.append(sample)
+        return all_samples

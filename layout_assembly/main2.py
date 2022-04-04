@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 import codebert_embedder_v2 as embedder
 from action2.action import ActionModule
 from eval.dataset import CodeSearchNetDataset_NotPrecomputed, CodeSearchNetDataset_NotPrecomputed_RandomNeg, \
-    CodeSearchNetDataset_NegativeOracleNotPrecomputed
+    CodeSearchNetDataset_NegativeOracleNotPrecomputed, CodeSearchNetDataset_InBatchNegativesOracle
 from eval.dataset import transform_sample, filter_neg_samples
 from layout_assembly.layout_ws2 import LayoutNetWS2 as LayoutNet
 from layout_assembly.modules import ScoringModule
@@ -166,7 +166,14 @@ def pretrain(layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, cli
 
 def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
           writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
-          make_prediction, use_warmup_lr, warmup_steps, optim_type='adam'):
+          make_prediction, use_warmup_lr, warmup_steps, use_in_batch_negatives, optim_type='adam'):
+    if use_in_batch_negatives:
+        train_inbatch_neg(device=device, layout_net=layout_net, lr=lr, adamw=adamw, checkpoint_dir=checkpoint_dir,
+              num_epochs=num_epochs, data_loader=data_loader, clip_grad_value=clip_grad_value,
+              use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
+              distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
+              batch_size=batch_size, make_prediction=make_prediction, use_warmup_lr=use_warmup_lr,
+              warmup_steps=warmup_steps)
     loss_func = torch.nn.BCELoss()
     if optim_type == 'sgd':
         op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
@@ -178,8 +185,7 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         op.add_param_group({"params": layout_net.weight})
     if layout_net.weighted_cosine_v2:  # try a hack?
         op.add_param_group({"params": layout_net.weight.parameters()})
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True, patience=1000, factor=0.7, cooldown=1000,
-                                                           min_lr=1e-7)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True, patience=1000, factor=0.5, min_lr=1e-8)
     if use_warmup_lr:
         scheduler = LearningRateWarmUP(optimizer=op, warmup_iteration=warmup_steps, target_lr=lr,
                                        after_scheduler=scheduler)
@@ -308,6 +314,150 @@ def train(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader
         writer.add_scalar("Training Acc/valid", acc, total_steps)
 
 
+def train_inbatch_neg(device, layout_net, lr, adamw, checkpoint_dir, num_epochs, data_loader, clip_grad_value, use_lr_scheduler,
+          writer, valid_data, k, distractor_set_size, print_every, patience, batch_size,
+          make_prediction, use_warmup_lr, warmup_steps, optim_type='adam'):
+    loss_func = torch.nn.BCELoss()
+    if optim_type == 'sgd':
+        op = torch.optim.SGD(layout_net.parameters(), lr=lr, weight_decay=adamw)
+    elif optim_type == 'adam':
+        op = torch.optim.Adam(layout_net.parameters(), lr=lr, weight_decay=adamw)
+    else:
+        raise Exception("Unknown optimizer type!! ", optim_type)
+    if layout_net.weighted_cosine:  # try a hack?
+        op.add_param_group({"params": layout_net.weight})
+    if layout_net.weighted_cosine_v2:  # try a hack?
+        op.add_param_group({"params": layout_net.weight.parameters()})
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(op, verbose=True, patience=1000, factor=0.5, min_lr=1e-8)
+    if use_warmup_lr:
+        scheduler = LearningRateWarmUP(optimizer=op, warmup_iteration=warmup_steps, target_lr=lr,
+                                       after_scheduler=scheduler)
+
+    checkpoint_dir += '/train'
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+
+    positive_label = torch.tensor(1, dtype=torch.float).to(device)
+    negative_label = torch.tensor(0, dtype=torch.float).to(device)
+    total_steps = 0
+    best_accuracy = (-1.0, -1.0, -1.0)
+    wait_step = 0
+    stop_training = False
+
+    for epoch in range(num_epochs):
+        layout_net.set_train()
+        if stop_training:
+            break
+        cumulative_loss = []
+        accuracy = []
+        loss = None
+        epoch_steps = 0
+        for i, batch in tqdm.tqdm(enumerate(data_loader)):
+            batch_size = 0
+            for datum in batch:
+                for param in layout_net.parameters():
+                    param.grad = None
+                if layout_net.weighted_cosine:
+                    layout_net.weight.grad = None
+                sample, scores, verbs, label = datum
+                if int(label) == 0:
+                    label = negative_label
+                else:
+                    label = positive_label
+                try:
+                    output_list = layout_net.forward(*transform_sample(sample))
+                except ProcessingException:
+                    continue  # skip example
+                pred = make_prediction(output_list)
+                if loss is None:
+                    loss = loss_func(pred, label)
+                    if torch.isnan(loss).data:
+                        print("Stop training because loss=%s" % (loss.data))
+                        stop_training = True
+                        break
+                else:
+                    l = loss_func(pred, label)
+                    if torch.isnan(l).data:
+                        print("Stop training because loss=%s" % (l.data))
+                        stop_training = True
+                        break
+                    loss += l
+                epoch_steps += 1
+                batch_size += 1
+                total_steps += 1  # this way the number in tensorboard will correspond to the actual number of iterations
+                binarized_pred = binarize(pred, threshold=0.5)
+
+                accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
+            loss.backward()
+            cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
+            if clip_grad_value > 0:
+                torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
+                if layout_net.weighted_cosine:
+                    torch.nn.utils.clip_grad_value_(layout_net.weight, clip_grad_value)
+                if layout_net.weighted_cosine_v2:
+                    torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
+            op.step()
+            if use_warmup_lr:
+                scheduler.step(np.mean(cumulative_loss[-print_every:]))
+            loss = None
+            for x in layout_net.parameters():
+                x.grad = None
+            if layout_net.weighted_cosine:
+                layout_net.weight.grad = None
+            if layout_net.weighted_cosine_v2:
+                for x in layout_net.weight.parameters():
+                    x.grad = None
+            if epoch_steps % print_every <= batch_size:
+                writer.add_scalar("Training Loss/train",
+                                  np.mean(cumulative_loss[-int(print_every/batch_size):]), total_steps)
+                writer.add_scalar("Training Acc/train",
+                                  np.mean(accuracy[-print_every:]), total_steps)
+                layout_net.set_eval()
+                mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                                                   distractor_set_size=distractor_set_size,
+                                                   make_prediction=make_prediction, count=20)
+                acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
+                writer.add_scalar("Training MRR/valid", mrr, total_steps)
+                for pre, ki in zip(p_at_ks, k):
+                    writer.add_scalar(f"Training P@{ki}/valid", pre, total_steps)
+                writer.add_scalar("Training Acc/valid", acc, total_steps)
+                cur_perf = (mrr, acc, p_at_ks[0])
+                print("Current performance: ", cur_perf, ", best performance: ", best_accuracy)
+                if best_accuracy < cur_perf:
+                    layout_net.save_to_checkpoint(checkpoint_dir + '/best_model.tar')
+                    print(
+                        "Saving model with best training performance (mrr, acc, p@k): %s -> %s on epoch=%d, global_step=%d" %
+                        (best_accuracy, cur_perf, epoch, epoch_steps))
+                    best_accuracy = cur_perf
+                    wait_step = 0
+                    stop_training = False
+                else:
+                    wait_step += 1
+                    if wait_step >= patience:
+                        print("Stopping training because wait steps exceeded: ", wait_step)
+                        stop_training = True
+                layout_net.set_train()
+                if use_lr_scheduler:
+                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
+                if stop_training:
+                    break
+
+        # end of epoch eval
+        writer.add_scalar("Training Loss/train",
+                          np.mean(cumulative_loss[-int(print_every / batch_size):]), total_steps)
+        writer.add_scalar("Training Acc/train",
+                          np.mean(accuracy[-print_every:]), total_steps)
+        layout_net.set_eval()
+        mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=valid_data, layout_net=layout_net, k=k,
+                                           distractor_set_size=distractor_set_size, make_prediction=make_prediction,
+                                           count=20)
+        acc = eval_acc(dataset=valid_data, layout_net=layout_net, make_prediction=make_prediction, count=500)
+
+        writer.add_scalar("Training MRR/valid", mrr, total_steps)
+        for pre, ki in zip(p_at_ks, k):
+            writer.add_scalar(f"Training P@{k}/valid", pre, total_steps)
+        writer.add_scalar("Training Acc/valid", acc, total_steps)
+
 def eval(layout_net, data, k, distractor_set_size, make_prediction, count):
     layout_net.set_eval()
     mrr, p_at_ks = eval_mrr_and_p_at_k(dataset=data, layout_net=layout_net, make_prediction=make_prediction,
@@ -321,17 +471,20 @@ def eval(layout_net, data, k, distractor_set_size, make_prediction, count):
     layout_net.set_train()
 
 
-def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every,
-         valid_file_name, num_negatives, adamw,
-         example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
+def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretraining, lr, print_every, valid_file_name,
+         num_negatives, adamw, example_count, dropout, checkpoint_dir, summary_writer_dir, use_lr_scheduler,
          clip_grad_value, patience, k, distractor_set_size, do_pretrain, do_train, batch_size, layout_net_training_ckp,
          finetune_scoring, override_negatives_in_pretraining, skip_negatives_in_pretraining, use_dummy_action, do_eval,
          alignment_function, pretrain_bin_threshold, pretrain_loss_type, eval_count, use_warmup_lr, warmup_steps,
-         oracle_idxs_file):
+         oracle_idxs_file, use_in_batch_negatives):
     if os.path.isfile(data_dir):
         print(f"Loading dataset from {data_dir}")
         if oracle_idxs_file:
-            dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
+            if use_in_batch_negatives:
+                dataset = CodeSearchNetDataset_InBatchNegativesOracle(filename=data_dir, device=device,
+                                                                      neg_count=num_negatives, oracle_idxs_file=oracle_idxs_file)
+            else:
+                dataset = ConcatDataset([CodeSearchNetDataset_NotPrecomputed(data_dir, device), ] +
                                     [CodeSearchNetDataset_NegativeOracleNotPrecomputed(filename=data_dir, device=device,
                                                                                        neg_count=num_negatives,
                                                                                        oracle_idxs_file=oracle_idxs_file)])
@@ -419,7 +572,7 @@ def main(device, data_dir, scoring_checkpoint, num_epochs, num_epochs_pretrainin
               use_lr_scheduler=use_lr_scheduler, writer=writer, valid_data=valid_data, k=k,
               distractor_set_size=distractor_set_size, print_every=print_every, patience=patience,
               batch_size=batch_size, make_prediction=make_prediction, use_warmup_lr=use_warmup_lr,
-              warmup_steps=warmup_steps)
+              warmup_steps=warmup_steps, use_in_batch_negatives=use_in_batch_negatives)
     if do_eval:
         eval(layout_net=layout_net, data=valid_data, k=k, distractor_set_size=distractor_set_size,
              count=eval_count, make_prediction=make_prediction)
@@ -471,6 +624,7 @@ if __name__ == '__main__':
                         help='How many examples to use in evaluation, pass -1 for evaluating on the entire validation set')
     parser.add_argument('--warmup_steps', dest='warmup_steps', type=int, default=500)
     parser.add_argument('--oracle_idxs_file', dest='oracle_idxs_file', default="", type=str)
+    parser.add_argument('--use_in_batch_negatives', dest='use_in_batch_negatives', default=False, action='store_true')
 
     args = parser.parse_args()
     main(device=args.device,
@@ -507,4 +661,5 @@ if __name__ == '__main__':
          eval_count=args.eval_count,
          use_warmup_lr=args.use_warmup_lr,
          warmup_steps=args.warmup_steps,
-         oracle_idxs_file=args.oracle_idxs_file)
+         oracle_idxs_file=args.oracle_idxs_file,
+         use_in_batch_negatives=args.use_in_batch_negatives)
