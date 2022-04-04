@@ -388,17 +388,18 @@ def train_inbatch_neg(device, layout_net, lr, adamw, checkpoint_dir, num_epochs,
                 binarized_pred = binarize(pred, threshold=0.5)
 
                 accuracy.append(int((binarized_pred == label).cpu().detach().numpy()))
-            loss.backward()
-            cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
-            if clip_grad_value > 0:
-                torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
-                if layout_net.weighted_cosine:
-                    torch.nn.utils.clip_grad_value_(layout_net.weight, clip_grad_value)
-                if layout_net.weighted_cosine_v2:
-                    torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
-            op.step()
-            if use_warmup_lr:
-                scheduler.step(np.mean(cumulative_loss[-print_every:]))
+            if loss:
+                loss.backward()
+                cumulative_loss.append(loss.data.cpu().numpy() / batch_size)
+                if clip_grad_value > 0:
+                    torch.nn.utils.clip_grad_value_(layout_net.parameters(), clip_grad_value)
+                    if layout_net.weighted_cosine:
+                        torch.nn.utils.clip_grad_value_(layout_net.weight, clip_grad_value)
+                    if layout_net.weighted_cosine_v2:
+                        torch.nn.utils.clip_grad_value_(layout_net.weight.parameters(), clip_grad_value)
+                op.step()
+                if use_warmup_lr:
+                    scheduler.step(np.mean(cumulative_loss[-print_every:]))
             loss = None
             for x in layout_net.parameters():
                 x.grad = None
