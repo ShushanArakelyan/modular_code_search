@@ -205,7 +205,6 @@ class CodeSearchNetDataset_NegativeOracleNotPrecomputed(Dataset):
     def __getitem__(self, idx):
         neg_idx = int(idx / len(self.negative_samples))
         idx = idx % len(self.negative_samples)
-        print(idx, neg_idx)
         neg_idx = self.negative_samples[idx][neg_idx]
         sample = (self.data['docstring_tokens'][idx],
                   self.data['alt_code_tokens'][neg_idx],
